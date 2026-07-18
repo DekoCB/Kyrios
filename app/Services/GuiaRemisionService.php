@@ -329,7 +329,13 @@ class GuiaRemisionService
         }
     }
 
-    private function resolverNumeroGuia(int $almacenId, ?int $serieId = null): array
+    /**
+     * Resuelve el siguiente número de guía (y su serie) para un almacén, reutilizando
+     * la serie SUNAT '09' activa de su sucursal. Único punto de numeración de guías
+     * en la app — reutilizado también por VentaService y DevolucionController para
+     * evitar que cada uno arme su propia numeración (o, peor, una falsa) por su cuenta.
+     */
+    public function resolverNumeroGuia(int $almacenId, ?int $serieId = null): array
     {
         if ($serieId) {
             return ['numero' => $this->consumirCorrelativo($serieId), 'serie_id' => $serieId];

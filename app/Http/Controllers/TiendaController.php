@@ -142,11 +142,21 @@ class TiendaController extends Controller
                 'tipo_movimiento'   => 'transferencia',
                 'cantidad'          => $validated['cantidad'],
                 'stock_anterior'    => $stockOrigen->cantidad,
-                'stock_nuevo'       => $stockOrigen->cantidad,
+                'stock_nuevo'       => $stockOrigen->cantidad - $validated['cantidad'],
                 'motivo'            => $validated['motivo'] ?? 'Solicitud desde tienda',
                 'estado'            => 'pendiente',
                 'documento_referencia' => 'SOL-' . date('Ymd') . '-' . rand(1000, 9999),
             ]);
+
+            // Reservar (descontar) el stock en origen inmediatamente, igual que
+            // TrasladoService::crearLineaAccesorio — TrasladoService::confirmarRecepcion
+            // asume que el origen ya fue descontado y solo acredita el destino; sin este
+            // descuento, confirmar la solicitud duplicaba el stock (aparecía en destino
+            // sin haber salido de origen).
+            $stockOrigen->decrement('cantidad', $validated['cantidad']);
+
+            $totalStock = StockAlmacen::where('producto_id', $validated['producto_id'])->sum('cantidad');
+            Producto::where('id', $validated['producto_id'])->update(['stock_actual' => $totalStock]);
 
             DB::commit();
 
@@ -171,6 +181,8 @@ class TiendaController extends Controller
     public function cancelarSolicitud(MovimientoInventario $traslado)
     {
         try {
+            DB::beginTransaction();
+
             if ($traslado->almacen_destino_id != auth()->user()->almacen_id) {
                 throw new \Exception('No tienes permiso para cancelar esta solicitud');
             }
@@ -179,7 +191,20 @@ class TiendaController extends Controller
                 throw new \Exception('Solo se pueden cancelar solicitudes pendientes');
             }
 
+            // Devolver al origen la cantidad reservada al crear la solicitud
+            // (ver solicitarTraslado, que ahora descuenta de inmediato).
+            $stockOrigen = StockAlmacen::firstOrCreate(
+                ['producto_id' => $traslado->producto_id, 'almacen_id' => $traslado->almacen_id],
+                ['cantidad' => 0]
+            );
+            $stockOrigen->increment('cantidad', $traslado->cantidad);
+
+            $totalStock = StockAlmacen::where('producto_id', $traslado->producto_id)->sum('cantidad');
+            Producto::where('id', $traslado->producto_id)->update(['stock_actual' => $totalStock]);
+
             $traslado->update(['estado' => 'cancelado']);
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -187,6 +212,7 @@ class TiendaController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()

@@ -25,7 +25,7 @@ class ComisionController extends Controller
             'producto:id,nombre,costo_promedio',
             'producto.precios' => fn($q) => $q->where('tipo_precio', 'venta_regular')->where('activo', true)->orderByDesc('prioridad'),
         ])->latest()->get();
-        $bonusReglas = BonusRegla::with(['producto', 'categoria'])->latest()->get();
+        $bonusReglas = BonusRegla::with(['producto', 'categoria', 'usuario'])->latest()->get();
 
         $vendedores = User::whereHas('role', fn($q) => $q->whereIn('nombre', ['Vendedor', 'Tienda', 'Cajero']))->orderBy('name')->get();
         $categorias = Categoria::orderBy('nombre')->get();
@@ -54,24 +54,34 @@ class ComisionController extends Controller
 
     public function store(Request $request)
     {
+        // El modal envía el vendedor de "producto + vendedor" en un campo aparte
+        // (user_id_producto) para no colisionar con el <select name="user_id">
+        // del caso "vendedor específico" dentro del mismo formulario.
+        if ($request->tipo_aplicacion === 'producto_usuario') {
+            $request->merge(['user_id' => $request->user_id_producto]);
+        }
+
         $request->validate([
             'nombre'           => 'required|string|max:100',
-            'tipo_aplicacion'  => 'required|in:usuario,categoria,producto',
+            'tipo_aplicacion'  => 'required|in:usuario,categoria,producto,producto_usuario',
             'tipo_calculo'     => 'required|in:porcentaje,monto_fijo,porcentaje_margen',
             'valor'            => 'required|numeric|min:0.0001',
-            'user_id'          => 'nullable|required_if:tipo_aplicacion,usuario|exists:users,id',
+            'user_id'          => 'nullable|required_if:tipo_aplicacion,usuario,producto_usuario|exists:users,id',
             'categoria_id'     => 'nullable|required_if:tipo_aplicacion,categoria|exists:categorias,id',
-            'producto_id'      => 'nullable|required_if:tipo_aplicacion,producto|exists:productos,id',
+            'producto_id'      => 'nullable|required_if:tipo_aplicacion,producto,producto_usuario|exists:productos,id',
         ]);
+
+        $aplicaUsuario  = in_array($request->tipo_aplicacion, ['usuario', 'producto_usuario'], true);
+        $aplicaProducto = in_array($request->tipo_aplicacion, ['producto', 'producto_usuario'], true);
 
         ComisionRegla::create([
             'nombre'          => $request->nombre,
             'tipo_aplicacion' => $request->tipo_aplicacion,
             'tipo_calculo'    => $request->tipo_calculo,
             'valor'           => $request->valor,
-            'user_id'         => $request->tipo_aplicacion === 'usuario'   ? $request->user_id    : null,
+            'user_id'         => $aplicaUsuario  ? $request->user_id     : null,
             'categoria_id'    => $request->tipo_aplicacion === 'categoria' ? $request->categoria_id : null,
-            'producto_id'     => $request->tipo_aplicacion === 'producto'  ? $request->producto_id  : null,
+            'producto_id'     => $aplicaProducto ? $request->producto_id : null,
             'activo'          => true,
         ]);
 
@@ -112,21 +122,31 @@ class ComisionController extends Controller
 
     public function bonusStore(Request $request)
     {
+        // Igual que en store(): el vendedor de "producto + vendedor" llega en un
+        // campo aparte para no colisionar con otros selects del mismo formulario.
+        if ($request->tipo_aplicacion === 'producto_usuario') {
+            $request->merge(['user_id' => $request->user_id_producto]);
+        }
+
         $request->validate([
             'nombre'          => 'required|string|max:100',
-            'tipo_aplicacion' => 'required|in:producto,categoria',
+            'tipo_aplicacion' => 'required|in:producto,categoria,producto_usuario',
             'tipo_bonus'      => 'required|in:fijo,meta',
             'tipo_calculo'    => 'required|in:monto_fijo,porcentaje_venta',
             'valor'           => 'required|numeric|min:0.0001',
-            'producto_id'     => 'nullable|required_if:tipo_aplicacion,producto|exists:productos,id',
+            'producto_id'     => 'nullable|required_if:tipo_aplicacion,producto,producto_usuario|exists:productos,id',
             'categoria_id'    => 'nullable|required_if:tipo_aplicacion,categoria|exists:categorias,id',
+            'user_id'         => 'nullable|required_if:tipo_aplicacion,producto_usuario|exists:users,id',
             'meta_unidades'   => 'nullable|required_if:tipo_bonus,meta|integer|min:1',
             'meta_periodo'    => 'nullable|in:mensual,quincenal,semanal',
         ], [
             'meta_unidades.required_if' => 'Las unidades mínimas son requeridas para bonos por meta.',
             'producto_id.required_if'   => 'Selecciona un producto.',
             'categoria_id.required_if'  => 'Selecciona una categoría.',
+            'user_id.required_if'       => 'Selecciona un vendedor.',
         ]);
+
+        $aplicaProducto = in_array($request->tipo_aplicacion, ['producto', 'producto_usuario'], true);
 
         BonusRegla::create([
             'nombre'          => $request->nombre,
@@ -134,8 +154,9 @@ class ComisionController extends Controller
             'tipo_bonus'      => $request->tipo_bonus,
             'tipo_calculo'    => $request->tipo_calculo,
             'valor'           => $request->valor,
-            'producto_id'     => $request->tipo_aplicacion === 'producto'  ? $request->producto_id  : null,
+            'producto_id'     => $aplicaProducto ? $request->producto_id : null,
             'categoria_id'    => $request->tipo_aplicacion === 'categoria' ? $request->categoria_id : null,
+            'user_id'         => $request->tipo_aplicacion === 'producto_usuario' ? $request->user_id : null,
             'meta_unidades'   => $request->tipo_bonus === 'meta' ? $request->meta_unidades : null,
             'meta_periodo'    => $request->tipo_bonus === 'meta' ? ($request->meta_periodo ?? 'mensual') : null,
             'activo'          => true,
@@ -228,6 +249,17 @@ class ComisionController extends Controller
         })->values();
 
         return view('comisiones.reporte', compact('comisiones', 'bonos', 'resumen', 'vendedores'));
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  PROGRESO DE BONOS POR META (logrado / en progreso)
+    // ══════════════════════════════════════════════════════════════════
+
+    public function progresoBonos()
+    {
+        $progreso = app(BonusService::class)->progresoMetas();
+
+        return view('comisiones.progreso-bonos', compact('progreso'));
     }
 
     // ══════════════════════════════════════════════════════════════════

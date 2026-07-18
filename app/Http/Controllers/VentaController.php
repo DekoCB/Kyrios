@@ -216,7 +216,10 @@ class VentaController extends Controller
                 'codigo_barras'    => $p->codigo_barras ?? null,
                 'categoria_id'     => $p->categoria_id,
                 'tipo_inventario'  => $p->tipo_inventario,
-                'stock_actual'     => (int) $p->stock_actual,
+                // Suma de $stockMap (live, por almacén) en vez de productos.stock_actual:
+                // esa columna se desincroniza en varios flujos (registro de IMEIs por compra,
+                // reversión de ventas, etc.) y así se garantiza que coincida con lo que se ve por tienda.
+                'stock_actual'     => (int) array_sum($stockMap),
                 'stock_por_almacen'=> $stockMap,  // {almacen_id: qty}
                 'precio_venta'     => (float) ($variantes->isNotEmpty()
                     ? ($variantes->filter(fn($v) => $v['precio_venta'] !== null)->min('precio_venta') ?? $precioBase?->precio ?? $p->precio_venta)
@@ -244,6 +247,15 @@ class VentaController extends Controller
 
         $empresa = Empresa::first();
 
+        // Último conductor privado usado (mismo criterio que el módulo de Guías de
+        // Remisión) para precargar el formulario de guía del POS. Antes el POS solo
+        // guardaba esto en localStorage del navegador, así que no "jalaba" datos
+        // guardados desde otro equipo/navegador ni desde el módulo de guías.
+        $ultimoConductor = GuiaRemision::whereNotNull('conductor_dni')
+            ->whereNotNull('conductor_nombre')
+            ->latest()
+            ->first();
+
         // Estado de la caja del usuario actual
         $cajaActual     = \App\Models\Caja::where('user_id', auth()->id())
             ->where('estado', 'abierta')
@@ -264,7 +276,7 @@ class VentaController extends Controller
 
         return view('ventas.create', compact(
             'clientes', 'productos', 'almacenes', 'categorias', 'almacenPredeterminado', 'pagosConfig', 'empresa',
-            'cajaAbierta', 'cajaDiaAnterior', 'cajaActual', 'esVendedor', 'misPendientes'
+            'cajaAbierta', 'cajaDiaAnterior', 'cajaActual', 'esVendedor', 'misPendientes', 'ultimoConductor'
         ));
     }
 
@@ -379,6 +391,9 @@ class VentaController extends Controller
         $validated = $request->validate([
             'tipo_comprobante' => 'required|in:boleta,factura',
             'metodo_pago'      => 'required|in:efectivo,transferencia,yape,plin,mixto',
+            'imeis'            => 'nullable|array',
+            'imeis.*'          => 'array',
+            'imeis.*.*'        => 'string',
         ]);
 
         // Validar RUC si se emite factura
@@ -399,7 +414,8 @@ class VentaController extends Controller
             app(VentaService::class)->convertirAVenta(
                 $venta,
                 $validated['tipo_comprobante'],
-                $validated['metodo_pago']
+                $validated['metodo_pago'],
+                $validated['imeis'] ?? []
             );
 
             return redirect()

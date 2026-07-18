@@ -276,13 +276,13 @@
                                             $stockTotal = $producto->stockAlmacenes->first()?->cantidad ?? 0;
                                         }
                                     } else {
-                                        // Stock global
-                                        if ($esSerie) {
-                                            $stockTotal = $producto->stock_actual ?? 0;
-                                        } elseif ($producto->variantesActivas->count() > 0) {
+                                        // Stock global: si tiene variantes, sumar su stock (siempre al día,
+                                        // a diferencia de productos.stock_actual que puede desincronizarse
+                                        // para productos tipo "serie" — ver IMEIs registrados por compra).
+                                        if ($producto->variantesActivas->count() > 0) {
                                             $stockTotal = $producto->variantesActivas->sum('stock_actual');
                                         } else {
-                                            $stockTotal = $producto->stock_actual;
+                                            $stockTotal = $producto->stock_actual ?? 0;
                                         }
                                     }
                                     $colorClass = $stockTotal == 0
@@ -292,7 +292,7 @@
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $colorClass }}">
                                     {{ $stockTotal }} unt
                                 </span>
-                                @if(!$esSerie && !$almacenFiltro && $producto->variantesActivas->count() > 0)
+                                @if(!$almacenFiltro && $producto->variantesActivas->count() > 0)
                                     <div class="flex items-center justify-center gap-1 mt-1 flex-wrap">
                                         @foreach($producto->variantesActivas as $v)
                                             <span title="{{ $v->nombre_completo }}: {{ $v->stock_actual }} unt"

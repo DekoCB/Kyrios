@@ -20,6 +20,10 @@
            class="text-sm text-gray-500 hover:text-blue-700 flex items-center gap-1">
             <i class="fas fa-arrow-left"></i> Volver a configuración
         </a>
+        <a href="{{ route('comisiones.progreso-bonos') }}"
+           class="text-sm text-gray-500 hover:text-purple-700 flex items-center gap-1">
+            <i class="fas fa-trophy"></i> Ver progreso de metas
+        </a>
     </div>
 
     @if(session('success'))

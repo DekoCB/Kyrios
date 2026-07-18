@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BonusRegla;
 use App\Models\BonusLiquidacion;
 use App\Models\DetalleVenta;
+use App\Models\User;
 use App\Models\Venta;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,12 +24,12 @@ class BonusService
             $productoId  = $detalle->producto_id;
             $categoriaId = $detalle->producto?->categoria_id;
 
-            $reglasFijas = $this->resolverReglasFijas($productoId, $categoriaId);
+            $reglasFijas = $this->resolverReglasFijas($productoId, $categoriaId, $vendedorId);
             foreach ($reglasFijas as $regla) {
                 $this->crearBonusFijo($regla, $detalle, $vendedorId);
             }
 
-            $reglasMeta = $this->resolverReglasMeta($productoId, $categoriaId);
+            $reglasMeta = $this->resolverReglasMeta($productoId, $categoriaId, $vendedorId);
             foreach ($reglasMeta as $regla) {
                 $this->verificarMeta($regla, $vendedorId, $productoId, $categoriaId, $venta->created_at ?? now());
             }
@@ -105,7 +106,7 @@ class BonusService
             ->whereBetween('ventas.created_at', [$inicio->startOfDay(), $fin->copy()->endOfDay()])
             ->whereIn('ventas.estado_pago', ['pagado', 'parcial', 'pendiente']);
 
-        if ($tipoAplicacion === 'producto') {
+        if (in_array($tipoAplicacion, ['producto', 'producto_usuario'], true)) {
             $query->where('detalle_ventas.producto_id', $productoId);
         } elseif ($tipoAplicacion === 'categoria' && $categoriaId) {
             $query->join('productos', 'productos.id', '=', 'detalle_ventas.producto_id')
@@ -122,7 +123,7 @@ class BonusService
             ->whereBetween('ventas.created_at', [$inicio->startOfDay(), $fin->copy()->endOfDay()])
             ->whereIn('ventas.estado_pago', ['pagado', 'parcial', 'pendiente']);
 
-        if ($tipoAplicacion === 'producto') {
+        if (in_array($tipoAplicacion, ['producto', 'producto_usuario'], true)) {
             $query->where('detalle_ventas.producto_id', $productoId);
         } elseif ($tipoAplicacion === 'categoria' && $categoriaId) {
             $query->join('productos', 'productos.id', '=', 'detalle_ventas.producto_id')
@@ -134,28 +135,32 @@ class BonusService
 
     // ── Resolvers ─────────────────────────────────────────────────────────────
 
-    private function resolverReglasFijas(int $productoId, ?int $categoriaId): \Illuminate\Support\Collection
+    private function resolverReglasFijas(int $productoId, ?int $categoriaId, int $vendedorId): \Illuminate\Support\Collection
     {
         return BonusRegla::where('activo', true)
             ->where('tipo_bonus', 'fijo')
-            ->where(function ($q) use ($productoId, $categoriaId) {
+            ->where(function ($q) use ($productoId, $categoriaId, $vendedorId) {
                 $q->where(fn($q2) => $q2->where('tipo_aplicacion', 'producto')->where('producto_id', $productoId));
                 if ($categoriaId) {
                     $q->orWhere(fn($q2) => $q2->where('tipo_aplicacion', 'categoria')->where('categoria_id', $categoriaId));
                 }
+                $q->orWhere(fn($q2) => $q2->where('tipo_aplicacion', 'producto_usuario')
+                    ->where('producto_id', $productoId)->where('user_id', $vendedorId));
             })
             ->get();
     }
 
-    private function resolverReglasMeta(int $productoId, ?int $categoriaId): \Illuminate\Support\Collection
+    private function resolverReglasMeta(int $productoId, ?int $categoriaId, int $vendedorId): \Illuminate\Support\Collection
     {
         return BonusRegla::where('activo', true)
             ->where('tipo_bonus', 'meta')
-            ->where(function ($q) use ($productoId, $categoriaId) {
+            ->where(function ($q) use ($productoId, $categoriaId, $vendedorId) {
                 $q->where(fn($q2) => $q2->where('tipo_aplicacion', 'producto')->where('producto_id', $productoId));
                 if ($categoriaId) {
                     $q->orWhere(fn($q2) => $q2->where('tipo_aplicacion', 'categoria')->where('categoria_id', $categoriaId));
                 }
+                $q->orWhere(fn($q2) => $q2->where('tipo_aplicacion', 'producto_usuario')
+                    ->where('producto_id', $productoId)->where('user_id', $vendedorId));
             })
             ->get();
     }
@@ -173,6 +178,62 @@ class BonusService
                 : [$fecha->copy()->startOfMonth()->addDays(15), $fecha->copy()->endOfMonth()],
             default      => [$fecha->copy()->startOfMonth(), $fecha->copy()->endOfMonth()], // mensual
         };
+    }
+
+    /**
+     * Progreso de cada vendedor hacia cada regla de bono "por meta" activa, en el
+     * período actual. A diferencia de verificarMeta() (que solo actúa al confirmar
+     * una venta y recién crea el registro cuando ya se cruzó el umbral), esto se
+     * puede consultar en cualquier momento — incluye a quienes todavía no llegan
+     * a la meta, para un dashboard de "logrado / en progreso".
+     */
+    public function progresoMetas(): \Illuminate\Support\Collection
+    {
+        $reglas    = BonusRegla::where('activo', true)->where('tipo_bonus', 'meta')->get();
+        $resultado = collect();
+
+        foreach ($reglas as $regla) {
+            [$inicio, $fin] = $this->periodoActual($regla->meta_periodo);
+
+            // A quién aplica: producto_usuario -> solo ese vendedor; producto/categoria -> todos.
+            $vendedores = $regla->tipo_aplicacion === 'producto_usuario'
+                ? User::where('id', $regla->user_id)->get()
+                : User::whereHas('role', fn($q) => $q->whereIn('nombre', ['Vendedor', 'Tienda', 'Cajero']))->get();
+
+            foreach ($vendedores as $vendedor) {
+                $unidades = $this->contarUnidadesPeriodo(
+                    $vendedor->id, $regla->producto_id, $regla->categoria_id, $regla->tipo_aplicacion, $inicio, $fin
+                );
+
+                if ($unidades <= 0) continue;
+
+                $liquidacion = BonusLiquidacion::where('user_id', $vendedor->id)
+                    ->where('bonus_regla_id', $regla->id)
+                    ->where('periodo_inicio', $inicio->toDateString())
+                    ->first();
+
+                $logrado = $unidades >= $regla->meta_unidades;
+
+                $resultado->push([
+                    'regla'          => $regla,
+                    'vendedor'       => $vendedor,
+                    'unidades'       => $unidades,
+                    'meta'           => $regla->meta_unidades,
+                    'periodo_inicio' => $inicio,
+                    'periodo_fin'    => $fin,
+                    'pct'            => $regla->meta_unidades > 0 ? min(100, round($unidades / $regla->meta_unidades * 100)) : 0,
+                    'estado'         => match(true) {
+                        !$logrado                                    => 'en_progreso',
+                        $liquidacion && $liquidacion->estado === 'pagado' => 'pagado',
+                        default                                       => 'logrado',
+                    },
+                    'liquidacion' => $liquidacion,
+                ]);
+            }
+        }
+
+        // Logrado/pagado primero, luego por % de avance descendente dentro de cada grupo.
+        return $resultado->sortByDesc(fn($r) => ($r['estado'] !== 'en_progreso' ? 1000 : 0) + $r['pct'])->values();
     }
 
     /**

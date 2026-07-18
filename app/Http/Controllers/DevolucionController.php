@@ -142,8 +142,17 @@ class DevolucionController extends Controller
 
         try {
             DB::transaction(function () use ($request, $cantidades) {
-                $almacenId  = $request->almacen_id;
-                $numeroGuia = 'DEV-' . strtoupper(uniqid());
+                $almacenId = $request->almacen_id;
+
+                // Solo consumir un correlativo real de la serie SUNAT '09' cuando de
+                // verdad se va a emitir una guía de remisión (se completaron los datos
+                // de traslado); si no, usar un tag interno solo para agrupar los
+                // movimientos de inventario, sin gastar numeración oficial.
+                $emiteGuiaReal = $request->filled('guia.fecha_traslado');
+                $guiaResuelta  = $emiteGuiaReal
+                    ? app(\App\Services\GuiaRemisionService::class)->resolverNumeroGuia($almacenId)
+                    : null;
+                $numeroGuia = $guiaResuelta['numero'] ?? ('DEV-' . strtoupper(uniqid()));
 
                 foreach ($cantidades as $detalleId => $cantidadSolicitada) {
                     $detalle = DetalleVenta::with(['producto', 'imei', 'variante', 'movimientosDevolucion'])
@@ -209,9 +218,13 @@ class DevolucionController extends Controller
                     }
                 }
 
-                if (!empty($request->input('guia.fecha_traslado'))) {
+                if ($emiteGuiaReal) {
                     GuiaRemision::create(array_merge(
-                        ['numero_guia' => $numeroGuia, 'motivo_traslado' => 'DEVOLUCION'],
+                        [
+                            'numero_guia'   => $numeroGuia,
+                            'guia_serie_id' => $guiaResuelta['serie_id'],
+                            'motivo_traslado' => 'DEVOLUCION',
+                        ],
                         $request->input('guia', [])
                     ));
                 }

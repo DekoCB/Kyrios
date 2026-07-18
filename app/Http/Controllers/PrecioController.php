@@ -85,14 +85,34 @@ class PrecioController extends Controller
         $precio = ProductoPrecio::with(['variante.color', 'proveedor', 'almacen'])->findOrFail($precioId);
 
         $producto->load([
-            'categoria', 'marca', 'modelo', 
+            'categoria', 'marca', 'modelo',
             'variantes' => function($q) {
                 $q->where('estado', 'activo');
             }
         ]);
         $proveedores = Proveedor::where('estado', 'activo')->orderBy('razon_social')->get();
 
-        return view('precios.edit', compact('producto', 'precio', 'proveedores'));
+        // El precio mayorista real vive en una fila hermana (tipo_precio = 'venta_mayorista'),
+        // no en la columna precio_mayorista de esta fila (que no la lee nadie más).
+        // Es siempre global (almacen_id null) — igual que store()/show()/POS; no existe mayorista por tienda.
+        $precioMayoristaActual = ProductoPrecio::where('producto_id', $producto->id)
+            ->where('variante_id', $precio->variante_id)
+            ->whereNull('almacen_id')
+            ->where('tipo_precio', 'venta_mayorista')
+            ->where('activo', true)
+            ->value('precio');
+
+        // Fila de precio global (venta_regular) de esta variante, para enlazar desde una edición
+        // de precio de tienda al lugar donde realmente se edita el mayorista.
+        $precioGlobalId = ProductoPrecio::where('producto_id', $producto->id)
+            ->where('variante_id', $precio->variante_id)
+            ->whereNull('almacen_id')
+            ->where('tipo_precio', 'venta_regular')
+            ->where('activo', true)
+            ->orderByDesc('id')
+            ->value('id');
+
+        return view('precios.edit', compact('producto', 'precio', 'proveedores', 'precioMayoristaActual', 'precioGlobalId'));
     }
     /**
      * Mostrar detalle de precios de un producto
@@ -133,10 +153,16 @@ class PrecioController extends Controller
         $preciosGlobales  = $producto->precios->whereNull('almacen_id')->where('tipo_precio', 'venta_regular');
         $preciosPorTienda = $producto->precios->whereNotNull('almacen_id')->where('tipo_precio', 'venta_regular');
 
+        // Rango real de precio de venta por capacidad/variante (para no mostrar el campo
+        // productos.precio_venta cuando quedó desactualizado frente a los precios por capacidad).
+        $preciosVentaActivos = $preciosGlobalesActivos->pluck('precio')->map(fn($p) => (float) $p);
+        $precioVentaMin = $preciosVentaActivos->min();
+        $precioVentaMax = $preciosVentaActivos->max();
+
         return view('precios.show', compact(
             'producto', 'proveedores', 'almacenes',
             'preciosGlobales', 'preciosGlobalesActivos', 'preciosPorTienda',
-            'preciosMayoristasActivos'
+            'preciosMayoristasActivos', 'precioVentaMin', 'precioVentaMax'
         ));
     }
 
@@ -382,6 +408,7 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
             'precio_compra'    => 'required|numeric|min:0.01',
             'precio_venta'     => 'required|numeric|min:0.01',
             'precio_mayorista' => 'nullable|numeric|min:0.01',
+            'margen_mayorista' => 'nullable|numeric',
             'margen'           => 'required|numeric|min:0|max:1000',
             'observaciones'    => 'nullable|string|max:500',
             'fecha_inicio'     => 'nullable|date',
@@ -421,6 +448,40 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
             // Si es precio global activo y sin variante, actualizar productos.precio_venta
             if (is_null($precio->almacen_id) && is_null($precio->variante_id) && $precio->activo) {
                 $producto->update(['precio_venta' => $validated['precio_venta']]);
+            }
+
+            // El precio mayorista real vive en una fila hermana (tipo_precio = 'venta_mayorista'),
+            // no en la columna precio_mayorista de arriba: es la que lee el POS y Producto::getPrecioMayoristaAttribute().
+            // Es siempre global (almacen_id null) — igual que store() y show(); no existe mayorista por tienda.
+            // Solo se toca cuando se edita la fila global: el formulario no envía este campo al editar una fila de tienda.
+            if (is_null($precio->almacen_id)) {
+                ProductoPrecio::where('producto_id', $producto->id)
+                    ->where('variante_id', $precio->variante_id)
+                    ->whereNull('almacen_id')
+                    ->where('tipo_precio', 'venta_mayorista')
+                    ->where('activo', true)
+                    ->update(['activo' => false]);
+
+                if (!empty($validated['precio_mayorista'])) {
+                    $margenMay = isset($validated['margen_mayorista']) && $validated['margen_mayorista'] !== ''
+                        ? $validated['margen_mayorista']
+                        : ($validated['precio_compra'] > 0
+                            ? round((($validated['precio_mayorista'] - $validated['precio_compra']) / $validated['precio_compra']) * 100, 2)
+                            : 0);
+
+                    ProductoPrecio::create([
+                        'producto_id'   => $producto->id,
+                        'variante_id'   => $precio->variante_id,
+                        'almacen_id'    => null,
+                        'tipo_precio'   => 'venta_mayorista',
+                        'precio'        => $validated['precio_mayorista'],
+                        'precio_compra' => $validated['precio_compra'],
+                        'margen'        => $margenMay,
+                        'proveedor_id'  => $precio->proveedor_id,
+                        'activo'        => true,
+                        'creado_por'    => auth()->id(),
+                    ]);
+                }
             }
 
             DB::commit();

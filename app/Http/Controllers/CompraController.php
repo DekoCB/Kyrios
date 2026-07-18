@@ -516,6 +516,23 @@ class CompraController extends Controller
                     'estado_imei'       => 'en_stock',
                 ]);
             }
+
+            // Recontar desde la fuente real (imeis) en vez de incrementar: mantiene
+            // producto.stock_actual / producto_variante.stock_actual exactos aunque
+            // esas columnas ya estuvieran desincronizadas por otro flujo.
+            $totalProducto = Imei::where('producto_id', $detalle->producto_id)
+                ->where('estado_imei', 'en_stock')
+                ->count();
+            Producto::where('id', $detalle->producto_id)
+                ->update(['stock_actual' => $totalProducto]);
+
+            if ($detalle->variante_id) {
+                $totalVariante = Imei::where('variante_id', $detalle->variante_id)
+                    ->where('estado_imei', 'en_stock')
+                    ->count();
+                ProductoVariante::where('id', $detalle->variante_id)
+                    ->update(['stock_actual' => $totalVariante]);
+            }
         });
 
         $totalAhora = Imei::where(function ($q) use ($compra, $detalle) {

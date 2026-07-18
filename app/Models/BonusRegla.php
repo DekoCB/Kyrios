@@ -9,7 +9,7 @@ class BonusRegla extends Model
     protected $table = 'bonus_reglas';
 
     protected $fillable = [
-        'nombre', 'tipo_aplicacion', 'producto_id', 'categoria_id',
+        'nombre', 'tipo_aplicacion', 'producto_id', 'categoria_id', 'user_id',
         'tipo_bonus', 'tipo_calculo', 'valor',
         'meta_unidades', 'meta_periodo', 'activo',
     ];
@@ -22,14 +22,16 @@ class BonusRegla extends Model
 
     public function producto()  { return $this->belongsTo(Producto::class); }
     public function categoria() { return $this->belongsTo(Categoria::class); }
+    public function usuario()   { return $this->belongsTo(User::class, 'user_id'); }
     public function liquidaciones() { return $this->hasMany(BonusLiquidacion::class); }
 
     public function getTipoAplicacionLabelAttribute(): string
     {
         return match($this->tipo_aplicacion) {
-            'producto'  => 'Producto',
-            'categoria' => 'Categoría',
-            default     => ucfirst($this->tipo_aplicacion),
+            'producto'          => 'Producto',
+            'categoria'         => 'Categoría',
+            'producto_usuario'  => 'Producto + Vendedor',
+            default             => ucfirst($this->tipo_aplicacion),
         };
     }
 

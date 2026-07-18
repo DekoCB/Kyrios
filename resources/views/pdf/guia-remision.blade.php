@@ -189,20 +189,20 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <div class="box-title">Domicilio de Llegada (Destino)</div>
                 <div class="box-body">
                     <div class="fl">Dirección</div>
-                    <div class="fv bold">{{ $guia->direccion_llegada ?? '—' }}</div>
+                    <div class="fv bold">{{ $guia->direccion_llegada ?? $venta->cliente?->direccion ?? '—' }}</div>
                     <div class="tbl" style="margin-top:2px">
                         <div class="tr">
                             <div class="td" style="width:34%">
                                 <div class="fl">Distrito</div>
-                                <div class="fv">—</div>
+                                <div class="fv">{{ $venta->cliente?->distrito ?? '—' }}</div>
                             </div>
                             <div class="td" style="width:33%">
                                 <div class="fl">Provincia</div>
-                                <div class="fv">—</div>
+                                <div class="fv">{{ $venta->cliente?->provincia ?? '—' }}</div>
                             </div>
                             <div class="td" style="width:33%">
                                 <div class="fl">Dpto.</div>
-                                <div class="fv">—</div>
+                                <div class="fv">{{ $venta->cliente?->departamento ?? '—' }}</div>
                             </div>
                         </div>
                     </div>
@@ -239,10 +239,36 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                             </div>
                         </div>
                     </div>
-                    @if($venta->cliente?->direccion)
                     <div class="fl" style="margin-top:1px">Dirección</div>
-                    <div class="fv">{{ $venta->cliente->direccion }}</div>
-                    @endif
+                    <div class="fv">{{ $venta->cliente?->direccion ?? '—' }}</div>
+                    <div class="tbl" style="margin-top:2px">
+                        <div class="tr">
+                            <div class="td" style="width:34%">
+                                <div class="fl">Distrito</div>
+                                <div class="fv">{{ $venta->cliente?->distrito ?? '—' }}</div>
+                            </div>
+                            <div class="td" style="width:33%">
+                                <div class="fl">Provincia</div>
+                                <div class="fv">{{ $venta->cliente?->provincia ?? '—' }}</div>
+                            </div>
+                            <div class="td" style="width:33%">
+                                <div class="fl">Dpto.</div>
+                                <div class="fv">{{ $venta->cliente?->departamento ?? '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tbl" style="margin-top:2px">
+                        <div class="tr">
+                            <div class="td" style="width:50%">
+                                <div class="fl">Teléfono / Celular</div>
+                                <div class="fv">{{ $venta->cliente?->telefono ?? '—' }}</div>
+                            </div>
+                            <div class="td" style="width:50%">
+                                <div class="fl">Email</div>
+                                <div class="fv">{{ $venta->cliente?->email ?? '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -240,25 +240,6 @@ class Producto extends Model
     }
 
     /**
-     * Incrementar stock
-     */
-    public function incrementarStock($cantidad)
-    {
-        $this->increment('stock_actual', $cantidad);
-    }
-
-    /**
-     * Decrementar stock
-     */
-    public function decrementarStock($cantidad)
-    {
-        if ($this->stock_actual < $cantidad) {
-            throw new \Exception('Stock insuficiente para el producto: ' . $this->nombre);
-        }
-        $this->decrement('stock_actual', $cantidad);
-    }
-
-    /**
      * Calcular valor total del inventario de este producto
      */
     public function getValorInventarioAttribute()

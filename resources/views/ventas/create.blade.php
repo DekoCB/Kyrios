@@ -181,7 +181,7 @@
 
                 {{-- With stock --}}
                 <div class="grid grid-cols-3 gap-2">
-                    <template x-for="producto in productosConStock" :key="producto.id">
+                    <template x-for="producto in productosParaMostrar" :key="producto.id">
                         <div @click="agregarAlCarrito(producto)"
                              class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all group select-none">
                             <div class="aspect-square bg-gray-50 dark:bg-gray-800 relative overflow-hidden flex items-center justify-center">
@@ -201,11 +201,11 @@
                                 <div class="flex items-center justify-between gap-1">
                                     <div>
                                         <p class="text-sm font-bold"
-                                           :class="modoMayorista && producto.precio_mayorista ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'"
-                                           x-text="(producto.tiene_variantes ? 'Desde ' : '') + 'S/ ' + (modoMayorista && producto.precio_mayorista ? producto.precio_mayorista.toFixed(2) : producto.precio_venta.toFixed(2))"></p>
-                                        <p x-show="producto.precio_mayorista" x-cloak
+                                           :class="modoMayorista && precioMayoristaEfectivo(producto) != null ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'"
+                                           x-text="(producto.tiene_variantes ? 'Desde ' : '') + 'S/ ' + (modoMayorista && precioMayoristaEfectivo(producto) != null ? precioMayoristaEfectivo(producto).toFixed(2) : producto.precio_venta.toFixed(2))"></p>
+                                        <p x-show="precioMayoristaEfectivo(producto) != null" x-cloak
                                            class="text-[9px] text-amber-500 dark:text-amber-400 font-semibold leading-tight"
-                                           x-text="modoMayorista ? 'Regular: S/ ' + producto.precio_venta.toFixed(2) : 'Mayor: S/ ' + producto.precio_mayorista?.toFixed(2)"></p>
+                                           x-text="modoMayorista ? 'Regular: S/ ' + producto.precio_venta.toFixed(2) : 'Mayor: S/ ' + precioMayoristaEfectivo(producto)?.toFixed(2)"></p>
                                     </div>
                                     <span x-show="orden.almacenId && producto.tipo_inventario !== 'serie'" x-cloak
                                           class="text-[9px] font-semibold text-gray-400 dark:text-gray-500 shrink-0"
@@ -249,7 +249,15 @@
                     </div>
                 </template>
 
-                {{-- Empty state --}}
+                {{-- Empty state: sin productos con precio mayorista (hay stock, pero ninguno tiene mayorista) --}}
+                <div x-show="modoMayorista && productosParaMostrar.length === 0 && productosConStock.length > 0" x-cloak
+                     class="flex flex-col items-center justify-center py-16 select-none">
+                    <i class="fas fa-tags text-4xl text-amber-200 dark:text-amber-900 mb-3"></i>
+                    <p class="text-sm font-medium text-gray-400">Ningún producto con stock tiene precio mayorista definido</p>
+                    <p class="text-xs mt-1 text-gray-400">Desactiva "Mayorista" para ver el catálogo regular</p>
+                </div>
+
+                {{-- Empty state: no hay productos en absoluto --}}
                 <div x-show="productosConStock.length === 0 && productosSinStock.length === 0" x-cloak
                      class="flex flex-col items-center justify-center py-16 select-none">
                     <i class="fas fa-box-open text-4xl text-gray-200 dark:text-gray-700 mb-3"></i>
@@ -274,7 +282,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     {{-- Toggle Modo Mayorista --}}
-                    <button @click="modoMayorista = !modoMayorista"
+                    <button @click="modoMayorista = !modoMayorista; recalcularPreciosCarrito()"
                             :class="modoMayorista
                                 ? 'bg-amber-500 text-white border-amber-500'
                                 : 'bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'"
@@ -1292,7 +1300,7 @@
         </div>
         <div class="p-5 max-h-[60vh] overflow-y-auto">
             <div class="grid grid-cols-2 gap-2.5">
-                <template x-for="v in variantesConStock()" :key="v.id">
+                <template x-for="v in variantesParaMostrar()" :key="v.id">
                     <button @click="seleccionarVariante(v)"
                             class="text-left border rounded-xl p-3 transition group border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20">
                         <div class="flex items-center gap-2 mb-1.5">
@@ -1323,6 +1331,10 @@
             <div x-show="variantesConStock().length === 0" class="py-8 text-center">
                 <i class="fas fa-box-open text-3xl text-gray-300 dark:text-gray-600 mb-2 block"></i>
                 <p class="text-sm text-gray-500 dark:text-gray-400">No hay variantes con stock en este punto de venta</p>
+            </div>
+            <div x-show="variantesConStock().length > 0 && variantesParaMostrar().length === 0" class="py-8 text-center">
+                <i class="fas fa-tags text-3xl text-amber-200 dark:text-amber-900 mb-2 block"></i>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Ninguna variante con stock tiene precio mayorista definido</p>
             </div>
         </div>
         <div class="p-4 border-t border-gray-100 dark:border-gray-700">
@@ -1569,7 +1581,7 @@
                     </h3>
                     <button type="button"
                             x-show="orden.guia.conductor_dni || orden.guia.conductor_nombre || orden.guia.placa_vehiculo"
-                            @click="orden.guia.conductor_dni=''; orden.guia.conductor_nombre=''; orden.guia.conductor_licencia=''; orden.guia.placa_vehiculo=''; localStorage.removeItem('pos_conductor_data'); errorDni=''"
+                            @click="orden.guia.conductor_dni=''; orden.guia.conductor_nombre=''; orden.guia.conductor_licencia=''; orden.guia.placa_vehiculo=''; errorDni=''"
                             class="ml-auto text-[10px] text-gray-400 hover:text-red-500 transition flex items-center gap-1">
                         <i class="fas fa-times-circle"></i> Limpiar
                     </button>
@@ -1907,6 +1919,17 @@ function posApp() {
         clienteResultados:      [],
         mostrarDropdownCliente: false,
 
+        // ── Último conductor privado usado (de la BD, no del navegador) ──
+        @php
+            $ultimoConductorJs = $ultimoConductor ? [
+                'conductor_dni'      => $ultimoConductor->conductor_dni,
+                'conductor_nombre'   => $ultimoConductor->conductor_nombre,
+                'conductor_licencia' => $ultimoConductor->conductor_licencia,
+                'placa_vehiculo'     => $ultimoConductor->placa_vehiculo,
+            ] : null;
+        @endphp
+        ultimoConductor: @json($ultimoConductorJs),
+
         // ── Computed: active order ──
         get orden() { return this.ordenes[this.ordenActiva]; },
 
@@ -1987,12 +2010,64 @@ function posApp() {
             if (!this.productoActual?.variantes) return [];
             return this.productoActual.variantes.filter(v => this.stockVarianteEnAlmacen(v) > 0);
         },
+        // Además del stock, cuando el modo Mayorista está activo solo deja pasar variantes
+        // con precio mayorista definido. Se mantiene separado de variantesConStock() para
+        // no confundir "sin stock" con "sin precio mayorista" en los mensajes de la UI.
+        variantesParaMostrar() {
+            const variantes = this.variantesConStock();
+            if (!this.modoMayorista) return variantes;
+            return variantes.filter(v => v.precio_mayorista != null || this.productoActual?.precio_mayorista != null);
+        },
+        // Precio mayorista "efectivo" de un producto para el catálogo: el propio (sin variante)
+        // o, si tiene variantes, el más bajo entre las que sí tengan mayorista definido.
+        precioMayoristaEfectivo(p) {
+            if (p.precio_mayorista != null) return p.precio_mayorista;
+            if (p.tiene_variantes && p.variantes?.length) {
+                const valores = p.variantes.map(v => v.precio_mayorista).filter(v => v != null);
+                if (valores.length) return Math.min(...valores);
+            }
+            return null;
+        },
+        tieneMayorista(p) {
+            return this.precioMayoristaEfectivo(p) != null;
+        },
+        // Al togglear "Mayorista" con ítems ya en el carrito, recalcula su precio_unitario
+        // en vez de dejarlos congelados en el precio con el que se agregaron.
+        recalcularPreciosCarrito() {
+            this.orden.carrito.forEach(item => {
+                const producto = this.productos.find(p => p.id === item.producto_id);
+                if (!producto) return;
+                const variante = item.variante_id ? producto.variantes?.find(v => v.id === item.variante_id) : null;
+
+                const precioRegular = variante
+                    ? (variante.precio_venta != null
+                        ? parseFloat(variante.precio_venta)
+                        : parseFloat(producto.precio_venta || 0) + parseFloat(variante.sobreprecio || 0))
+                    : parseFloat(producto.precio_venta || 0);
+
+                const precioMayorista = variante
+                    ? (variante.precio_mayorista ?? producto.precio_mayorista)
+                    : producto.precio_mayorista;
+
+                item.precio_unitario = (this.modoMayorista && precioMayorista != null)
+                    ? parseFloat(precioMayorista)
+                    : precioRegular;
+            });
+        },
         get productosConStock()  {
             return this._productosFiltrados.filter(p =>
                 p.tipo_inventario === 'serie'
                     ? (this.orden.almacenId ? this.stockEnAlmacen(p) > 0 : true)
                     : this.stockEnAlmacen(p) > 0
             );
+        },
+        // Además del stock, cuando el modo Mayorista está activo solo deja pasar productos
+        // con precio mayorista definido (a nivel producto o en alguna de sus variantes).
+        // Separado de productosConStock para no confundir "sin stock" con "sin precio mayorista".
+        get productosParaMostrar() {
+            const productos = this.productosConStock;
+            if (!this.modoMayorista) return productos;
+            return productos.filter(p => this.tieneMayorista(p));
         },
         get productosSinStock()  {
             return this._productosFiltrados.filter(p =>
@@ -2099,7 +2174,7 @@ function posApp() {
         // ── Quick search (Enter key) ──
         buscarProductoDirecto() {
             if (!this.busqueda.trim()) return;
-            const found = this.productosConStock[0];
+            const found = this.productosParaMostrar[0];
             if (found) { this.agregarAlCarrito(found); this.busqueda = ''; }
         },
 
@@ -2700,17 +2775,14 @@ function posApp() {
                 const cliente = this.clientes.find(c => String(c.id) === String(this.orden.clienteId));
                 if (cliente?.direccion) g.direccion_llegada = cliente.direccion;
             }
-            // Precargar datos del conductor desde sesión anterior (solo si están vacíos)
-            if (!g.conductor_dni && !g.conductor_nombre && !g.placa_vehiculo) {
-                try {
-                    const saved = JSON.parse(localStorage.getItem('pos_conductor_data') || 'null');
-                    if (saved) {
-                        g.conductor_dni      = saved.conductor_dni      || '';
-                        g.conductor_nombre   = saved.conductor_nombre   || '';
-                        g.conductor_licencia = saved.conductor_licencia || '';
-                        g.placa_vehiculo     = saved.placa_vehiculo     || '';
-                    }
-                } catch {}
+            // Precargar el último conductor privado usado (desde la BD — se guarda
+            // solo con vincularse a la última guía de remisión registrada, sin
+            // depender de localStorage del navegador).
+            if (!g.conductor_dni && !g.conductor_nombre && !g.placa_vehiculo && this.ultimoConductor) {
+                g.conductor_dni      = this.ultimoConductor.conductor_dni      || '';
+                g.conductor_nombre   = this.ultimoConductor.conductor_nombre   || '';
+                g.conductor_licencia = this.ultimoConductor.conductor_licencia || '';
+                g.placa_vehiculo     = this.ultimoConductor.placa_vehiculo     || '';
             }
             // Precargar datos del transportista desde sesión anterior
             if (!g.transportista_doc && !g.transportista_nombre) {
@@ -2796,16 +2868,16 @@ function posApp() {
                 this.toast('error', 'Para transporte público ingrese los datos del transportista');
                 return;
             }
-            // Guardar datos del conductor en localStorage para próximas ventas
+            // Recordar este conductor en memoria para precargarlo si se abre otra guía
+            // en la misma sesión del POS (la próxima carga de página ya lo trae de la
+            // BD vía $ultimoConductor, una vez que esta venta quede guardada).
             if (g.modalidad === 'privado' && (g.conductor_dni || g.conductor_nombre || g.placa_vehiculo)) {
-                try {
-                    localStorage.setItem('pos_conductor_data', JSON.stringify({
-                        conductor_dni:      g.conductor_dni,
-                        conductor_nombre:   g.conductor_nombre,
-                        conductor_licencia: g.conductor_licencia,
-                        placa_vehiculo:     g.placa_vehiculo,
-                    }));
-                } catch {}
+                this.ultimoConductor = {
+                    conductor_dni:      g.conductor_dni,
+                    conductor_nombre:   g.conductor_nombre,
+                    conductor_licencia: g.conductor_licencia,
+                    placa_vehiculo:     g.placa_vehiculo,
+                };
             }
             // Guardar datos del transportista en localStorage para próximas ventas
             if (g.modalidad === 'publico' && (g.transportista_doc || g.transportista_nombre)) {

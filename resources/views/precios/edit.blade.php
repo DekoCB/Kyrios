@@ -490,12 +490,28 @@
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                                     Precio Mayorista (S/)
                                 </label>
-                                <input type="number"
-                                       name="precio_mayorista"
-                                       step="0.01" min="0.01"
-                                       value="{{ old('precio_mayorista', $precio->precio_mayorista) }}"
-                                       class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                                       placeholder="Opcional">
+                                @if($tiendaEditando)
+                                    <input type="text"
+                                           value="{{ $precioMayoristaActual !== null ? number_format($precioMayoristaActual, 2) : 'No definido' }}"
+                                           disabled
+                                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-100 text-gray-500">
+                                    <p class="text-xs text-amber-600 mt-1">
+                                        <i class="fas fa-circle-info mr-0.5"></i>
+                                        El precio mayorista es global (no varía por tienda).
+                                        @if($precioGlobalId)
+                                            Edítalo desde el <a href="{{ route('precios.edit', [$producto, $precioGlobalId]) }}" class="underline font-medium">precio global</a> de este producto/variante.
+                                        @else
+                                            No hay un precio global registrado aún para esta variante donde editarlo.
+                                        @endif
+                                    </p>
+                                @else
+                                    <input type="number"
+                                           name="precio_mayorista"
+                                           step="0.01" min="0.01"
+                                           value="{{ old('precio_mayorista', $precioMayoristaActual) }}"
+                                           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                                           placeholder="Opcional">
+                                @endif
                             </div>
 
                             {{-- Fecha inicio --}}

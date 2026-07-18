@@ -80,6 +80,17 @@ class VentaService
                 $datosVenta['metodo_pago']   = null;
             }
 
+            // Asignar serie SUNAT y correlativo real (boleta/factura) antes de crear.
+            // Sin esto, Venta::numero_documento queda null y SunatComprobanteService
+            // cae en un fallback fijo ("B001"/correlativo 1) en vez de la numeración
+            // configurada — el comprobante nunca "jala" su serie real.
+            if (in_array($datosVenta['tipo_comprobante'] ?? null, ['boleta', 'factura'], true)) {
+                $datosVenta = array_merge(
+                    $datosVenta,
+                    $this->asignarSerieYCorrelativo($datosVenta['sucursal_id'] ?? null, $datosVenta['tipo_comprobante'])
+                );
+            }
+
             // Crear la venta
             $venta = Venta::create($datosVenta);
 
@@ -144,22 +155,17 @@ class VentaService
 
             // Crear guía de remisión si se proporcionaron datos
             if ($guiaData) {
-                // Generar numero_guia desde la serie 09 de la sucursal (compartido con traslados)
-                $numeroGuia = null;
-                if ($venta->sucursal_id) {
-                    $serie09 = SerieComprobante::where('sucursal_id', $venta->sucursal_id)
-                        ->where('tipo_comprobante', '09')
-                        ->where('activo', true)
-                        ->first();
-
-                    if ($serie09) {
-                        $numeroGuia = $serie09->serie . '-' . str_pad($serie09->correlativo_actual, 8, '0', STR_PAD_LEFT);
-                        $serie09->increment('correlativo_actual');
-                    }
-                }
+                // Mismo resolutor de numeración que usa el módulo de Guías de Remisión
+                // y los traslados: evita duplicar la lógica (y que se le olvide
+                // guia_serie_id, como pasaba antes aquí).
+                $resuelto = app(\App\Services\GuiaRemisionService::class)->resolverNumeroGuia($venta->almacen_id);
 
                 GuiaRemision::create(array_merge(
-                    ['venta_id' => $venta->id, 'numero_guia' => $numeroGuia],
+                    [
+                        'venta_id'      => $venta->id,
+                        'numero_guia'   => $resuelto['numero'],
+                        'guia_serie_id' => $resuelto['serie_id'],
+                    ],
                     $guiaData
                 ));
             }
@@ -184,6 +190,45 @@ class VentaService
 
             return $venta->fresh(['detalles.producto', 'cliente']);
         });
+    }
+
+    /**
+     * Asigna la serie SUNAT activa y el siguiente correlativo para boleta/factura
+     * en la sucursal dada, e incrementa el contador. Devuelve un array vacío
+     * (serie_comprobante_id/correlativo en null) si el tipo no aplica (p. ej.
+     * cotización) o si no hay una serie activa configurada para esa sucursal —
+     * en ese caso se registra un warning mas no se bloquea la venta.
+     */
+    private function asignarSerieYCorrelativo(?int $sucursalId, string $tipoComprobante): array
+    {
+        $codigoSunat = match ($tipoComprobante) {
+            'factura' => '01',
+            'boleta'  => '03',
+            default   => null,
+        };
+
+        if (!$codigoSunat || !$sucursalId) {
+            return [];
+        }
+
+        $serie = SerieComprobante::where('sucursal_id', $sucursalId)
+            ->where('tipo_comprobante', $codigoSunat)
+            ->where('activo', true)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$serie) {
+            Log::warning('No hay serie de comprobante activa configurada', [
+                'sucursal_id'      => $sucursalId,
+                'tipo_comprobante' => $tipoComprobante,
+            ]);
+            return [];
+        }
+
+        $correlativo = $serie->correlativo_actual;
+        $serie->increment('correlativo_actual');
+
+        return ['serie_comprobante_id' => $serie->id, 'correlativo' => $correlativo];
     }
 
     /**
@@ -606,21 +651,48 @@ class VentaService
     {
         $venta->load('detalles');
         foreach ($venta->detalles as $detalle) {
-            $stock = StockAlmacen::firstOrCreate(
-                ['producto_id' => $detalle->producto_id, 'almacen_id' => $venta->almacen_id],
-                ['cantidad' => 0]
-            );
-
-            $stockAnterior = $stock->cantidad;
-            $stock->increment('cantidad', $detalle->cantidad);
-
             if ($detalle->imei_id) {
+                // Producto tipo "serie": el stock real vive en imeis (conteo por estado_imei),
+                // no en stock_almacen — esa tabla es solo para productos tipo "cantidad".
+                // Tocarla aquí para productos serie la contamina con filas que nadie
+                // mantiene y que reportes futuros podrían sumar por error.
+                $stockAnterior = Imei::where('producto_id', $detalle->producto_id)
+                    ->where('estado_imei', 'en_stock')
+                    ->count();
+
                 Imei::where('id', $detalle->imei_id)->update([
                     'estado_imei'      => 'en_stock',
                     'venta_id'         => null,
                     'detalle_venta_id' => null,
                     'fecha_venta'      => null,
                 ]);
+
+                // Recontar desde la fuente real (imeis) en vez de incrementar/decrementar:
+                // así producto.stock_actual y producto_variante.stock_actual quedan exactos
+                // sin importar el estado previo de esas columnas (evita el arrastre de
+                // desincronizaciones de otros flujos).
+                $stockNuevo = Imei::where('producto_id', $detalle->producto_id)
+                    ->where('estado_imei', 'en_stock')
+                    ->count();
+                \App\Models\Producto::where('id', $detalle->producto_id)
+                    ->update(['stock_actual' => $stockNuevo]);
+
+                if ($detalle->variante_id) {
+                    $totalVariante = Imei::where('variante_id', $detalle->variante_id)
+                        ->where('estado_imei', 'en_stock')
+                        ->count();
+                    \App\Models\ProductoVariante::where('id', $detalle->variante_id)
+                        ->update(['stock_actual' => $totalVariante]);
+                }
+            } else {
+                $stock = StockAlmacen::firstOrCreate(
+                    ['producto_id' => $detalle->producto_id, 'almacen_id' => $venta->almacen_id],
+                    ['cantidad' => 0]
+                );
+
+                $stockAnterior = $stock->cantidad;
+                $stock->increment('cantidad', $detalle->cantidad);
+                $stockNuevo = $stock->cantidad;
             }
 
             MovimientoInventario::create([
@@ -630,7 +702,7 @@ class VentaService
                 'tipo_movimiento' => 'ingreso',
                 'cantidad'        => $detalle->cantidad,
                 'stock_anterior'  => $stockAnterior,
-                'stock_nuevo'     => $stock->cantidad,
+                'stock_nuevo'     => $stockNuevo,
                 'motivo'          => $motivo,
                 'estado'          => 'completado',
             ]);
@@ -925,43 +997,63 @@ class VentaService
 
     /**
      * Convertir una cotización a boleta o factura (descuenta stock y registra pago)
+     *
+     * $imeisPorDetalle: [detalle_venta_id => [codigo_imei, ...]] — obligatorio para
+     * cada línea de producto tipo "serie"; sin esto nunca se elegía qué unidad física
+     * se vendía y ni el comprobante ni la guía podían mostrar la serie/IMEI.
      */
-    public function convertirAVenta(Venta $venta, string $tipoComprobante, string $metodoPago)
+    public function convertirAVenta(Venta $venta, string $tipoComprobante, string $metodoPago, array $imeisPorDetalle = [])
     {
         if ($venta->tipo_comprobante !== 'cotizacion') {
             throw new \Exception('Solo se pueden convertir cotizaciones');
         }
 
-        return DB::transaction(function () use ($venta, $tipoComprobante, $metodoPago) {
-            $venta->load('detalles');
+        return DB::transaction(function () use ($venta, $tipoComprobante, $metodoPago, $imeisPorDetalle) {
+            $venta->load('detalles.producto');
+            $detallesVenta = $venta->detalles->values();
 
-            $detalles = $venta->detalles->map(fn($d) => [
-                'producto_id'     => $d->producto_id,
-                'variante_id'     => $d->variante_id,
-                'cantidad'        => $d->cantidad,
-                'precio_unitario' => (float) $d->precio_unitario,
-                'imeis'           => [],
-            ])->toArray();
+            $detalles = $detallesVenta->map(function ($d) use ($imeisPorDetalle) {
+                $esSerie = $d->producto?->tipo_inventario === 'serie';
+                $codigos = $esSerie ? array_values($imeisPorDetalle[$d->id] ?? []) : [];
+
+                if ($esSerie && count($codigos) !== $d->cantidad) {
+                    throw new \Exception(
+                        "Debe seleccionar exactamente {$d->cantidad} IMEI(s) para «{$d->producto->nombre}»."
+                    );
+                }
+
+                return [
+                    'producto_id'     => $d->producto_id,
+                    'variante_id'     => $d->variante_id,
+                    'cantidad'        => $d->cantidad,
+                    'precio_unitario' => (float) $d->precio_unitario,
+                    'imeis'           => array_map(fn($codigo) => ['codigo_imei' => $codigo], $codigos),
+                ];
+            })->toArray();
 
             $this->validarStockDisponible($detalles, $venta->almacen_id);
 
-            foreach ($detalles as $detalle) {
+            foreach ($detalles as $i => $detalle) {
+                if (!empty($detalle['imeis'])) {
+                    $this->marcarImeisVendidos($detalle['imeis'], $venta->id, $detallesVenta[$i]->id);
+                }
+
                 $this->descontarStock(
                     $detalle['producto_id'],
                     $venta->almacen_id,
                     $detalle['cantidad'],
-                    [],
+                    $detalle['imeis'],
                     $detalle['variante_id'] ?? null
                 );
             }
 
-            $venta->update([
+            $venta->update(array_merge([
                 'tipo_comprobante'    => $tipoComprobante,
                 'estado_pago'         => 'pagado',
                 'metodo_pago'         => $metodoPago,
                 'fecha_confirmacion'  => now(),
                 'usuario_confirma_id' => auth()->id(),
-            ]);
+            ], $this->asignarSerieYCorrelativo($venta->sucursal_id, $tipoComprobante)));
 
             $this->registrarEnCaja($venta, 'venta');
 

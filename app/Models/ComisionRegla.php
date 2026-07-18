@@ -36,10 +36,11 @@ class ComisionRegla extends Model
     public function getTipoAplicacionLabelAttribute(): string
     {
         return match($this->tipo_aplicacion) {
-            'usuario'   => 'Usuario',
-            'categoria' => 'Categoría',
-            'producto'  => 'Producto',
-            default     => ucfirst($this->tipo_aplicacion),
+            'usuario'          => 'Usuario',
+            'categoria'        => 'Categoría',
+            'producto'         => 'Producto',
+            'producto_usuario' => 'Producto + Vendedor',
+            default            => ucfirst($this->tipo_aplicacion),
         };
     }
 

@@ -325,8 +325,9 @@ class ImeiController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $imei) {
-                $oldEstado   = $imei->estado_imei;
-                $oldAlmacen  = $imei->almacen_id;
+                $oldEstado     = $imei->estado_imei;
+                $oldAlmacen    = $imei->almacen_id;
+                $stockAnterior = \App\Models\Producto::find($imei->producto_id)->stock_actual;
 
                 // Si cambió la variante, sincronizar color_id desde la variante
                 if (isset($validated['variante_id']) && $validated['variante_id'] != $imei->variante_id) {
@@ -337,7 +338,11 @@ class ImeiController extends Controller
                 }
 
                 $imei->update($validated);
-                
+
+                // Actualizar stocks si es necesario (antes de registrar el movimiento,
+                // para poder guardar el stock_nuevo real).
+                $this->actualizarStocksPorCambio($imei, $oldEstado, $oldAlmacen);
+
                 // Registrar movimiento si cambió el estado
                 if ($oldEstado !== $validated['estado_imei']) {
                     \App\Models\MovimientoInventario::create([
@@ -345,15 +350,15 @@ class ImeiController extends Controller
                         'producto_id' => $imei->producto_id,
                         'almacen_id' => $imei->almacen_id,
                         'tipo_movimiento' => 'ajuste',
-                        'motivo' => "Cambio de estado: " . 
-                                str_replace('_', ' ', $oldEstado) . " -> " . 
+                        'cantidad' => 1,
+                        'stock_anterior' => $stockAnterior,
+                        'stock_nuevo' => \App\Models\Producto::find($imei->producto_id)->stock_actual,
+                        'motivo' => "Cambio de estado: " .
+                                str_replace('_', ' ', $oldEstado) . " -> " .
                                 str_replace('_', ' ', $validated['estado_imei']),
-                        'usuario_id' => auth()->id(),
+                        'user_id' => auth()->id(),
                     ]);
                 }
-                
-                // Actualizar stocks si es necesario
-                $this->actualizarStocksPorCambio($imei, $oldEstado, $oldAlmacen);
             });
 
             return redirect()
@@ -647,17 +652,27 @@ class ImeiController extends Controller
 
         try {
             DB::transaction(function() use ($request, $imei) {
-                $oldEstado = $imei->estado_imei;
+                $oldEstado     = $imei->estado_imei;
+                $oldAlmacen    = $imei->almacen_id;
+                $stockAnterior = \App\Models\Producto::find($imei->producto_id)->stock_actual;
+
                 $imei->update(['estado_imei' => $request->estado]);
-                
+
+                // Mantener producto.stock_actual / producto_variante.stock_actual sincronizados
+                // (antes este endpoint solo cambiaba estado_imei sin tocar esas columnas).
+                $this->actualizarStocksPorCambio($imei, $oldEstado, $oldAlmacen);
+
                 // Registrar movimiento
                 \App\Models\MovimientoInventario::create([
                     'imei_id' => $imei->id,
                     'producto_id' => $imei->producto_id,
                     'almacen_id' => $imei->almacen_id,
                     'tipo_movimiento' => $request->estado === 'vendido' ? 'salida' : 'ajuste',
+                    'cantidad' => 1,
+                    'stock_anterior' => $stockAnterior,
+                    'stock_nuevo' => \App\Models\Producto::find($imei->producto_id)->stock_actual,
                     'motivo' => "Cambio de estado: $oldEstado -> $request->estado",
-                    'usuario_id' => auth()->id()
+                    'user_id' => auth()->id()
                 ]);
             });
 
@@ -672,26 +687,26 @@ class ImeiController extends Controller
      */
     private function actualizarStocksPorCambio(Imei $imei, string $oldEstado, ?int $oldAlmacen): void
     {
-        // Si el estado cambió de 'en_stock' a otro
-        if ($oldEstado === 'en_stock' && $imei->estado_imei !== 'en_stock') {
-            $imei->producto->decrement('stock_actual');
-            \App\Models\StockAlmacen::obtenerOCrear($imei->producto_id, $oldAlmacen)
-                ->decrementar(1);
+        // Los IMEIs son siempre de productos tipo "serie": su stock real vive en la tabla
+        // imeis (conteo por estado_imei/almacen_id), no en stock_almacen (esa tabla es para
+        // productos tipo "cantidad"). Por eso aquí solo se recalcula producto.stock_actual /
+        // producto_variante.stock_actual — nunca se toca stock_almacen, para no contaminarla
+        // con filas de productos serie ni reventar por falta de un registro previo ahí.
+        if ($oldEstado === $imei->estado_imei && $oldAlmacen === $imei->almacen_id) {
+            return;
         }
-        
-        // Si el estado cambió a 'en_stock' desde otro
-        if ($oldEstado !== 'en_stock' && $imei->estado_imei === 'en_stock') {
-            $imei->producto->increment('stock_actual');
-            \App\Models\StockAlmacen::obtenerOCrear($imei->producto_id, $imei->almacen_id)
-                ->incrementar(1);
-        }
-        
-        // Si solo cambió el almacén pero sigue en stock
-        if ($imei->estado_imei === 'en_stock' && $oldAlmacen !== $imei->almacen_id) {
-            \App\Models\StockAlmacen::obtenerOCrear($imei->producto_id, $oldAlmacen)
-                ->decrementar(1);
-            \App\Models\StockAlmacen::obtenerOCrear($imei->producto_id, $imei->almacen_id)
-                ->incrementar(1);
+
+        $totalProducto = Imei::where('producto_id', $imei->producto_id)
+            ->where('estado_imei', 'en_stock')
+            ->count();
+        $imei->producto()->update(['stock_actual' => $totalProducto]);
+
+        if ($imei->variante_id) {
+            $totalVariante = Imei::where('variante_id', $imei->variante_id)
+                ->where('estado_imei', 'en_stock')
+                ->count();
+            \App\Models\ProductoVariante::where('id', $imei->variante_id)
+                ->update(['stock_actual' => $totalVariante]);
         }
     }
 }

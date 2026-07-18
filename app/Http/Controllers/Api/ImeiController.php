@@ -128,27 +128,40 @@ class ImeiController extends Controller
         $importados = [];
         $duplicados = [];
 
-        foreach ($request->imeis as $imeiData) {
-            // Verificar si ya existe
-            $existe = Imei::where('codigo_imei', $imeiData['codigo'])->exists();
-            
-            if ($existe) {
-                $duplicados[] = $imeiData['codigo'];
-                continue;
+        \DB::transaction(function () use ($request, $producto, &$importados, &$duplicados) {
+            foreach ($request->imeis as $imeiData) {
+                // Verificar si ya existe
+                $existe = Imei::where('codigo_imei', $imeiData['codigo'])->exists();
+
+                if ($existe) {
+                    $duplicados[] = $imeiData['codigo'];
+                    continue;
+                }
+
+                $imei = Imei::create([
+                    'codigo_imei' => $imeiData['codigo'],
+                    'serie' => $imeiData['serie'] ?? null,
+                    'producto_id' => $producto->id,
+                    'almacen_id' => $request->almacen_id,
+                    'compra_id' => $request->compra_id,
+                    'estado_imei' => 'en_stock',
+                    'user_id' => auth()->id()
+                ]);
+
+                $importados[] = $imei->codigo_imei;
             }
 
-            $imei = Imei::create([
-                'codigo_imei' => $imeiData['codigo'],
-                'serie' => $imeiData['serie'] ?? null,
-                'producto_id' => $producto->id,
-                'almacen_id' => $request->almacen_id,
-                'compra_id' => $request->compra_id,
-                'estado_imei' => 'en_stock',
-                'user_id' => auth()->id()
-            ]);
-
-            $importados[] = $imei->codigo_imei;
-        }
+            if (!empty($importados)) {
+                // Recontar desde la fuente real (imeis) en vez de incrementar: mantiene
+                // producto.stock_actual exacto (mismo patrón usado en
+                // CompraController::storeBulkImeis). Este endpoint no recibe variante_id,
+                // así que no hay stock por variante que sincronizar aquí.
+                $totalProducto = Imei::where('producto_id', $producto->id)
+                    ->where('estado_imei', 'en_stock')
+                    ->count();
+                Producto::where('id', $producto->id)->update(['stock_actual' => $totalProducto]);
+            }
+        });
 
         return response()->json([
             'success' => true,

@@ -10,7 +10,7 @@ class ComisionService
 {
     /**
      * Calcula y persiste comisiones para todos los detalles de una venta.
-     * Prioridad de regla: producto > categoría > usuario.
+     * Prioridad de regla: producto+vendedor > producto > categoría > usuario.
      */
     public function calcularParaVenta(Venta $venta): void
     {
@@ -64,7 +64,16 @@ class ComisionService
 
     private function resolverRegla(int $vendedorId, int $productoId, ?int $categoriaId): ?ComisionRegla
     {
-        // Producto (prioridad máxima)
+        // Producto + Vendedor (prioridad máxima: la más específica)
+        $regla = ComisionRegla::where('activo', true)
+            ->where('tipo_aplicacion', 'producto_usuario')
+            ->where('producto_id', $productoId)
+            ->where('user_id', $vendedorId)
+            ->first();
+
+        if ($regla) return $regla;
+
+        // Producto
         $regla = ComisionRegla::where('activo', true)
             ->where('tipo_aplicacion', 'producto')
             ->where('producto_id', $productoId)

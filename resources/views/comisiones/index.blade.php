@@ -136,17 +136,22 @@
                             <td class="px-4 py-3 font-medium text-gray-800">{{ $regla->nombre }}</td>
                             <td class="px-4 py-3">
                                 @php $css = match($regla->tipo_aplicacion) {
-                                    'usuario'   => 'bg-purple-100 text-purple-700',
-                                    'categoria' => 'bg-blue-100 text-blue-700',
-                                    'producto'  => 'bg-orange-100 text-orange-700',
-                                    default     => 'bg-gray-100 text-gray-600',
+                                    'usuario'          => 'bg-purple-100 text-purple-700',
+                                    'categoria'        => 'bg-blue-100 text-blue-700',
+                                    'producto'         => 'bg-orange-100 text-orange-700',
+                                    'producto_usuario' => 'bg-pink-100 text-pink-700',
+                                    default            => 'bg-gray-100 text-gray-600',
                                 }; @endphp
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $css }}">
                                     {{ $regla->tipo_aplicacion_label }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-gray-600 text-xs max-w-[160px] truncate">
-                                {{ $regla->usuario?->name ?? $regla->categoria?->nombre ?? $regla->producto?->nombre ?? '—' }}
+                                @if($regla->tipo_aplicacion === 'producto_usuario')
+                                    {{ $regla->producto?->nombre }} — {{ $regla->usuario?->name }}
+                                @else
+                                    {{ $regla->usuario?->name ?? $regla->categoria?->nombre ?? $regla->producto?->nombre ?? '—' }}
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-xs">
                                 @if($regla->tipo_calculo === 'porcentaje_margen')
@@ -219,10 +224,16 @@
                         <p class="text-amber-100 text-xs">Bonos fijos por venta o bonos por meta de unidades en el período</p>
                     </div>
                 </div>
-                <button @click="modalBonus=true"
-                        class="px-3 py-2 bg-white text-amber-700 hover:bg-amber-50 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
-                    <i class="fas fa-plus"></i> Nuevo bono
-                </button>
+                <div class="flex gap-2">
+                    <a href="{{ route('comisiones.progreso-bonos') }}"
+                       class="px-3 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                        <i class="fas fa-trophy"></i> Progreso de metas
+                    </a>
+                    <button @click="modalBonus=true"
+                            class="px-3 py-2 bg-white text-amber-700 hover:bg-amber-50 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                        <i class="fas fa-plus"></i> Nuevo bono
+                    </button>
+                </div>
             </div>
 
             @if($bonusReglas->isEmpty())
@@ -251,12 +262,21 @@
                         <tr class="hover:bg-gray-50 transition-colors {{ $bonus->activo ? '' : 'opacity-50' }}">
                             <td class="px-4 py-3 font-medium text-gray-800">{{ $bonus->nombre }}</td>
                             <td class="px-4 py-3">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $bonus->tipo_aplicacion === 'producto' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700' }}">
+                                @php $bonusCss = match($bonus->tipo_aplicacion) {
+                                    'producto'         => 'bg-orange-100 text-orange-700',
+                                    'producto_usuario' => 'bg-pink-100 text-pink-700',
+                                    default            => 'bg-blue-100 text-blue-700',
+                                }; @endphp
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $bonusCss }}">
                                     {{ $bonus->tipo_aplicacion_label }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-gray-600 text-xs max-w-[150px] truncate">
-                                {{ $bonus->producto?->nombre ?? $bonus->categoria?->nombre ?? '—' }}
+                                @if($bonus->tipo_aplicacion === 'producto_usuario')
+                                    {{ $bonus->producto?->nombre }} — {{ $bonus->usuario?->name }}
+                                @else
+                                    {{ $bonus->producto?->nombre ?? $bonus->categoria?->nombre ?? '—' }}
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 @if($bonus->tipo_bonus === 'fijo')
@@ -350,6 +370,7 @@
                             <option value="usuario">Vendedor específico</option>
                             <option value="categoria">Categoría</option>
                             <option value="producto">Producto específico</option>
+                            <option value="producto_usuario">Producto + Vendedor específico</option>
                         </select>
                     </div>
                     <div>
@@ -366,13 +387,21 @@
                             <option value="">— Seleccione —</option>
                             @foreach($categorias as $c)<option value="{{ $c->id }}">{{ $c->nombre }}</option>@endforeach
                         </select>
-                        <select x-show="tipoAplicacion==='producto'" name="producto_id"
+                        <select x-show="tipoAplicacion==='producto' || tipoAplicacion==='producto_usuario'" name="producto_id"
                                 x-model="productoSeleccionado"
                                 class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
                             <option value="">— Seleccione —</option>
                             @foreach($productos as $p)<option value="{{ $p->id }}">{{ $p->nombre }}{{ $p->codigo?' ('.$p->codigo.')':'' }}</option>@endforeach
                         </select>
                     </div>
+                </div>
+                <div x-show="tipoAplicacion==='producto_usuario'" x-cloak>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Vendedor *</label>
+                    <select name="user_id_producto"
+                            class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">— Seleccione —</option>
+                        @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
+                    </select>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -503,13 +532,14 @@
                                 class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white">
                             <option value="producto">Producto específico</option>
                             <option value="categoria">Categoría</option>
+                            <option value="producto_usuario">Producto + Vendedor específico</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">
-                            <span x-text="bonusTipoAplicacion==='producto'?'Producto':'Categoría'"></span> *
+                            <span x-text="bonusTipoAplicacion==='categoria'?'Categoría':'Producto'"></span> *
                         </label>
-                        <select x-show="bonusTipoAplicacion==='producto'" name="producto_id"
+                        <select x-show="bonusTipoAplicacion==='producto' || bonusTipoAplicacion==='producto_usuario'" name="producto_id"
                                 class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white">
                             <option value="">— Seleccione —</option>
                             @foreach($productos as $p)<option value="{{ $p->id }}">{{ $p->nombre }}</option>@endforeach
@@ -520,6 +550,14 @@
                             @foreach($categorias as $c)<option value="{{ $c->id }}">{{ $c->nombre }}</option>@endforeach
                         </select>
                     </div>
+                </div>
+                <div x-show="bonusTipoAplicacion==='producto_usuario'" x-cloak>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Vendedor *</label>
+                    <select name="user_id_producto"
+                            class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white">
+                        <option value="">— Seleccione —</option>
+                        @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
+                    </select>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>

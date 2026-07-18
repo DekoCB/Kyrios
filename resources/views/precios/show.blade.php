@@ -209,7 +209,26 @@
                     </div>
                     @endforeach
 
-                    @if($producto->precio_venta > 0)
+                    @if($precioVentaMin !== null)
+                    <div class="flex items-center justify-between text-sm border-t border-gray-100 pt-3 mt-3">
+                        <span class="text-gray-500 font-semibold">Precio de Venta</span>
+                        <span class="font-bold text-emerald-700 text-base">
+                            @if($precioVentaMin == $precioVentaMax)
+                                S/ {{ number_format($precioVentaMin, 2) }}
+                            @else
+                                S/ {{ number_format($precioVentaMin, 2) }} – S/ {{ number_format($precioVentaMax, 2) }}
+                            @endif
+                        </span>
+                    </div>
+                    @if($precioVentaMin == $precioVentaMax)
+                    <div class="flex items-center justify-between text-xs text-gray-400 mt-1">
+                        <span>Base: S/ {{ number_format($precioVentaMin / 1.18, 2) }}</span>
+                        <span>IGV: S/ {{ number_format($precioVentaMin - ($precioVentaMin / 1.18), 2) }}</span>
+                    </div>
+                    @else
+                    <p class="text-xs text-gray-400 mt-1">Varía según la capacidad — ver detalle a la derecha.</p>
+                    @endif
+                    @elseif($producto->precio_venta > 0)
                     <div class="flex items-center justify-between text-sm border-t border-gray-100 pt-3 mt-3">
                         <span class="text-gray-500 font-semibold">Precio de Venta</span>
                         <span class="font-bold text-emerald-700 text-base">S/ {{ number_format($producto->precio_venta, 2) }}</span>

@@ -315,13 +315,17 @@ public static function registrarMovimiento($datos)
             }
             
             $imei = \App\Models\Imei::findOrFail($datos['imei_id']);
-            
+
             \Log::info('📱 IMEI encontrado', [
                 'id' => $imei->id,
                 'codigo' => $imei->codigo_imei,
                 'estado_actual' => $imei->estado_imei,
                 'almacen_actual' => $imei->almacen_id
             ]);
+
+            $stockAnteriorProducto = \App\Models\Imei::where('producto_id', $producto->id)
+                ->where('estado_imei', 'en_stock')
+                ->count();
 
             // Validar y ejecutar acción según tipo de movimiento
             switch ($datos['tipo_movimiento']) {
@@ -393,9 +397,26 @@ public static function registrarMovimiento($datos)
                     throw new \Exception('Tipo de movimiento no soportado para celulares');
             }
             
+            // Mantener producto.stock_actual / producto_variante.stock_actual sincronizados
+            // con el conteo real de IMEIs en_stock, sin importar qué transición ocurrió
+            // (salida/merma/transferencia/devolución/ajuste). Antes este método nunca
+            // tocaba estas columnas para productos serie.
+            $stockNuevoProducto = \App\Models\Imei::where('producto_id', $producto->id)
+                ->where('estado_imei', 'en_stock')
+                ->count();
+            $producto->update(['stock_actual' => $stockNuevoProducto]);
+
+            if ($imei->variante_id) {
+                $stockVariante = \App\Models\Imei::where('variante_id', $imei->variante_id)
+                    ->where('estado_imei', 'en_stock')
+                    ->count();
+                \App\Models\ProductoVariante::where('id', $imei->variante_id)
+                    ->update(['stock_actual' => $stockVariante]);
+            }
+
             // 🔥 CREAR EL REGISTRO DEL MOVIMIENTO
             \Log::info('💾 Creando registro de movimiento en BD...');
-            
+
             $movimientoData = [
                 'producto_id' => $datos['producto_id'],
                 'almacen_id' => $datos['almacen_id'],
@@ -403,8 +424,8 @@ public static function registrarMovimiento($datos)
                 'user_id' => $userId,
                 'tipo_movimiento' => $datos['tipo_movimiento'],
                 'cantidad' => 1,
-                'stock_anterior' => 0,
-                'stock_nuevo' => 0,
+                'stock_anterior' => $stockAnteriorProducto,
+                'stock_nuevo' => $stockNuevoProducto,
                 'motivo' => $datos['motivo'] ?? null,
                 'observaciones' => $datos['observaciones'] ?? null,
                 'documento_referencia' => $datos['documento_referencia'] ?? null,
@@ -426,8 +447,18 @@ public static function registrarMovimiento($datos)
         
         // SI ES ACCESORIO, manejar por cantidad
         \Log::info('📦 Procesando como ACCESORIO');
-        
-        $stockAnterior = $producto->stock_actual;
+
+        // Fuente real de stock para productos "cantidad": stock_almacen por almacén.
+        // producto.stock_actual es solo un espejo = SUM(stock_almacen.cantidad) de ese
+        // producto — antes este método escribía stock_actual directo sin tocar
+        // stock_almacen, así que cualquier reconciliación posterior (o cualquier otra
+        // pantalla que sí lea stock_almacen) deshacía silenciosamente el ajuste manual.
+        $stockAlmacen = \App\Models\StockAlmacen::firstOrCreate(
+            ['producto_id' => $datos['producto_id'], 'almacen_id' => $datos['almacen_id']],
+            ['cantidad' => 0]
+        );
+
+        $stockAnterior = $stockAlmacen->cantidad;
         $cantidad = $datos['cantidad'];
         $stockNuevo = $stockAnterior;
 
@@ -438,18 +469,28 @@ public static function registrarMovimiento($datos)
                 break;
             case 'salida':
             case 'merma':
+            case 'transferencia':
                 $stockNuevo -= $cantidad;
                 break;
             case 'ajuste':
                 $stockNuevo = $datos['stock_nuevo'] ?? $stockAnterior;
                 break;
-            case 'transferencia':
-                $stockNuevo -= $cantidad;
-                break;
         }
 
         if ($stockNuevo < 0) {
             throw new \Exception('No hay suficiente stock para realizar este movimiento.');
+        }
+
+        $stockAlmacen->update(['cantidad' => $stockNuevo]);
+
+        // En transferencia directa, acreditar de inmediato el almacén destino
+        // (antes el stock solo se descontaba de origen y desaparecía del sistema).
+        if ($datos['tipo_movimiento'] === 'transferencia' && !empty($datos['almacen_destino_id'])) {
+            $stockDestino = \App\Models\StockAlmacen::firstOrCreate(
+                ['producto_id' => $datos['producto_id'], 'almacen_id' => $datos['almacen_destino_id']],
+                ['cantidad' => 0]
+            );
+            $stockDestino->increment('cantidad', $cantidad);
         }
 
         $movimiento = self::create([
@@ -467,8 +508,9 @@ public static function registrarMovimiento($datos)
             'numero_guia' => $datos['numero_guia'] ?? null,
         ]);
 
-        $producto->update(['stock_actual' => $stockNuevo]);
-        
+        $totalStock = \App\Models\StockAlmacen::where('producto_id', $datos['producto_id'])->sum('cantidad');
+        $producto->update(['stock_actual' => $totalStock]);
+
         \Log::info('✅ Movimiento de accesorio creado', [
             'id' => $movimiento->id
         ]);
