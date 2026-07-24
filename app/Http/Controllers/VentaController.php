@@ -464,7 +464,7 @@ class VentaController extends Controller
     {
         $formato = $request->get('formato', 'a4'); // a4 | ticket
 
-        $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante',
+        $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',
             'detalles.producto.unidadMedida', 'detalles.variante.color', 'detalles.imei', 'imeis');
 
         $empresa  = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
@@ -499,7 +499,7 @@ class VentaController extends Controller
             ->whereIn('tipo_comprobante', ['boleta', 'factura', 'nota_venta'])
             ->firstOrFail();
 
-        $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante',
+        $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',
             'detalles.producto.unidadMedida', 'detalles.variante.color', 'detalles.imei', 'imeis');
 
         $empresa  = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);

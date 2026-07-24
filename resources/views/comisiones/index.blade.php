@@ -378,11 +378,13 @@
                             <span x-text="tipoAplicacion==='usuario'?'Vendedor':tipoAplicacion==='categoria'?'Categoría':'Producto'"></span> *
                         </label>
                         <select x-show="tipoAplicacion==='usuario'" name="user_id"
+                                x-model="vendedorSeleccionado"
                                 class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
                             <option value="">— Seleccione —</option>
                             @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
                         </select>
                         <select x-show="tipoAplicacion==='categoria'" name="categoria_id"
+                                x-model="categoriaSeleccionada"
                                 class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
                             <option value="">— Seleccione —</option>
                             @foreach($categorias as $c)<option value="{{ $c->id }}">{{ $c->nombre }}</option>@endforeach
@@ -398,6 +400,7 @@
                 <div x-show="tipoAplicacion==='producto_usuario'" x-cloak>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Vendedor *</label>
                     <select name="user_id_producto"
+                            x-model="vendedorProductoSeleccionado"
                             class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
                         <option value="">— Seleccione —</option>
                         @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
@@ -420,10 +423,25 @@
                         <div class="relative">
                             <span class="absolute left-3 top-2.5 text-gray-400 text-sm" x-text="tipoCalculo==='monto_fijo'?'S/':'%'"></span>
                             <input type="number" name="valor" step="0.01" min="0.01" required
+                                   x-model="valorComision"
                                    class="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
                 </div>
+
+                {{-- Vista previa dinámica: explica en palabras simples qué hará la regla --}}
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2.5 text-xs text-indigo-800 flex gap-2">
+                    <i class="fas fa-wand-magic-sparkles shrink-0 mt-0.5 text-indigo-500"></i>
+                    <div>
+                        <p class="font-semibold mb-0.5">Así se registrará esta regla:</p>
+                        <p x-text="previewComision"></p>
+                    </div>
+                </div>
+                <div class="text-[11px] text-gray-500 flex gap-1.5 items-start">
+                    <i class="fas fa-circle-info shrink-0 mt-0.5"></i>
+                    <span>Si un producto tiene varias reglas que le aplican, gana la más específica: <strong>Producto+Vendedor › Producto › Categoría › Vendedor</strong>. La regla solo afecta ventas nuevas, no las ya registradas.</span>
+                </div>
+
                 <div x-show="tipoCalculo==='porcentaje_margen'" x-cloak
                      class="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-xs text-emerald-700 space-y-1.5">
                     <p class="flex gap-2 items-start">
@@ -687,6 +705,9 @@ const productosMargen = @json($productos->mapWithKeys(fn($p) => [$p->id => [
     'precio'  => (float)($p->precio_venta ?? 0),
     'costo'   => (float)($p->costo_promedio ?? 0),
 ]]));
+const nombresProductos  = @json($productos->pluck('nombre', 'id'));
+const nombresCategorias = @json($categorias->pluck('nombre', 'id'));
+const nombresVendedores = @json($vendedores->pluck('name', 'id'));
 
 function comisionesApp() {
     return {
@@ -697,10 +718,47 @@ function comisionesApp() {
         tipoAplicacion: 'usuario',
         tipoCalculo: 'porcentaje',
         productoSeleccionado: '',
+        vendedorSeleccionado: '',
+        categoriaSeleccionada: '',
+        vendedorProductoSeleccionado: '',
+        valorComision: '',
         editComisionId: null,
         editComisionNombre: '',
         editTipoCalculo: 'porcentaje',
         editComisionValor: 0,
+
+        get previewComision() {
+            const valor = parseFloat(this.valorComision);
+            const tieneValor = !isNaN(valor) && valor > 0;
+            const calculo = !tieneValor
+                ? '___'
+                : this.tipoCalculo === 'monto_fijo'
+                    ? `S/ ${valor.toFixed(2)} fijos`
+                    : this.tipoCalculo === 'porcentaje_margen'
+                        ? `${valor}% de la ganancia (venta − costo)`
+                        : `${valor}% del precio de venta`;
+
+            let quien = '';
+            if (this.tipoAplicacion === 'usuario') {
+                quien = this.vendedorSeleccionado
+                    ? `por cada venta que registre ${nombresVendedores[this.vendedorSeleccionado]}, sin importar el producto`
+                    : 'por cada venta del vendedor que selecciones, sin importar el producto';
+            } else if (this.tipoAplicacion === 'categoria') {
+                quien = this.categoriaSeleccionada
+                    ? `por cada unidad vendida de la categoría "${nombresCategorias[this.categoriaSeleccionada]}", la venda quien la venda`
+                    : 'por cada unidad vendida de la categoría que selecciones, la venda quien la venda';
+            } else if (this.tipoAplicacion === 'producto') {
+                quien = this.productoSeleccionado
+                    ? `por cada unidad vendida de "${nombresProductos[this.productoSeleccionado]}", lo venda quien lo venda`
+                    : 'por cada unidad vendida del producto que selecciones, lo venda quien lo venda';
+            } else {
+                const prod = this.productoSeleccionado ? nombresProductos[this.productoSeleccionado] : 'el producto que selecciones';
+                const vend = this.vendedorProductoSeleccionado ? nombresVendedores[this.vendedorProductoSeleccionado] : 'el vendedor que selecciones';
+                quien = `solo cuando ${vend} venda "${prod}" (no aplica si lo vende otro vendedor, ni si ${vend} vende otro producto)`;
+            }
+
+            return `Se pagará ${calculo} ${quien}.`;
+        },
 
         get margenProducto() {
             if (!this.productoSeleccionado || this.tipoCalculo !== 'porcentaje_margen') return null;
@@ -730,7 +788,17 @@ function comisionesApp() {
             this.editComisionValor  = valor;
             this.modalComision      = true;
         },
-        cerrarModalComision() { this.modalComision = false; this.editComisionId = null; },
+        cerrarModalComision() {
+            this.modalComision = false;
+            this.editComisionId = null;
+            this.tipoAplicacion = 'usuario';
+            this.tipoCalculo = 'porcentaje';
+            this.productoSeleccionado = '';
+            this.vendedorSeleccionado = '';
+            this.categoriaSeleccionada = '';
+            this.vendedorProductoSeleccionado = '';
+            this.valorComision = '';
+        },
 
         abrirEditarBonus(id, nombre, tipoCalculo, valor, metaUnidades, metaPeriodo) {
             this.editBonusId          = id;

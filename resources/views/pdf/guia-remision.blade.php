@@ -296,7 +296,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                             </div>
                             <div class="td" style="width:50%">
                                 <div class="fl">Placa vehículo</div>
-                                <div class="fv">{{ $venta->placa_vehiculo ?? '—' }}</div>
+                                <div class="fv">{{ $guia->placa_vehiculo ?? '—' }}</div>
                             </div>
                         </div>
                     </div>
@@ -379,7 +379,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <div class="box-title">Unidad de Transporte / Conductor / Transportista</div>
                 <div class="box-body">
                     <div class="fl">Vehículo marca y placa</div>
-                    <div class="fv">{{ $venta->transportista ? $venta->transportista.' — ' : '' }}{{ $venta->placa_vehiculo ?? '—' }}</div>
+                    <div class="fv">{{ $guia->placa_vehiculo ?? '—' }}</div>
                     <div class="tbl" style="margin-top:2px">
                         <div class="tr">
                             <div class="td" style="width:50%">
@@ -388,7 +388,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                             </div>
                             <div class="td" style="width:50%">
                                 <div class="fl">Licencia de Conducir</div>
-                                <div class="fv">&nbsp;</div>
+                                <div class="fv">{{ $guia->conductor_licencia ?? '&nbsp;' }}</div>
                             </div>
                         </div>
                     </div>
@@ -396,11 +396,11 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                         <div class="tr">
                             <div class="td" style="width:55%">
                                 <div class="fl">Nombre</div>
-                                <div class="fv bold">{{ $guia->transportista_nombre ?? '—' }}</div>
+                                <div class="fv bold">{{ $guia->conductor_nombre ?? ($guia->transportista_nombre ?? '—') }}</div>
                             </div>
                             <div class="td" style="width:45%">
                                 <div class="fl">R.U.C. / DNI</div>
-                                <div class="fv">{{ $guia->transportista_doc ?? '—' }}</div>
+                                <div class="fv">{{ $guia->conductor_dni ?? ($guia->transportista_doc ?? '—') }}</div>
                             </div>
                         </div>
                     </div>

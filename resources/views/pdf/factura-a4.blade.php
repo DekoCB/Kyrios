@@ -158,7 +158,7 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
     </div>
     <div class="info-cell" style="width:25%">
         <div class="info-label">Guía de Remisión N°</div>
-        <div class="info-value">{{ $venta->guia_remision ?? '—' }}</div>
+        <div class="info-value">{{ $venta->guiaRemision?->numero_guia ?? '—' }}</div>
     </div>
 </div>
 
@@ -175,7 +175,7 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
             <div class="cliente-label">Razón Social:</div>
             <div class="cliente-val">{{ $venta->cliente?->nombre ?? 'CLIENTE GENERAL' }}</div>
             <div class="cliente-label" style="padding-left:20px">Placa N°:</div>
-            <div class="cliente-val">{{ $venta->placa_vehiculo ?? '—' }}</div>
+            <div class="cliente-val">{{ $venta->guiaRemision?->placa_vehiculo ?? '—' }}</div>
         </div>
         <div class="cliente-row">
             <div class="cliente-label">Dirección:</div>

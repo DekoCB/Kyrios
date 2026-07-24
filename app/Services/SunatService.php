@@ -17,59 +17,77 @@ class SunatService
             return ['success' => false, 'message' => 'El RUC debe tener 11 dígitos numéricos.'];
         }
 
-        return Cache::remember("sunat_ruc_{$ruc}", 604800, function () use ($ruc) {
-            try {
-                $response = Http::timeout(10)
-                    ->withHeaders(['Accept' => 'application/json'])
-                    ->get(self::RUC_URL, ['numero' => $ruc]);
+        $cacheKey = "sunat_ruc_{$ruc}";
+        $cached   = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
 
-                if ($response->successful()) {
-                    $data = $response->json();
+        $result = $this->consultarRucRemoto($ruc);
 
-                    // La API devuelve 'numeroDocumento' y 'nombre' (no 'ruc'/'razonSocial')
-                    if (empty($data['numeroDocumento']) && empty($data['nombre'])) {
-                        return ['success' => false, 'message' => 'RUC no encontrado en SUNAT.'];
-                    }
+        // Solo cacheamos resultados exitosos: un fallo (timeout, rate-limit de
+        // la API gratuita, caída puntual) no debe bloquear el RUC como "no
+        // encontrado" durante 7 días para todos los usuarios.
+        if ($result['success'] ?? false) {
+            Cache::put($cacheKey, $result, 604800);
+        }
 
-                    // Dirección completa: campo 'direccion' ya viene completo, agregamos ubigeo
-                    $partesDireccion = array_filter([
-                        $data['direccion']    ?? null,
-                        $data['distrito']     ?? null,
-                        $data['provincia']    ?? null,
-                        $data['departamento'] ?? null,
-                    ], fn($v) => $v && $v !== '-');
+        return $result;
+    }
 
-                    $direccionCompleta = implode(', ', $partesDireccion);
+    protected function consultarRucRemoto(string $ruc): array
+    {
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders(['Accept' => 'application/json'])
+                ->get(self::RUC_URL, ['numero' => $ruc]);
 
-                    return [
-                        'success' => true,
-                        'data' => [
-                            'ruc'              => $data['numeroDocumento'] ?? $ruc,
-                            'razon_social'     => $data['nombre']          ?? '',
-                            'nombre_comercial' => null,
-                            'direccion'        => $direccionCompleta ?: null,
-                            'direccion_fiscal' => $data['direccion']       ?? null,
-                            'distrito'         => $data['distrito']        ?? null,
-                            'provincia'        => $data['provincia']       ?? null,
-                            'departamento'     => $data['departamento']    ?? null,
-                            'estado'           => $data['estado']          ?? null,
-                            'condicion'        => $data['condicion']       ?? null,
-                            'tipo'             => $data['tipoDocumento']   ?? null,
-                        ],
-                    ];
-                }
+            if ($response->successful()) {
+                $data = $response->json();
 
-                $status = $response->status();
-                if ($status === 404) {
+                // La API devuelve 'numeroDocumento' y 'nombre' (no 'ruc'/'razonSocial')
+                if (empty($data['numeroDocumento']) && empty($data['nombre'])) {
                     return ['success' => false, 'message' => 'RUC no encontrado en SUNAT.'];
                 }
 
-                return ['success' => false, 'message' => "Error al consultar SUNAT (HTTP {$status})."];
+                // Dirección completa: campo 'direccion' ya viene completo, agregamos ubigeo
+                $partesDireccion = array_filter([
+                    $data['direccion']    ?? null,
+                    $data['distrito']     ?? null,
+                    $data['provincia']    ?? null,
+                    $data['departamento'] ?? null,
+                ], fn($v) => $v && $v !== '-');
 
-            } catch (\Exception $e) {
-                return ['success' => false, 'message' => 'No se pudo conectar al servicio de consulta RUC.'];
+                $direccionCompleta = implode(', ', $partesDireccion);
+
+                return [
+                    'success' => true,
+                    'data' => [
+                        'ruc'              => $data['numeroDocumento'] ?? $ruc,
+                        'razon_social'     => $data['nombre']          ?? '',
+                        'nombre_comercial' => null,
+                        'direccion'        => $direccionCompleta ?: null,
+                        'direccion_fiscal' => $data['direccion']       ?? null,
+                        'distrito'         => $data['distrito']        ?? null,
+                        'provincia'        => $data['provincia']       ?? null,
+                        'departamento'     => $data['departamento']    ?? null,
+                        'estado'           => $data['estado']          ?? null,
+                        'condicion'        => $data['condicion']       ?? null,
+                        'tipo'             => $data['tipoDocumento']   ?? null,
+                    ],
+                ];
             }
-        });
+
+            $status = $response->status();
+            if ($status === 404) {
+                return ['success' => false, 'message' => 'RUC no encontrado en SUNAT.'];
+            }
+
+            return ['success' => false, 'message' => "Error al consultar SUNAT (HTTP {$status})."];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'No se pudo conectar al servicio de consulta RUC.'];
+        }
     }
 
     public function consultarDni(string $dni): array
@@ -78,46 +96,61 @@ class SunatService
             return ['success' => false, 'message' => 'El DNI debe tener 8 dígitos numéricos.'];
         }
 
-        return Cache::remember("sunat_dni_{$dni}", 604800, function () use ($dni) {
-            try {
-                $response = Http::timeout(10)
-                    ->withHeaders(['Accept' => 'application/json'])
-                    ->get(self::DNI_URL, ['numero' => $dni]);
+        $cacheKey = "sunat_dni_{$dni}";
+        $cached   = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
 
-                if ($response->successful()) {
-                    $data = $response->json();
+        $result = $this->consultarDniRemoto($dni);
 
-                    // La API devuelve 'numeroDocumento' (no 'dni')
-                    if (empty($data['numeroDocumento']) && empty($data['nombre'])) {
-                        return ['success' => false, 'message' => 'DNI no encontrado en RENIEC.'];
-                    }
+        if ($result['success'] ?? false) {
+            Cache::put($cacheKey, $result, 604800);
+        }
 
-                    // Preferir el campo 'nombre' que viene completo; si no, construirlo
-                    $nombre = $data['nombre'] ?? trim(implode(' ', array_filter([
-                        $data['nombres']         ?? null,
-                        $data['apellidoPaterno'] ?? null,
-                        $data['apellidoMaterno'] ?? null,
-                    ])));
+        return $result;
+    }
 
-                    return [
-                        'success' => true,
-                        'data' => [
-                            'dni'    => $data['numeroDocumento'] ?? $dni,
-                            'nombre' => $nombre,
-                        ],
-                    ];
-                }
+    protected function consultarDniRemoto(string $dni): array
+    {
+        try {
+            $response = Http::timeout(10)
+                ->withHeaders(['Accept' => 'application/json'])
+                ->get(self::DNI_URL, ['numero' => $dni]);
 
-                $status = $response->status();
-                if ($status === 404) {
+            if ($response->successful()) {
+                $data = $response->json();
+
+                // La API devuelve 'numeroDocumento' (no 'dni')
+                if (empty($data['numeroDocumento']) && empty($data['nombre'])) {
                     return ['success' => false, 'message' => 'DNI no encontrado en RENIEC.'];
                 }
 
-                return ['success' => false, 'message' => "Error al consultar RENIEC (HTTP {$status})."];
+                // Preferir el campo 'nombre' que viene completo; si no, construirlo
+                $nombre = $data['nombre'] ?? trim(implode(' ', array_filter([
+                    $data['nombres']         ?? null,
+                    $data['apellidoPaterno'] ?? null,
+                    $data['apellidoMaterno'] ?? null,
+                ])));
 
-            } catch (\Exception $e) {
-                return ['success' => false, 'message' => 'No se pudo conectar al servicio de consulta DNI.'];
+                return [
+                    'success' => true,
+                    'data' => [
+                        'dni'    => $data['numeroDocumento'] ?? $dni,
+                        'nombre' => $nombre,
+                    ],
+                ];
             }
-        });
+
+            $status = $response->status();
+            if ($status === 404) {
+                return ['success' => false, 'message' => 'DNI no encontrado en RENIEC.'];
+            }
+
+            return ['success' => false, 'message' => "Error al consultar RENIEC (HTTP {$status})."];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'No se pudo conectar al servicio de consulta DNI.'];
+        }
     }
 }
