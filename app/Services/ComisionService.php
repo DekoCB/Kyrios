@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Venta;
+use App\Models\DetalleVenta;
 use App\Models\ComisionRegla;
 use App\Models\ComisionDetalleVenta;
 
@@ -20,46 +21,88 @@ class ComisionService
         }
 
         foreach ($venta->detalles as $detalle) {
-            $producto    = $detalle->producto;
             $productoId  = $detalle->producto_id;
-            $categoriaId = $producto?->categoria_id;
+            $categoriaId = $detalle->producto?->categoria_id;
 
             $regla = $this->resolverRegla($vendedorId, $productoId, $categoriaId);
             if (!$regla) {
                 continue;
             }
 
-            $subtotal = (float) $detalle->subtotal_con_igv;
-            $qty      = (int)   $detalle->cantidad;
-
-            [$monto, $margen] = match($regla->tipo_calculo) {
-                'porcentaje' => [
-                    round($subtotal * (float) $regla->valor / 100, 2),
-                    null,
-                ],
-                'porcentaje_margen' => (function () use ($subtotal, $qty, $producto, $regla) {
-                    $costo  = (float) ($producto?->costo_promedio ?? 0);
-                    $margen = $subtotal - ($costo * $qty);
-                    $margen = max(0, $margen);
-                    return [round($margen * (float) $regla->valor / 100, 2), round($margen, 2)];
-                })(),
-                default => [  // monto_fijo
-                    round((float) $regla->valor * $qty, 2),
-                    null,
-                ],
-            };
-
-            ComisionDetalleVenta::create([
-                'detalle_venta_id'  => $detalle->id,
-                'user_id'           => $vendedorId,
-                'regla_id'          => $regla->id,
-                'tipo_calculo'      => $regla->tipo_calculo,
-                'valor_configurado' => $regla->valor,
-                'margen_calculado'  => $margen,
-                'monto_comision'    => $monto,
-                'estado'            => 'pendiente',
-            ]);
+            $this->crearComisionDetalle($detalle, $vendedorId, $regla);
         }
+    }
+
+    /**
+     * Genera comisiones para ventas ya pagadas cuyos detalles todavía no tienen
+     * comisión (p. ej. porque la regla de producto/categoría se creó después de
+     * la venta, o no existía ninguna regla que aplicara en ese momento). No
+     * toca detalles que ya tienen una comisión registrada (pendiente o pagada),
+     * así que es seguro correrlo varias veces.
+     *
+     * @return int cantidad de comisiones nuevas generadas
+     */
+    public function recalcularHistorico(): int
+    {
+        $creadas = 0;
+
+        DetalleVenta::whereHas('venta', fn($q) => $q->where('estado_pago', 'pagado')->whereNotNull('user_id'))
+            ->whereDoesntHave('comision')
+            ->with(['producto', 'venta'])
+            ->chunkById(200, function ($detalles) use (&$creadas) {
+                foreach ($detalles as $detalle) {
+                    $vendedorId = $detalle->venta->user_id;
+                    if (!$vendedorId) {
+                        continue;
+                    }
+
+                    $categoriaId = $detalle->producto?->categoria_id;
+                    $regla       = $this->resolverRegla($vendedorId, $detalle->producto_id, $categoriaId);
+                    if (!$regla) {
+                        continue;
+                    }
+
+                    $this->crearComisionDetalle($detalle, $vendedorId, $regla);
+                    $creadas++;
+                }
+            });
+
+        return $creadas;
+    }
+
+    private function crearComisionDetalle(DetalleVenta $detalle, int $vendedorId, ComisionRegla $regla): void
+    {
+        $producto = $detalle->producto;
+        $subtotal = (float) $detalle->subtotal_con_igv;
+        $qty      = (int)   $detalle->cantidad;
+
+        [$monto, $margen] = match($regla->tipo_calculo) {
+            'porcentaje' => [
+                round($subtotal * (float) $regla->valor / 100, 2),
+                null,
+            ],
+            'porcentaje_margen' => (function () use ($subtotal, $qty, $producto, $regla) {
+                $costo  = (float) ($producto?->costo_promedio ?? 0);
+                $margen = $subtotal - ($costo * $qty);
+                $margen = max(0, $margen);
+                return [round($margen * (float) $regla->valor / 100, 2), round($margen, 2)];
+            })(),
+            default => [  // monto_fijo
+                round((float) $regla->valor * $qty, 2),
+                null,
+            ],
+        };
+
+        ComisionDetalleVenta::create([
+            'detalle_venta_id'  => $detalle->id,
+            'user_id'           => $vendedorId,
+            'regla_id'          => $regla->id,
+            'tipo_calculo'      => $regla->tipo_calculo,
+            'valor_configurado' => $regla->valor,
+            'margen_calculado'  => $margen,
+            'monto_comision'    => $monto,
+            'estado'            => 'pendiente',
+        ]);
     }
 
     private function resolverRegla(int $vendedorId, int $productoId, ?int $categoriaId): ?ComisionRegla

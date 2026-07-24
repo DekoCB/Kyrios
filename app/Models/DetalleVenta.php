@@ -49,6 +49,11 @@ class DetalleVenta extends Model
         return $this->belongsTo(ProductoVariante::class, 'variante_id');
     }
 
+    public function comision()
+    {
+        return $this->hasOne(ComisionDetalleVenta::class, 'detalle_venta_id');
+    }
+
     public function movimientosDevolucion()
     {
         return $this->hasMany(MovimientoInventario::class)

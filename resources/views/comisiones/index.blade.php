@@ -88,6 +88,24 @@
         </button>
     </div>
 
+    {{-- Ayuda: cuándo usar Comisión vs Bono, cambia según la pestaña activa --}}
+    <div x-show="tab==='comisiones'" x-cloak
+         class="mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-800 flex gap-2.5">
+        <i class="fas fa-lightbulb shrink-0 mt-0.5 text-blue-500"></i>
+        <div>
+            <p class="font-semibold mb-0.5">¿Cuándo usar Comisión?</p>
+            <p>Para productos de <strong>buen valor unitario, como celulares</strong>: es un pago que se calcula automáticamente en cada venta (ej. "S/ 15 fijos por equipo" o "3% del margen"). Si vendes 1 celular, se genera 1 comisión.</p>
+        </div>
+    </div>
+    <div x-show="tab==='bonos'" x-cloak
+         class="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800 flex gap-2.5">
+        <i class="fas fa-lightbulb shrink-0 mt-0.5 text-amber-500"></i>
+        <div>
+            <p class="font-semibold mb-0.5">¿Cuándo usar Bono?</p>
+            <p>Para <strong>accesorios de bajo valor, como fundas y cargadores</strong>: pagarles centavos por unidad no motiva a nadie. En su lugar, usa <strong>"Bono por Meta"</strong> para premiar el volumen (ej. "vende 100 fundas este mes y gana S/ 80 extra"), o <strong>"Bono Fijo"</strong> para sumar un monto extra por unidad de un producto puntual que quieras liquidar rápido. El bono se suma aparte, encima de la comisión si la hubiera.</p>
+        </div>
+    </div>
+
     {{-- ══════════════════ TAB COMISIONES ══════════════════ --}}
     <div x-show="tab==='comisiones'" x-cloak>
         <div class="bg-white rounded-2xl shadow-md overflow-hidden">
@@ -104,6 +122,14 @@
                        class="px-3 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5">
                         <i class="fas fa-chart-bar"></i> Reporte
                     </a>
+                    <form action="{{ route('comisiones.recalcular') }}" method="POST"
+                          onsubmit="return confirm('Esto revisará todas las ventas ya pagadas y generará la comisión de las que todavía no tengan una (por ejemplo, ventas hechas antes de crear una regla nueva). No duplica ni modifica comisiones ya existentes. ¿Continuar?')">
+                        @csrf
+                        <button type="submit" title="Aplica las reglas activas a ventas antiguas que aún no tienen comisión calculada"
+                                class="px-3 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5">
+                            <i class="fas fa-rotate"></i> Recalcular
+                        </button>
+                    </form>
                     <button @click="modalComision=true"
                             class="px-3 py-2 bg-white text-blue-800 hover:bg-blue-50 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
                         <i class="fas fa-plus"></i> Nueva regla

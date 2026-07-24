@@ -509,6 +509,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{regla}',         [\App\Http\Controllers\ComisionController::class, 'update'])->name('update');
         Route::delete('/{regla}',      [\App\Http\Controllers\ComisionController::class, 'destroy'])->name('destroy');
         Route::patch('/{regla}/toggle',[\App\Http\Controllers\ComisionController::class, 'toggle'])->name('toggle');
+        Route::post('/recalcular',     [\App\Http\Controllers\ComisionController::class, 'recalcular'])->name('recalcular');
         Route::get('/reporte',         [\App\Http\Controllers\ComisionController::class, 'reporte'])->name('reporte');
         Route::get('/progreso-bonos',  [\App\Http\Controllers\ComisionController::class, 'progresoBonos'])->name('progreso-bonos');
         Route::post('/marcar-pagado',  [\App\Http\Controllers\ComisionController::class, 'marcarPagado'])->name('marcar-pagado');

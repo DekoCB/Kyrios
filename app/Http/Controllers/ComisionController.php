@@ -116,6 +116,23 @@ class ComisionController extends Controller
         return back()->with('success', $regla->activo ? 'Regla activada.' : 'Regla desactivada.');
     }
 
+    /**
+     * Aplica las reglas activas a ventas ya pagadas cuyos detalles todavía no
+     * tienen comisión generada (típicamente porque la regla se creó después
+     * de la venta). No duplica ni modifica comisiones ya existentes.
+     */
+    public function recalcular(\App\Services\ComisionService $comisionService)
+    {
+        $creadas = $comisionService->recalcularHistorico();
+
+        return back()->with(
+            'success',
+            $creadas > 0
+                ? "Se generaron {$creadas} comisión(es) nueva(s) sobre ventas anteriores."
+                : 'No había ventas pendientes de comisión: todo estaba al día.'
+        );
+    }
+
     // ══════════════════════════════════════════════════════════════════
     //  BONUS — Reglas
     // ══════════════════════════════════════════════════════════════════
