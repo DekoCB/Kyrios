@@ -370,6 +370,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/imeis-disponibles', [VentaController::class, 'imeisDisponibles'])->name('imeis-disponibles');
         Route::get('/api/mis-pendientes', [VentaController::class, 'misPendientes'])->middleware('role:Vendedor')->name('mis-pendientes');
         Route::get('/api/dni/{dni}', [DniLookupController::class, 'buscar'])->name('dni.buscar');
+        Route::get('/api/ruc/{ruc}', [TrasladoController::class, 'buscarRuc'])->name('ruc.buscar');
         // Bitácora de auditoría (solo Admin) — debe ir antes del wildcard /{venta}
         Route::get('/auditoria', [VentaController::class, 'bitacora'])->middleware('role:Administrador')->name('auditoria');
         Route::get('/{venta}', [VentaController::class, 'show'])->name('show');

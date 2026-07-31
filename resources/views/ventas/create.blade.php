@@ -2836,7 +2836,7 @@ function posApp() {
             try {
                 let url = '';
                 if (this.orden.guia.transportista_tipo_doc === 'RUC') {
-                    url = `/traslados/api/ruc/${doc}`;
+                    url = `/ventas/api/ruc/${doc}`;
                 } else {
                     url = `/ventas/api/dni/${doc}`;
                 }
