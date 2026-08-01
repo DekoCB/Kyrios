@@ -85,7 +85,12 @@
                     </td>
                     <td class="px-6 py-4">
                         <div class="text-sm font-medium text-gray-900">{{ $solicitud->producto->nombre }}</div>
-                        <div class="text-xs text-gray-500">{{ $solicitud->producto->codigo }}</div>
+                        <div class="text-xs text-gray-500">
+                            {{ $solicitud->producto->codigo }}
+                            @if($solicitud->variante)
+                                &middot; {{ $solicitud->variante->nombre_completo }}
+                            @endif
+                        </div>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-600">{{ $solicitud->almacen->nombre ?? '—' }}</td>
                     <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $solicitud->cantidad }}</td>

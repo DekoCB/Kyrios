@@ -110,6 +110,7 @@ class TrasladoService
 
         $movimiento = MovimientoInventario::create([
             'producto_id'        => $producto->id,
+            'variante_id'        => $linea['variante_id'] ?? null,
             'almacen_id'         => $origenId,
             'almacen_destino_id' => $destinoId,
             'user_id'            => $userId,

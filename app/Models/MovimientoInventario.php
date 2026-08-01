@@ -96,6 +96,11 @@ class MovimientoInventario extends Model
         return $this->belongsTo(DetalleVenta::class);
     }
 
+    public function variante()
+    {
+        return $this->belongsTo(ProductoVariante::class, 'variante_id');
+    }
+
     /**
      * Scope para movimientos de ingreso
      */

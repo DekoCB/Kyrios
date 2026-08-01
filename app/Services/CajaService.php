@@ -225,7 +225,10 @@ class CajaService
             'total_ingresos'       => (float) ($totalVentas + $ingresosManual),
             'total_egresos'        => (float) $egresosTotal,
             'saldo_esperado'       => (float) $saldoEsperado,
-            'num_ventas'           => $ingresos->whereNotNull('venta_id')->count(),
+            // Un pago mixto genera varios movimientos de caja para la MISMA venta
+            // (uno por método); contar movimientos en vez de ventas distintas
+            // duplicaba el conteo mostrado en "Mi Caja".
+            'num_ventas'           => $ingresos->whereNotNull('venta_id')->pluck('venta_id')->unique()->count(),
         ];
     }
 }

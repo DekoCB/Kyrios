@@ -91,6 +91,7 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Variante</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase" colspan="{{ $almacenes->count() }}">
                         Stock por Tienda
@@ -98,7 +99,7 @@
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                 </tr>
                 <tr class="bg-gray-100">
-                    <th colspan="2"></th>
+                    <th colspan="3"></th>
                     @foreach($almacenes as $almacen)
                         <th class="px-3 py-2 text-center text-xs font-medium text-gray-600 border-l">
                             {{ $almacen->nombre }}
@@ -109,69 +110,85 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($productos as $producto)
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">{{ $producto->nombre }}</div>
-                        <div class="text-xs text-gray-500">{{ $producto->codigo }}</div>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{{ $producto->categoria->nombre }}</td>
-                    
-                    @foreach($almacenes as $almacen)
-                        @php
-                            $stock = $producto->stocks[$almacen->id] ?? null;
-                            $cantidad = $stock ? $stock->cantidad : 0;
-                            $esMiTienda = $almacen->id == $tiendaActual->id;
-                            $esSerie = $producto->es_serie ?? false;
-                        @endphp
-                        <td class="px-3 py-4 text-center">
-                            @if($esMiTienda)
-                                @if($cantidad > 0)
-                                    <span class="font-bold text-blue-600">
-                                        {{ $cantidad }}
-                                        @if($esSerie)
-                                            <span class="text-[10px] font-normal text-purple-500 ml-0.5">IMEI</span>
-                                        @endif
-                                    </span>
-                                @else
-                                    <span class="font-bold text-red-400">0</span>
-                                @endif
+                    @php $numFilas = $producto->filas->count(); @endphp
+                    @foreach($producto->filas as $i => $fila)
+                    <tr class="hover:bg-gray-50">
+                        @if($i === 0)
+                        <td class="px-6 py-4 align-top" rowspan="{{ $numFilas }}">
+                            <div class="text-sm font-medium text-gray-900">{{ $producto->nombre }}</div>
+                            <div class="text-xs text-gray-500">{{ $producto->codigo }}</div>
+                        </td>
+                        @endif
+
+                        <td class="px-6 py-4 text-sm">
+                            @if($fila->variante)
+                                <div class="flex items-center gap-1.5">
+                                    @if($fila->variante->color?->codigo_hex)
+                                        <span class="inline-block w-2.5 h-2.5 rounded-full border border-gray-300 shrink-0"
+                                              style="background-color: {{ $fila->variante->color->codigo_hex }}"></span>
+                                    @endif
+                                    <span class="text-gray-700">{{ $fila->variante->nombre_completo }}</span>
+                                </div>
+                                <div class="text-[11px] text-gray-400">{{ $fila->variante->sku }}</div>
+                            @elseif($producto->es_serie)
+                                <span class="text-xs italic text-gray-400">Sin variante asignada</span>
                             @else
-                                <span class="{{ $cantidad > 0 ? 'text-gray-900' : 'text-gray-400' }}">
-                                    {{ $cantidad }}
+                                <span class="text-gray-300">—</span>
+                            @endif
+                        </td>
+
+                        @if($i === 0)
+                        <td class="px-6 py-4 text-sm text-gray-500 align-top" rowspan="{{ $numFilas }}">{{ $producto->categoria->nombre }}</td>
+                        @endif
+
+                        @foreach($almacenes as $almacen)
+                            @php
+                                $stock = $fila->stocks[$almacen->id] ?? null;
+                                $cantidad = $stock ? $stock->cantidad : 0;
+                                $esMiTienda = $almacen->id == $tiendaActual->id;
+                                $esSerie = $producto->es_serie ?? false;
+                            @endphp
+                            <td class="px-3 py-4 text-center">
+                                @if($esMiTienda)
+                                    @if($cantidad > 0)
+                                        <span class="font-bold text-blue-600">
+                                            {{ $cantidad }}
+                                            @if($esSerie)
+                                                <span class="text-[10px] font-normal text-purple-500 ml-0.5">IMEI</span>
+                                            @endif
+                                        </span>
+                                    @else
+                                        <span class="font-bold text-red-400">0</span>
+                                    @endif
+                                @else
+                                    <span class="{{ $cantidad > 0 ? 'text-gray-900' : 'text-gray-400' }}">
+                                        {{ $cantidad }}
+                                    </span>
+                                @endif
+                            </td>
+                        @endforeach
+
+                        <td class="px-6 py-4 text-center">
+                            @php
+                                $otrasTiendas = collect($fila->stocks)
+                                    ->filter(fn($stock, $almacenId) => $almacenId != $tiendaActual->id && $stock->cantidad > 0);
+                                $etiqueta = $producto->nombre . ($fila->variante ? ' — ' . $fila->variante->nombre_completo : '');
+                            @endphp
+
+                            @if($otrasTiendas->count() > 0)
+                                <button onclick="abrirModalTraslado({{ $producto->id }}, {{ $fila->variante->id ?? 'null' }}, '{{ addslashes($etiqueta) }}')"
+                                        class="text-blue-600 hover:text-blue-800"
+                                        title="Solicitar traslado">
+                                    <i class="fas fa-truck"></i>
+                                </button>
+                            @else
+                                <span class="text-gray-400" title="No hay stock en otras tiendas">
+                                    <i class="fas fa-truck"></i>
                                 </span>
                             @endif
                         </td>
+                    </tr>
                     @endforeach
-                    
-                    <td class="px-6 py-4 text-center">
-                        @php
-                            $otrasTiendas = collect($producto->stocks)
-                                ->filter(function($stock, $almacenId) use ($tiendaActual) {
-                                    return $almacenId != $tiendaActual->id && $stock->cantidad > 0;
-                                });
-                            // Para serie: también revisar stock_almacen de otras tiendas como origen posible
-                            if (($producto->es_serie ?? false) && $otrasTiendas->isEmpty()) {
-                                $otrasTiendas = \App\Models\StockAlmacen::where('producto_id', $producto->id)
-                                    ->where('almacen_id', '!=', $tiendaActual->id)
-                                    ->where('cantidad', '>', 0)
-                                    ->get()
-                                    ->keyBy('almacen_id');
-                            }
-                        @endphp
-                        
-                        @if($otrasTiendas->count() > 0)
-                            <button onclick="abrirModalTraslado({{ $producto->id }}, '{{ $producto->nombre }}')"
-                                    class="text-blue-600 hover:text-blue-800"
-                                    title="Solicitar traslado">
-                                <i class="fas fa-truck"></i>
-                            </button>
-                        @else
-                            <span class="text-gray-400" title="No hay stock en otras tiendas">
-                                <i class="fas fa-truck"></i>
-                            </span>
-                        @endif
-                    </td>
-                </tr>
                 @endforeach
             </tbody>
         </table>
@@ -197,7 +214,8 @@
         <form id="formTraslado" class="p-6">
             @csrf
             <input type="hidden" name="producto_id" id="traslado_producto_id">
-            
+            <input type="hidden" name="variante_id" id="traslado_variante_id">
+
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
@@ -255,8 +273,9 @@
 </div>
 
 <script>
-function abrirModalTraslado(productoId, productoNombre) {
+function abrirModalTraslado(productoId, varianteId, productoNombre) {
     document.getElementById('traslado_producto_id').value = productoId;
+    document.getElementById('traslado_variante_id').value = varianteId ?? '';
     document.getElementById('traslado_producto_nombre').textContent = productoNombre;
     document.getElementById('modalTraslado').classList.remove('hidden');
     document.getElementById('modalTraslado').classList.add('flex');

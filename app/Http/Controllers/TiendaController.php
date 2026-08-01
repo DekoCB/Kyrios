@@ -8,8 +8,8 @@ use App\Models\Almacen;
 use App\Models\StockAlmacen;
 use App\Models\Imei;
 use App\Models\MovimientoInventario;
+use App\Services\TrasladoService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class TiendaController extends Controller
 {
@@ -28,7 +28,7 @@ class TiendaController extends Controller
     {
         $tiendaActual = auth()->user()->almacen_id;
         
-        $query = Producto::with(['categoria', 'marca', 'modelo']);
+        $query = Producto::with(['categoria', 'marca', 'modelo', 'variantesActivas.color']);
 
         // Filtros
         if ($request->filled('categoria_id')) {
@@ -46,32 +46,58 @@ class TiendaController extends Controller
 
         $productoIds = $productos->pluck('id');
 
-        // Stock por almacén (productos de cantidad)
+        // Stock por almacén (productos de cantidad; el stock por variante NO está
+        // desglosado por almacén en el esquema actual — producto_variantes.stock_actual
+        // es global, así que aquí solo se puede mostrar a nivel de producto).
         $stocksPorProducto = StockAlmacen::whereIn('producto_id', $productoIds)
             ->get()
             ->groupBy('producto_id')
             ->map(fn($rows) => $rows->keyBy('almacen_id'));
 
-        // Conteo de IMEIs en_stock por producto y almacén (productos de serie)
-        $imeisPorProducto = Imei::whereIn('producto_id', $productoIds)
-            ->where('estado_imei', 'en_stock')
+        // Conteo de IMEIs en_stock por variante y almacén (productos de serie:
+        // aquí sí existe el dato por tienda vía imeis.almacen_id + imeis.variante_id).
+        $imeisPorVarianteAlmacen = Imei::whereIn('producto_id', $productoIds)
+            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
+            ->whereNotNull('variante_id')
+            ->selectRaw('variante_id, almacen_id, COUNT(*) as total')
+            ->groupBy('variante_id', 'almacen_id')
+            ->get()
+            ->groupBy('variante_id')
+            ->map(fn($rows) => $rows->pluck('total', 'almacen_id')
+                ->mapWithKeys(fn($total, $almacenId) => [$almacenId => (object) ['cantidad' => $total]]));
+
+        // Red de seguridad: IMEIs de serie sin variante asignada (datos legados).
+        $imeisSinVariantePorProducto = Imei::whereIn('producto_id', $productoIds)
+            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
+            ->whereNull('variante_id')
             ->selectRaw('producto_id, almacen_id, COUNT(*) as total')
             ->groupBy('producto_id', 'almacen_id')
             ->get()
             ->groupBy('producto_id')
-            ->map(fn($rows) => $rows->pluck('total', 'almacen_id'));
+            ->map(fn($rows) => $rows->pluck('total', 'almacen_id')
+                ->mapWithKeys(fn($total, $almacenId) => [$almacenId => (object) ['cantidad' => $total]]));
 
         foreach ($productos as $producto) {
             if ($producto->tipo_inventario === 'serie') {
-                // Para serie: construir pseudo-stocks desde el conteo de IMEIs
-                $imeiMap = $imeisPorProducto[$producto->id] ?? collect();
-                $producto->stocks = $imeiMap->mapWithKeys(fn($total, $almacenId) => [
-                    $almacenId => (object)['cantidad' => $total, 'almacen_id' => $almacenId],
-                ]);
                 $producto->es_serie = true;
+
+                $filas = $producto->variantesActivas->map(fn($variante) => (object) [
+                    'variante' => $variante,
+                    'stocks'   => $imeisPorVarianteAlmacen[$variante->id] ?? collect(),
+                ]);
+
+                $sinVariante = $imeisSinVariantePorProducto[$producto->id] ?? collect();
+                if ($sinVariante->isNotEmpty() || $filas->isEmpty()) {
+                    $filas->push((object) ['variante' => null, 'stocks' => $sinVariante]);
+                }
+
+                $producto->filas = $filas;
             } else {
-                $producto->stocks = $stocksPorProducto[$producto->id] ?? collect();
                 $producto->es_serie = false;
+                $producto->filas = collect([(object) [
+                    'variante' => null,
+                    'stocks'   => $stocksPorProducto[$producto->id] ?? collect(),
+                ]]);
             }
         }
 
@@ -89,7 +115,7 @@ class TiendaController extends Controller
     {
         $tiendaActual = auth()->user()->almacen_id;
 
-        $query = MovimientoInventario::with(['producto', 'almacen', 'almacenDestino', 'usuario'])
+        $query = MovimientoInventario::with(['producto', 'variante.color', 'almacen', 'almacenDestino', 'usuario'])
             ->where('tipo_movimiento', 'transferencia')
             ->where('almacen_destino_id', $tiendaActual)
             ->orderBy('created_at', 'desc');
@@ -110,64 +136,65 @@ class TiendaController extends Controller
     {
         $validated = $request->validate([
             'producto_id' => 'required|exists:productos,id',
+            'variante_id' => 'nullable|exists:producto_variantes,id',
             'almacen_origen_id' => 'required|exists:almacenes,id',
             'cantidad' => 'required|integer|min:1',
             'motivo' => 'nullable|string|max:255',
         ]);
 
         try {
-            DB::beginTransaction();
-
             // Verificar que el almacén origen sea diferente al destino
             if ($validated['almacen_origen_id'] == auth()->user()->almacen_id) {
                 throw new \Exception('No puedes solicitar traslado desde tu propio almacén');
             }
 
-            // Verificar stock en origen
-            $stockOrigen = StockAlmacen::where([
-                'producto_id' => $validated['producto_id'],
-                'almacen_id' => $validated['almacen_origen_id']
-            ])->first();
+            $producto = Producto::findOrFail($validated['producto_id']);
 
-            if (!$stockOrigen || $stockOrigen->cantidad < $validated['cantidad']) {
-                throw new \Exception('Stock insuficiente en el almacén de origen');
+            $linea = [
+                'producto_id' => $producto->id,
+                'variante_id' => $validated['variante_id'] ?? null,
+            ];
+
+            if ($producto->tipo_inventario === 'serie') {
+                // Reservar IMEIs concretos en_stock del almacén origen (y de la
+                // variante elegida, si el usuario filtró por color/capacidad).
+                $imeiIds = Imei::where('producto_id', $producto->id)
+                    ->where('almacen_id', $validated['almacen_origen_id'])
+                    ->where('estado_imei', Imei::ESTADO_EN_STOCK)
+                    ->when($validated['variante_id'] ?? null, fn($q, $vid) => $q->where('variante_id', $vid))
+                    ->orderBy('codigo_imei')
+                    ->limit($validated['cantidad'])
+                    ->pluck('id');
+
+                if ($imeiIds->count() < $validated['cantidad']) {
+                    throw new \Exception('Stock insuficiente en el almacén de origen');
+                }
+
+                $linea['imei_ids'] = $imeiIds->all();
+            } else {
+                $linea['cantidad'] = $validated['cantidad'];
             }
 
-            // Crear solicitud de traslado como MovimientoInventario pendiente
-            $traslado = MovimientoInventario::create([
-                'producto_id'       => $validated['producto_id'],
-                'almacen_id'        => $validated['almacen_origen_id'],
-                'almacen_destino_id'=> auth()->user()->almacen_id,
-                'user_id'           => auth()->id(),
-                'tipo_movimiento'   => 'transferencia',
-                'cantidad'          => $validated['cantidad'],
-                'stock_anterior'    => $stockOrigen->cantidad,
-                'stock_nuevo'       => $stockOrigen->cantidad - $validated['cantidad'],
-                'motivo'            => $validated['motivo'] ?? 'Solicitud desde tienda',
-                'estado'            => 'pendiente',
-                'documento_referencia' => 'SOL-' . date('Ymd') . '-' . rand(1000, 9999),
+            // Reutiliza TrasladoService: es la misma lógica (y las mismas tablas,
+            // traslado_imeis incluida) que usa el flujo de traslados de almacén.
+            // Antes esta acción duplicaba la reserva de stock a mano y nunca creaba
+            // los registros de traslado_imeis, así que confirmar una solicitud de
+            // celular desde el panel de traslados fallaba con "no tiene IMEIs
+            // asignados".
+            $numeroGuia = app(TrasladoService::class)->crearTraslado([
+                'almacen_id'         => $validated['almacen_origen_id'],
+                'almacen_destino_id' => auth()->user()->almacen_id,
+                'user_id'            => auth()->id(),
+                'observaciones'      => $validated['motivo'] ?? 'Solicitud desde tienda',
+                'productos'          => [$linea],
             ]);
-
-            // Reservar (descontar) el stock en origen inmediatamente, igual que
-            // TrasladoService::crearLineaAccesorio — TrasladoService::confirmarRecepcion
-            // asume que el origen ya fue descontado y solo acredita el destino; sin este
-            // descuento, confirmar la solicitud duplicaba el stock (aparecía en destino
-            // sin haber salido de origen).
-            $stockOrigen->decrement('cantidad', $validated['cantidad']);
-
-            $totalStock = StockAlmacen::where('producto_id', $validated['producto_id'])->sum('cantidad');
-            Producto::where('id', $validated['producto_id'])->update(['stock_actual' => $totalStock]);
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Solicitud de traslado creada correctamente',
-                'traslado' => $traslado
+                'message' => "Solicitud de traslado creada correctamente ({$numeroGuia})",
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
@@ -181,30 +208,18 @@ class TiendaController extends Controller
     public function cancelarSolicitud(MovimientoInventario $traslado)
     {
         try {
-            DB::beginTransaction();
-
             if ($traslado->almacen_destino_id != auth()->user()->almacen_id) {
                 throw new \Exception('No tienes permiso para cancelar esta solicitud');
             }
 
-            if ($traslado->estado != 'pendiente') {
-                throw new \Exception('Solo se pueden cancelar solicitudes pendientes');
-            }
-
-            // Devolver al origen la cantidad reservada al crear la solicitud
-            // (ver solicitarTraslado, que ahora descuenta de inmediato).
-            $stockOrigen = StockAlmacen::firstOrCreate(
-                ['producto_id' => $traslado->producto_id, 'almacen_id' => $traslado->almacen_id],
-                ['cantidad' => 0]
+            // TrasladoService::anularTraslado ya valida el estado 'pendiente' y
+            // revierte correctamente tanto IMEIs (vuelven a en_stock) como stock
+            // por cantidad, según el tipo de producto.
+            app(TrasladoService::class)->anularTraslado(
+                $traslado->id,
+                auth()->id(),
+                'Cancelado por la tienda destino'
             );
-            $stockOrigen->increment('cantidad', $traslado->cantidad);
-
-            $totalStock = StockAlmacen::where('producto_id', $traslado->producto_id)->sum('cantidad');
-            Producto::where('id', $traslado->producto_id)->update(['stock_actual' => $totalStock]);
-
-            $traslado->update(['estado' => 'cancelado']);
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -212,7 +227,6 @@ class TiendaController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()

@@ -147,12 +147,6 @@ class VentaService
                 'total'    => $total,
             ]);
 
-            // Calcular comisiones solo si la venta queda pagada de inmediato
-            // (ventas pendientes las calculamos cuando el cajero confirme el cobro)
-            if ($venta->estado_pago === 'pagado') {
-                $this->calcularComisiones($venta);
-            }
-
             // Crear guía de remisión si se proporcionaron datos
             if ($guiaData) {
                 // Mismo resolutor de numeración que usa el módulo de Guías de Remisión
@@ -179,6 +173,17 @@ class VentaService
                     $this->procesarPago($venta, $pago);
                     $this->registrarEnCaja($venta, 'venta');
                 }
+            }
+
+            // Calcular comisiones solo si la venta queda pagada de inmediato
+            // (ventas pendientes las calculamos cuando el cajero confirme el cobro,
+            // ver confirmarPago). Debe ir DESPUÉS de procesarPago: la venta se crea
+            // con estado_pago='pendiente' (default de BD) cuando el controlador no lo
+            // fija explícitamente, y procesarPago es lo que recién la deja 'pagado'.
+            // Antes esta comprobación iba antes de procesarPago y por eso ninguna
+            // venta al contado (no "pendiente_cobro") generaba comisión.
+            if ($venta->estado_pago === 'pagado') {
+                $this->calcularComisiones($venta);
             }
 
             Log::info('Venta creada', [
