@@ -70,6 +70,15 @@
                             <input type="text" name="distrito" maxlength="100" class="w-full rounded-lg border-gray-300 shadow-sm" value="{{ old('distrito', $cliente->distrito) }}" placeholder="Distrito">
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Ubigeo
+                                <span class="text-gray-400 font-normal">(código INEI, 6 dígitos)</span>
+                            </label>
+                            <input type="text" name="ubigeo" maxlength="6" inputmode="numeric" pattern="\d{0,6}"
+                                   class="w-full rounded-lg border-gray-300 shadow-sm font-mono" value="{{ old('ubigeo', $cliente->ubigeo) }}" placeholder="Ej: 150101">
+                            <p class="text-[11px] text-gray-400 mt-1">Necesario para que las guías de remisión a este cliente lleguen correctamente a SUNAT.</p>
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                             <input type="text" name="telefono" maxlength="20" class="w-full rounded-lg border-gray-300 shadow-sm" value="{{ old('telefono', $cliente->telefono) }}">
                         </div>

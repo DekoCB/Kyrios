@@ -340,7 +340,7 @@
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
                                             {{-- Opción "Todas" solo para serie --}}
                                             <div x-show="producto.esSerie" x-cloak
-                                                 @click="producto.varianteId = null; recargarImeisConVariante(idx)"
+                                                 @click="producto.varianteId = null; producto.stockOrigen = producto.stockTotal ?? producto.stockOrigen"
                                                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all"
                                                  :class="!producto.varianteId ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200' : 'border-gray-200 hover:border-blue-300'">
                                                 <div class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shrink-0">
@@ -379,7 +379,7 @@
                                             </template>
                                         </div>
 
-                                        <input type="hidden" :name="`productos[${idx}][variante_id]`" :value="producto.varianteId ?? ''">
+                                        <input type="hidden" :name="`productos[${idx}][variante_id]`" :value="varianteIdEnvioDe(idx) ?? ''">
                                     </div>
 
                                     {{-- ── CANTIDAD (accesorio) ── --}}
@@ -478,6 +478,16 @@
                                                                       class="text-[10px] text-gray-400 ml-1.5 font-mono"
                                                                       x-text="'S/N: ' + imei.serie"></span>
                                                             </div>
+                                                            {{-- Etiqueta de variante: solo visible en "Todas las variantes",
+                                                                 para distinguir de un vistazo de qué color/variante es cada IMEI --}}
+                                                            <span x-show="!producto.varianteId && producto.variantes.length > 0"
+                                                                  x-cloak
+                                                                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border border-gray-200 bg-white text-gray-500 shrink-0">
+                                                                <span x-show="varianteDeImei(idx, imei)?.color_hex"
+                                                                      class="w-2 h-2 rounded-full shrink-0"
+                                                                      :style="'background-color:' + (varianteDeImei(idx, imei)?.color_hex ?? '#ccc')"></span>
+                                                                <span x-text="varianteDeImei(idx, imei)?.nombre ?? '—'"></span>
+                                                            </span>
                                                             <span x-show="isSelected(idx, imei.id)"
                                                                   class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold shrink-0">✓</span>
                                                         </label>
@@ -494,6 +504,9 @@
                                                  class="mt-2 flex flex-wrap gap-1">
                                                 <template x-for="imeiId in producto.imeisSeleccionados" :key="imeiId">
                                                     <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-[10px] font-mono px-2 py-1 rounded-lg border border-purple-200">
+                                                        <span x-show="producto.variantes.length > 0 && getVarianteDeImeiId(idx, imeiId)?.color_hex"
+                                                              class="w-2 h-2 rounded-full shrink-0"
+                                                              :style="'background-color:' + (getVarianteDeImeiId(idx, imeiId)?.color_hex ?? '#ccc')"></span>
                                                         <span x-text="getImeiCodigo(idx, imeiId)"></span>
                                                         <button type="button" @click="toggleImei(idx, imeiId)"
                                                                 class="text-purple-400 hover:text-red-500 ml-0.5 leading-none">
@@ -584,6 +597,7 @@ function trasladoForm() {
                 codigo:            '',
                 esSerie:           false,
                 stockOrigen:       null,
+                stockTotal:        null,
                 variantes:         [],
                 cantidad:          1,
                 varianteId:        null,
@@ -668,6 +682,7 @@ function trasladoForm() {
             p.codigo             = item.codigo;
             p.esSerie            = item.es_serie;
             p.stockOrigen        = item.stock_origen;
+            p.stockTotal         = item.stock_origen;
             p.variantes          = item.variantes ?? [];
             p.varianteId         = null;
             p.cantidad           = 1;
@@ -684,17 +699,17 @@ function trasladoForm() {
         seleccionarVariante(idx, variante) {
             const p = this.productos[idx];
             if (String(p.varianteId) === String(variante.id)) {
-                if (p.esSerie) {
-                    p.varianteId = null;
-                    this.recargarImeisConVariante(idx);
-                }
+                p.varianteId = null;
+                p.stockOrigen = p.stockTotal ?? p.stockOrigen;
                 return;
             }
             p.varianteId = variante.id;
             p.stockOrigen = variante.stock;
-            if (p.esSerie) {
-                this.recargarImeisConVariante(idx);
-            }
+            // No se re-consulta ni se limpia imeisSeleccionados: los IMEIs de
+            // TODAS las variantes ya se cargaron una sola vez en cargarImeis()
+            // (cada uno trae su variante_id), así que cambiar el filtro solo
+            // cambia qué se ve en la lista — no borra lo ya marcado en otra
+            // variante, para poder combinar IMEIs de varios colores/variantes.
         },
 
         limpiarProducto(idx) {
@@ -704,6 +719,7 @@ function trasladoForm() {
             p.codigo             = '';
             p.esSerie            = false;
             p.stockOrigen        = null;
+            p.stockTotal         = null;
             p.variantes          = [];
             p.varianteId         = null;
             p.cantidad           = 1;
@@ -716,22 +732,15 @@ function trasladoForm() {
 
         // ── IMEI carga y gestión ─────────────────────────────────────
 
-        recargarImeisConVariante(idx) {
-            const p = this.productos[idx];
-            p.imeisSeleccionados = [];
-            p.imeisDisponibles   = [];
-            p.imeiBusqueda       = '';
-            if (p.esSerie && this.almacenId) {
-                this.cargarImeis(idx);
-            }
-        },
-
         async cargarImeis(idx) {
             const p = this.productos[idx];
             p.imeisLoading = true;
             try {
-                const varParam = p.varianteId ? `&variante_id=${p.varianteId}` : '';
-                const url  = `${imeisUrl}?producto_id=${p.productoId}&almacen_id=${this.almacenId}${varParam}`;
+                // Sin variante_id: trae los IMEIs de TODAS las variantes de una
+                // sola vez (cada uno con su propio variante_id). El filtro por
+                // variante se aplica solo en el cliente (imeisFiltradosDe), así
+                // se puede seleccionar de varias variantes sin perder lo marcado.
+                const url  = `${imeisUrl}?producto_id=${p.productoId}&almacen_id=${this.almacenId}`;
                 const resp = await fetch(url, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -753,12 +762,48 @@ function trasladoForm() {
 
         imeisFiltradosDe(idx) {
             const p = this.productos[idx];
-            if (!p || !p.imeiBusqueda.trim()) return p?.imeisDisponibles ?? [];
-            const q = p.imeiBusqueda.toLowerCase();
-            return p.imeisDisponibles.filter(i =>
-                i.codigo_imei.toLowerCase().includes(q) ||
-                (i.serie && i.serie.toLowerCase().includes(q))
-            );
+            if (!p) return [];
+            let lista = p.varianteId
+                ? p.imeisDisponibles.filter(i => String(i.variante_id) === String(p.varianteId))
+                : p.imeisDisponibles;
+            const q = p.imeiBusqueda.trim().toLowerCase();
+            if (q) {
+                lista = lista.filter(i =>
+                    i.codigo_imei.toLowerCase().includes(q) ||
+                    (i.serie && i.serie.toLowerCase().includes(q))
+                );
+            }
+            return lista;
+        },
+
+        // Info de la variante (nombre / color) a la que pertenece un IMEI —
+        // se usa para distinguir visualmente los IMEIs cuando se ve "Todas
+        // las variantes" y hay seleccionados de más de un color/variante.
+        varianteDeImei(idx, imei) {
+            const p = this.productos[idx];
+            if (!p || !imei?.variante_id) return null;
+            return p.variantes.find(v => String(v.id) === String(imei.variante_id)) ?? null;
+        },
+
+        getVarianteDeImeiId(idx, imeiId) {
+            const imei = this.productos[idx]?.imeisDisponibles.find(i => i.id === imeiId);
+            return imei ? this.varianteDeImei(idx, imei) : null;
+        },
+
+        // El chip de filtro activo (producto.varianteId) ya no representa
+        // necesariamente la variante de TODOS los IMEIs marcados (ahora se
+        // puede mezclar). El valor que se envía al backend se calcula a partir
+        // de lo realmente seleccionado: si todos son de la misma variante se
+        // envía esa; si están mezclados se envía null (sin variante única).
+        varianteIdEnvioDe(idx) {
+            const p = this.productos[idx];
+            if (!p) return null;
+            if (!p.esSerie || p.imeisSeleccionados.length === 0) return p.varianteId ?? null;
+            const variantesUsadas = new Set(p.imeisSeleccionados.map(id => {
+                const imei = p.imeisDisponibles.find(i => i.id === id);
+                return String(imei?.variante_id ?? '');
+            }));
+            return variantesUsadas.size === 1 ? [...variantesUsadas][0] : null;
         },
 
         toggleImei(idx, id) {
@@ -800,8 +845,10 @@ function trasladoForm() {
             return this.productos.every((p, idx) => {
                 if (!p.productoId)         return false;
                 if (this.esDuplicado(idx)) return false;
+                if (p.esSerie) return p.imeisSeleccionados.length > 0;
+                // Accesorio con variantes: al ser por cantidad (sin IMEI que lo
+                // identifique) sí se necesita fijar una única variante.
                 if (p.variantes.length > 0 && !p.varianteId) return false;
-                if (p.esSerie)             return p.imeisSeleccionados.length > 0;
                 return p.cantidad >= 1 && (p.stockOrigen === null || p.stockOrigen >= p.cantidad);
             });
         },

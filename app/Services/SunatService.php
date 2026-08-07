@@ -71,9 +71,23 @@ class SunatService
                         'distrito'         => $data['distrito']        ?? null,
                         'provincia'        => $data['provincia']       ?? null,
                         'departamento'     => $data['departamento']    ?? null,
+                        'ubigeo'           => $data['ubigeo']          ?? null,
                         'estado'           => $data['estado']          ?? null,
                         'condicion'        => $data['condicion']       ?? null,
                         'tipo'             => $data['tipoDocumento']   ?? null,
+                        // Desglose de dirección tal cual lo entrega la API (apis.net.pe):
+                        // útil para mostrar el detalle completo, aunque para SUNAT (GRE)
+                        // solo 'ubigeo' + 'direccion_fiscal' son los que realmente viajan.
+                        'via_tipo'         => $data['viaTipo']         ?? null,
+                        'via_nombre'       => $data['viaNombre']       ?? null,
+                        'zona_codigo'      => $data['zonaCodigo']      ?? null,
+                        'zona_tipo'        => $data['zonaTipo']        ?? null,
+                        'numero'           => $data['numero']          ?? null,
+                        'interior'         => $data['interior']        ?? null,
+                        'lote'             => $data['lote']            ?? null,
+                        'dpto'             => $data['dpto']            ?? null,
+                        'manzana'          => $data['manzana']         ?? null,
+                        'kilometro'        => $data['kilometro']       ?? null,
                     ],
                 ];
             }

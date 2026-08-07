@@ -54,34 +54,37 @@ class ComisionController extends Controller
 
     public function store(Request $request)
     {
-        // El modal envía el vendedor de "producto + vendedor" en un campo aparte
-        // (user_id_producto) para no colisionar con el <select name="user_id">
-        // del caso "vendedor específico" dentro del mismo formulario.
+        // El modal envía el vendedor de "producto + vendedor" y "categoría + vendedor"
+        // en campos aparte (user_id_producto / user_id_categoria) para no colisionar
+        // con el <select name="user_id"> del caso "vendedor específico".
         if ($request->tipo_aplicacion === 'producto_usuario') {
             $request->merge(['user_id' => $request->user_id_producto]);
+        } elseif ($request->tipo_aplicacion === 'categoria_usuario') {
+            $request->merge(['user_id' => $request->user_id_categoria]);
         }
 
         $request->validate([
             'nombre'           => 'required|string|max:100',
-            'tipo_aplicacion'  => 'required|in:usuario,categoria,producto,producto_usuario',
+            'tipo_aplicacion'  => 'required|in:usuario,categoria,producto,producto_usuario,categoria_usuario',
             'tipo_calculo'     => 'required|in:porcentaje,monto_fijo,porcentaje_margen',
             'valor'            => 'required|numeric|min:0.0001',
-            'user_id'          => 'nullable|required_if:tipo_aplicacion,usuario,producto_usuario|exists:users,id',
-            'categoria_id'     => 'nullable|required_if:tipo_aplicacion,categoria|exists:categorias,id',
+            'user_id'          => 'nullable|required_if:tipo_aplicacion,usuario,producto_usuario,categoria_usuario|exists:users,id',
+            'categoria_id'     => 'nullable|required_if:tipo_aplicacion,categoria,categoria_usuario|exists:categorias,id',
             'producto_id'      => 'nullable|required_if:tipo_aplicacion,producto,producto_usuario|exists:productos,id',
         ]);
 
-        $aplicaUsuario  = in_array($request->tipo_aplicacion, ['usuario', 'producto_usuario'], true);
-        $aplicaProducto = in_array($request->tipo_aplicacion, ['producto', 'producto_usuario'], true);
+        $aplicaUsuario   = in_array($request->tipo_aplicacion, ['usuario', 'producto_usuario', 'categoria_usuario'], true);
+        $aplicaProducto  = in_array($request->tipo_aplicacion, ['producto', 'producto_usuario'], true);
+        $aplicaCategoria = in_array($request->tipo_aplicacion, ['categoria', 'categoria_usuario'], true);
 
         ComisionRegla::create([
             'nombre'          => $request->nombre,
             'tipo_aplicacion' => $request->tipo_aplicacion,
             'tipo_calculo'    => $request->tipo_calculo,
             'valor'           => $request->valor,
-            'user_id'         => $aplicaUsuario  ? $request->user_id     : null,
-            'categoria_id'    => $request->tipo_aplicacion === 'categoria' ? $request->categoria_id : null,
-            'producto_id'     => $aplicaProducto ? $request->producto_id : null,
+            'user_id'         => $aplicaUsuario   ? $request->user_id     : null,
+            'categoria_id'    => $aplicaCategoria ? $request->categoria_id : null,
+            'producto_id'     => $aplicaProducto  ? $request->producto_id : null,
             'activo'          => true,
         ]);
 
@@ -251,6 +254,57 @@ class ComisionController extends Controller
             ->groupBy('user_id')
             ->get()->keyBy('user_id');
 
+        // ── Resumen mensual por vendedor (comisiones + bonos), para pago mensual ──
+        // No se filtra por fecha_desde/fecha_hasta (igual que el resumen de arriba):
+        // el objetivo es ver el histórico completo mes a mes y elegir cuál pagar.
+        $mensualComision = ComisionDetalleVenta::query()
+            ->join('detalle_ventas', 'comision_detalle_venta.detalle_venta_id', '=', 'detalle_ventas.id')
+            ->join('ventas', 'detalle_ventas.venta_id', '=', 'ventas.id')
+            ->join('users', 'users.id', '=', 'comision_detalle_venta.user_id')
+            ->when($request->filled('user_id'), fn($q) => $q->where('comision_detalle_venta.user_id', $request->user_id))
+            ->selectRaw("DATE_FORMAT(ventas.fecha, '%Y-%m') as mes, comision_detalle_venta.user_id as user_id, users.name as vendedor_nombre,
+                SUM(monto_comision) as pagado_y_pendiente,
+                SUM(CASE WHEN comision_detalle_venta.estado = 'pagado' THEN monto_comision ELSE 0 END) as pagado,
+                SUM(CASE WHEN comision_detalle_venta.estado = 'pendiente' THEN monto_comision ELSE 0 END) as pendiente")
+            ->groupBy('mes', 'comision_detalle_venta.user_id', 'users.name')
+            ->get();
+
+        $mensualBonus = BonusLiquidacion::query()
+            ->join('users', 'users.id', '=', 'bonus_liquidaciones.user_id')
+            ->when($request->filled('user_id'), fn($q) => $q->where('bonus_liquidaciones.user_id', $request->user_id))
+            ->selectRaw("DATE_FORMAT(bonus_liquidaciones.created_at, '%Y-%m') as mes, bonus_liquidaciones.user_id as user_id, users.name as vendedor_nombre,
+                SUM(monto_bonus) as pagado_y_pendiente,
+                SUM(CASE WHEN bonus_liquidaciones.estado = 'pagado' THEN monto_bonus ELSE 0 END) as pagado,
+                SUM(CASE WHEN bonus_liquidaciones.estado = 'pendiente' THEN monto_bonus ELSE 0 END) as pendiente")
+            ->groupBy('mes', 'bonus_liquidaciones.user_id', 'users.name')
+            ->get();
+
+        $resumenMensual = collect();
+        foreach ($mensualComision as $row) {
+            $resumenMensual[$row->mes . '|' . $row->user_id] = [
+                'mes' => $row->mes, 'vendedor_nombre' => $row->vendedor_nombre,
+                'comision_pendiente' => (float) $row->pendiente, 'comision_pagado' => (float) $row->pagado,
+                'bonus_pendiente' => 0.0, 'bonus_pagado' => 0.0,
+            ];
+        }
+        foreach ($mensualBonus as $row) {
+            $key = $row->mes . '|' . $row->user_id;
+            if (!isset($resumenMensual[$key])) {
+                $resumenMensual[$key] = [
+                    'mes' => $row->mes, 'vendedor_nombre' => $row->vendedor_nombre,
+                    'comision_pendiente' => 0.0, 'comision_pagado' => 0.0,
+                    'bonus_pendiente' => 0.0, 'bonus_pagado' => 0.0,
+                ];
+            }
+            $resumenMensual[$key]['bonus_pendiente'] = (float) $row->pendiente;
+            $resumenMensual[$key]['bonus_pagado']    = (float) $row->pagado;
+        }
+
+        $resumenMensualPorMes = $resumenMensual->values()
+            ->sortBy('vendedor_nombre')
+            ->groupBy('mes')
+            ->sortKeysDesc();
+
         $todosUserIds = $resumenComision->keys()->merge($resumenBonus->keys())->unique();
         $resumen = $todosUserIds->map(function ($uid) use ($resumenComision, $resumenBonus) {
             $c = $resumenComision[$uid] ?? null;
@@ -265,7 +319,7 @@ class ComisionController extends Controller
             ];
         })->values();
 
-        return view('comisiones.reporte', compact('comisiones', 'bonos', 'resumen', 'vendedores'));
+        return view('comisiones.reporte', compact('comisiones', 'bonos', 'resumen', 'resumenMensualPorMes', 'vendedores'));
     }
 
     // ══════════════════════════════════════════════════════════════════

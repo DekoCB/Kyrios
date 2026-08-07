@@ -17,6 +17,7 @@ class Cliente extends Model
         'distrito',
         'provincia',
         'departamento',
+        'ubigeo',
         'telefono',
         'email',
         'estado',

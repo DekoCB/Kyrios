@@ -265,10 +265,15 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <th style="width:45px; text-align:center">UNIDAD</th>
                 <th style="width:60px">CÓDIGO</th>
                 <th>DESCRIPCIÓN</th>
+                <th style="width:65px; text-align:center">SERIE / IMEI</th>
             </tr>
         </thead>
         <tbody>
             @foreach($guia->detalles as $i => $det)
+            @php
+                $esSerie   = $det->producto?->tipo_inventario === 'serie';
+                $movimiento = ($movimientosPorLinea ?? collect())->get($det->producto_id . '-' . ($det->variante_id ?? ''));
+            @endphp
             <tr>
                 <td style="text-align:center; color:#888">{{ $i + 1 }}</td>
                 <td style="text-align:center; font-weight:bold">{{ $det->cantidad }}</td>
@@ -283,6 +288,17 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                         <br><span style="font-size:6pt; color:#777">{{ $det->descripcion }}</span>
                     @endif
                 </td>
+                <td style="text-align:center; font-size:6pt; font-family:monospace; color:#555">
+                    @if($esSerie)
+                        @forelse(($movimiento?->imeisTrasladados ?? collect()) as $ti)
+                            {{ $ti->imei?->codigo_imei }}<br>
+                        @empty
+                            —
+                        @endforelse
+                    @else
+                        —
+                    @endif
+                </td>
             </tr>
             @endforeach
         </tbody>
@@ -291,6 +307,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <td></td>
                 <td style="text-align:center">{{ $totalUnidades }}</td>
                 <td colspan="2" style="text-align:right; font-size:6.5pt; color:#555">Total unidades</td>
+                <td></td>
                 <td></td>
             </tr>
         </tfoot>
@@ -302,19 +319,20 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
     <div class="tr">
         <div class="td" style="width:45%; padding-right:3px">
             <div class="box">
-                <div class="box-title">Unidad de Transporte / Conductor</div>
+                <div class="box-title">{{ $guia->modalidad === 'publico' ? 'Transportista' : 'Unidad de Transporte / Conductor' }}</div>
                 <div class="box-body">
+                @if($guia->modalidad === 'privado')
                     <div class="fl">Vehículo / Placa</div>
                     <div class="fv">{{ $guia->placa_vehiculo ?? '—' }}</div>
                     <div class="tbl" style="margin-top:2px">
                         <div class="tr">
                             <div class="td" style="width:50%">
                                 <div class="fl">Cert. de Inscripción</div>
-                                <div class="fv">&nbsp;</div>
+                                <div class="fv">—</div>
                             </div>
                             <div class="td" style="width:50%">
                                 <div class="fl">Licencia de Conducir</div>
-                                <div class="fv">{{ $guia->conductor_licencia ?? '&nbsp;' }}</div>
+                                <div class="fv">{{ $guia->conductor_licencia ?? '—' }}</div>
                             </div>
                         </div>
                     </div>
@@ -322,14 +340,28 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                         <div class="tr">
                             <div class="td" style="width:55%">
                                 <div class="fl">Conductor</div>
-                                <div class="fv bold">{{ $guia->conductor_nombre ?? ($guia->transportista_nombre ?? '—') }}</div>
+                                <div class="fv bold">{{ $guia->conductor_nombre ?? '—' }}</div>
                             </div>
                             <div class="td" style="width:45%">
                                 <div class="fl">DNI</div>
-                                <div class="fv">{{ $guia->conductor_dni ?? ($guia->transportista_doc ?? '—') }}</div>
+                                <div class="fv">{{ $guia->conductor_dni ?? '—' }}</div>
                             </div>
                         </div>
                     </div>
+                @else
+                    <div class="tbl" style="margin-top:2px">
+                        <div class="tr">
+                            <div class="td" style="width:55%">
+                                <div class="fl">Razón Social / Nombre</div>
+                                <div class="fv bold">{{ $guia->transportista_nombre ?? '—' }}</div>
+                            </div>
+                            <div class="td" style="width:45%">
+                                <div class="fl">{{ $guia->transportista_tipo_doc ?? 'RUC' }}</div>
+                                <div class="fv">{{ $guia->transportista_doc ?? '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 </div>
             </div>
         </div>

@@ -300,6 +300,43 @@ class ComisionVendedorTest extends TestCase
     }
 
     // ══════════════════════════════════════════════════════════════════════
+    // TEST 2B: Prioridad de reglas — categoría+vendedor debe ganarle a "categoria"
+    // ══════════════════════════════════════════════════════════════════════
+    public function test_regla_categoria_usuario_tiene_prioridad_sobre_regla_categoria(): void
+    {
+        $producto = $this->crearProducto();
+        $this->darStock($producto, 10, 50.00);
+
+        // Regla genérica por categoría: 5%
+        $reglaCategoria = ComisionRegla::create([
+            'nombre' => 'Genérica categoría', 'tipo_aplicacion' => 'categoria',
+            'categoria_id' => $this->categoria->id, 'tipo_calculo' => 'porcentaje', 'valor' => 5, 'activo' => true,
+        ]);
+        $this->createdReglas[] = $reglaCategoria->id;
+
+        // Regla específica categoría+vendedor: 15% (debe ganar)
+        $reglaEspecifica = ComisionRegla::create([
+            'nombre' => 'Categoría+Vendedor', 'tipo_aplicacion' => 'categoria_usuario',
+            'user_id' => $this->vendedor->id, 'categoria_id' => $this->categoria->id,
+            'tipo_calculo' => 'porcentaje', 'valor' => 15, 'activo' => true,
+        ]);
+        $this->createdReglas[] = $reglaEspecifica->id;
+
+        $venta = $this->crearVentaComoVendedor($producto, 1, 100.00); // subtotal_con_igv = 118.00
+        $detalle = $venta->detalles()->first();
+        $comision = ComisionDetalleVenta::where('detalle_venta_id', $detalle->id)->first();
+
+        $this->assertNotNull($comision);
+        $this->assertEquals(
+            $reglaEspecifica->id,
+            $comision->regla_id,
+            'BUG: se aplicó la regla genérica de categoría en vez de la más específica categoría+vendedor.'
+        );
+        // 15% de 118.00 = 17.70
+        $this->assertEqualsWithDelta(17.70, (float) $comision->monto_comision, 0.01);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
     // TEST 3: Venta pendiente → se paga después → comisión se genera recién
     //         al confirmar el pago (no antes)
     // ══════════════════════════════════════════════════════════════════════

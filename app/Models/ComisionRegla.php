@@ -40,6 +40,7 @@ class ComisionRegla extends Model
             'categoria'        => 'Categoría',
             'producto'         => 'Producto',
             'producto_usuario' => 'Producto + Vendedor',
+            'categoria_usuario'=> 'Categoría + Vendedor',
             default            => ucfirst($this->tipo_aplicacion),
         };
     }

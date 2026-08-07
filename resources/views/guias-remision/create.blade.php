@@ -278,7 +278,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Modalidad *</label>
-                            <select name="modalidad" required x-model="modalidad"
+                            <select name="modalidad" required x-model="modalidad" @change="onModalidadChange()"
                                     class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
                                 <option value="privado">Transporte Privado (propio)</option>
                                 <option value="publico">Transporte Público (tercero)</option>
@@ -340,8 +340,9 @@
                         </div>
                     </div>
 
-                    {{-- Conductor --}}
-                    <div class="border-t border-gray-100 pt-4">
+                    {{-- Conductor (privado): en público no sabemos quién conduce, solo
+                         importa el transportista (empresa) que se encarga del traslado --}}
+                    <div x-show="modalidad === 'privado'" x-cloak class="border-t border-gray-100 pt-4">
                         <div class="flex items-center justify-between mb-3">
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                                 <i class="fas fa-user-tie mr-1 text-purple-400"></i>Datos del Conductor
@@ -932,6 +933,19 @@ function guiaForm() {
             this.condDni = ultimoConductor.dni; this.condNombre = ultimoConductor.nombre;
             this.condLicencia = ultimoConductor.licencia; this.condPlaca = ultimoConductor.placa;
             this.condError = '';
+        },
+
+        // Al cambiar de modalidad se limpia el bloque que deja de aplicar, para
+        // no enviar al guardar datos de conductor/vehículo en una guía pública
+        // (donde no se conoce al chofer) ni datos de transportista en una privada.
+        onModalidadChange() {
+            if (this.modalidad === 'publico') {
+                this.condDni = ''; this.condNombre = ''; this.condLicencia = ''; this.condPlaca = '';
+                this.condError = '';
+            } else {
+                this.transpTipoDoc = 'RUC'; this.transpDoc = ''; this.transpNombre = '';
+                this.transpError = '';
+            }
         },
 
         async buscarDestinatarioAjax() {

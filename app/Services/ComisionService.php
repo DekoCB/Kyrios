@@ -11,7 +11,7 @@ class ComisionService
 {
     /**
      * Calcula y persiste comisiones para todos los detalles de una venta.
-     * Prioridad de regla: producto+vendedor > producto > categoría > usuario.
+     * Prioridad de regla: producto+vendedor > producto > categoría+vendedor > categoría > usuario.
      */
     public function calcularParaVenta(Venta $venta): void
     {
@@ -123,6 +123,16 @@ class ComisionService
             ->first();
 
         if ($regla) return $regla;
+
+        // Categoría + Vendedor
+        if ($categoriaId) {
+            $regla = ComisionRegla::where('activo', true)
+                ->where('tipo_aplicacion', 'categoria_usuario')
+                ->where('categoria_id', $categoriaId)
+                ->where('user_id', $vendedorId)
+                ->first();
+            if ($regla) return $regla;
+        }
 
         // Categoría
         if ($categoriaId) {

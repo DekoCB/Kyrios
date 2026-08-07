@@ -393,6 +393,12 @@ class TrasladoController extends Controller
             ], 404);
         }
 
-        return response()->json(['nombre' => $result['data']['razon_social'] ?? null]);
+        // Se devuelve el detalle completo que entrega la API (razón social,
+        // dirección desglosada, ubigeo, estado, condición, etc.), no solo el
+        // nombre: el front lo usa para mostrar toda la info del transportista.
+        $data           = $result['data'];
+        $data['nombre'] = $data['razon_social'] ?? null;
+
+        return response()->json($data);
     }
 }

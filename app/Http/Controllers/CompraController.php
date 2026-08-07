@@ -402,6 +402,7 @@ class CompraController extends Controller
             'forma_pago'                => 'required|in:contado,credito',
             'condicion_pago'            => 'nullable|integer|min:1|max:365',
             'observaciones'             => 'nullable|string',
+            'incluye_igv'               => 'nullable|boolean',
             'detalles'                  => 'nullable|array',
             'detalles.*.id'             => 'required_with:detalles|integer|exists:detalle_compras,id',
             'detalles.*.cantidad'       => 'required_with:detalles|integer|min:1',

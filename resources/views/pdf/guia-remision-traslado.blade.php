@@ -322,19 +322,20 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
     <div class="tr">
         <div class="td" style="width:45%; padding-right:3px">
             <div class="box">
-                <div class="box-title">Unidad de Transporte / Conductor / Transportista</div>
+                <div class="box-title">{{ $guia->modalidad === 'publico' ? 'Transportista' : 'Unidad de Transporte / Conductor' }}</div>
                 <div class="box-body">
+                @if($guia->modalidad === 'privado')
                     <div class="fl">Vehículo / Placa</div>
                     <div class="fv">{{ $guia->placa_vehiculo ?? '—' }}</div>
                     <div class="tbl" style="margin-top:2px">
                         <div class="tr">
                             <div class="td" style="width:50%">
                                 <div class="fl">Cert. de Inscripción</div>
-                                <div class="fv">&nbsp;</div>
+                                <div class="fv">—</div>
                             </div>
                             <div class="td" style="width:50%">
                                 <div class="fl">Licencia de Conducir</div>
-                                <div class="fv">{{ $guia->conductor_licencia ?? '&nbsp;' }}</div>
+                                <div class="fv">{{ $guia->conductor_licencia ?? '—' }}</div>
                             </div>
                         </div>
                     </div>
@@ -342,14 +343,28 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                         <div class="tr">
                             <div class="td" style="width:55%">
                                 <div class="fl">Conductor</div>
-                                <div class="fv bold">{{ $guia->conductor_nombre ?? ($guia->transportista_nombre ?? '—') }}</div>
+                                <div class="fv bold">{{ $guia->conductor_nombre ?? '—' }}</div>
                             </div>
                             <div class="td" style="width:45%">
                                 <div class="fl">DNI</div>
-                                <div class="fv">{{ $guia->conductor_dni ?? ($guia->transportista_doc ?? '—') }}</div>
+                                <div class="fv">{{ $guia->conductor_dni ?? '—' }}</div>
                             </div>
                         </div>
                     </div>
+                @else
+                    <div class="tbl" style="margin-top:2px">
+                        <div class="tr">
+                            <div class="td" style="width:55%">
+                                <div class="fl">Razón Social / Nombre</div>
+                                <div class="fv bold">{{ $guia->transportista_nombre ?? '—' }}</div>
+                            </div>
+                            <div class="td" style="width:45%">
+                                <div class="fl">{{ $guia->transportista_tipo_doc ?? 'RUC' }}</div>
+                                <div class="fv">{{ $guia->transportista_doc ?? '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 </div>
             </div>
         </div>

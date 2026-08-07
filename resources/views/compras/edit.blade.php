@@ -288,14 +288,33 @@
                                     @endforeach
                                 </tbody>
                                 <tfoot class="bg-gray-50">
-                                    @php $tipoOp = $compra->tipo_operacion ?? '01'; @endphp
+                                    @php
+                                        $tipoOp = $compra->tipo_operacion ?? '01';
+                                        // Detección: si el precio se ingresó "con IGV incluido" al crear la
+                                        // compra, cada detalle guarda el monto CON IGV, y la suma de los
+                                        // detalles coincide con el total (no con el subtotal). Se usa para
+                                        // que el recálculo en vivo (al editar cantidad/precio) no vuelva a
+                                        // sumar el 18% sobre un monto que ya lo trae incluido.
+                                        $sumaDetalleOriginal = $compra->detalles->sum('subtotal');
+                                        $detalleGuardaConIgv = $tipoOp === '01' && $compra->incluye_igv
+                                            && abs($sumaDetalleOriginal - (float) $compra->total) < 0.05
+                                            && abs($sumaDetalleOriginal - (float) $compra->subtotal) >= 0.05;
+                                    @endphp
                                     <tr>
                                         <td colspan="5" class="px-4 py-2 text-right text-sm font-semibold text-gray-700">Subtotal:</td>
                                         <td class="px-4 py-2 text-right font-bold text-blue-900" id="resumen-subtotal">{{ number_format($compra->subtotal, 2) }}</td>
                                     </tr>
                                     @if($tipoOp === '01')
                                     <tr>
-                                        <td colspan="5" class="px-4 py-2 text-right text-sm font-semibold text-gray-700">IGV (18%):</td>
+                                        <td colspan="5" class="px-4 py-2 text-right">
+                                            <label class="inline-flex items-center gap-2 cursor-pointer justify-end w-full">
+                                                <input type="hidden" name="incluye_igv" value="0">
+                                                <input type="checkbox" id="incluir_igv_edit" name="incluye_igv" value="1"
+                                                       {{ $compra->incluye_igv ? 'checked' : '' }}
+                                                       class="w-4 h-4 rounded border-gray-300 text-blue-900 focus:ring-blue-900">
+                                                <span class="text-sm font-semibold text-gray-700">IGV (18%):</span>
+                                            </label>
+                                        </td>
                                         <td class="px-4 py-2 text-right font-bold text-blue-900" id="resumen-igv">{{ number_format($compra->igv, 2) }}</td>
                                     </tr>
                                     @endif
@@ -506,10 +525,12 @@
         })();
 
         // ── Recálculo de subtotales en tiempo real ──────────────────────
-        const tipoOp = '{{ $compra->tipo_operacion ?? "01" }}';
+        const tipoOp             = '{{ $compra->tipo_operacion ?? "01" }}';
+        const detalleGuardaConIgv = {{ $detalleGuardaConIgv ? 'true' : 'false' }};
+        const chkIncluyeIgv       = document.getElementById('incluir_igv_edit');
 
         function recalcularTotales() {
-            let subtotal = 0;
+            let sumaDetalle = 0;
             document.querySelectorAll('#tablaProductos tbody tr').forEach(function(row) {
                 const idx      = row.dataset.index;
                 const cantidad = parseFloat(document.querySelector(`[name="detalles[${idx}][cantidad]"]`)?.value) || 0;
@@ -517,11 +538,26 @@
                 const linea    = cantidad * precio;
                 const span     = row.querySelector('.subtotal-linea');
                 if (span) span.textContent = linea.toFixed(2);
-                subtotal += linea;
+                sumaDetalle += linea;
             });
 
-            const igv   = tipoOp === '01' ? subtotal * 0.18 : 0;
-            const total = subtotal + igv;
+            const incluyeIgv = tipoOp === '01' && (!chkIncluyeIgv || chkIncluyeIgv.checked);
+
+            let subtotal, igv, total;
+            if (!incluyeIgv) {
+                subtotal = sumaDetalle; igv = 0; total = sumaDetalle;
+            } else if (detalleGuardaConIgv) {
+                // Los precios de línea ya traen el IGV incluido: se extrae la base.
+                subtotal = sumaDetalle / 1.18;
+                igv      = sumaDetalle - subtotal;
+                total    = sumaDetalle;
+            } else {
+                // Los precios de línea son sin IGV: se agrega el 18% encima.
+                subtotal = sumaDetalle;
+                igv      = sumaDetalle * 0.18;
+                total    = subtotal + igv;
+            }
+
             const elSub = document.getElementById('resumen-subtotal');
             const elIgv = document.getElementById('resumen-igv');
             const elTot = document.getElementById('resumen-total');
@@ -533,6 +569,7 @@
         document.querySelectorAll('.detalle-cantidad, .detalle-precio').forEach(function(input) {
             input.addEventListener('input', recalcularTotales);
         });
+        if (chkIncluyeIgv) chkIncluyeIgv.addEventListener('change', recalcularTotales);
 
         // ══════════════════════════════════════════════════════════════════
         // ELIMINAR DETALLE

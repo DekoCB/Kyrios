@@ -166,6 +166,7 @@
                                     'categoria'        => 'bg-blue-100 text-blue-700',
                                     'producto'         => 'bg-orange-100 text-orange-700',
                                     'producto_usuario' => 'bg-pink-100 text-pink-700',
+                                    'categoria_usuario'=> 'bg-teal-100 text-teal-700',
                                     default            => 'bg-gray-100 text-gray-600',
                                 }; @endphp
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold {{ $css }}">
@@ -175,6 +176,8 @@
                             <td class="px-4 py-3 text-gray-600 text-xs max-w-[160px] truncate">
                                 @if($regla->tipo_aplicacion === 'producto_usuario')
                                     {{ $regla->producto?->nombre }} — {{ $regla->usuario?->name }}
+                                @elseif($regla->tipo_aplicacion === 'categoria_usuario')
+                                    {{ $regla->categoria?->nombre }} — {{ $regla->usuario?->name }}
                                 @else
                                     {{ $regla->usuario?->name ?? $regla->categoria?->nombre ?? $regla->producto?->nombre ?? '—' }}
                                 @endif
@@ -235,7 +238,7 @@
         </div>
         <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700 flex gap-2">
             <i class="fas fa-info-circle shrink-0 mt-0.5"></i>
-            <span><strong>Prioridad:</strong> Producto › Categoría › Usuario. Si un producto tiene regla específica se usa esa; si no, sube a categoría y luego al vendedor. La comisión <strong>sobre margen</strong> usa el costo promedio del producto.</span>
+            <span><strong>Prioridad:</strong> Producto+Vendedor › Producto › Categoría+Vendedor › Categoría › Usuario. Se usa siempre la regla más específica que aplique a la venta. La comisión <strong>sobre margen</strong> usa el costo promedio del producto.</span>
         </div>
     </div>
 
@@ -397,11 +400,12 @@
                             <option value="categoria">Categoría</option>
                             <option value="producto">Producto específico</option>
                             <option value="producto_usuario">Producto + Vendedor específico</option>
+                            <option value="categoria_usuario">Categoría + Vendedor específico</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">
-                            <span x-text="tipoAplicacion==='usuario'?'Vendedor':tipoAplicacion==='categoria'?'Categoría':'Producto'"></span> *
+                            <span x-text="tipoAplicacion==='usuario'?'Vendedor':(tipoAplicacion==='categoria'||tipoAplicacion==='categoria_usuario')?'Categoría':'Producto'"></span> *
                         </label>
                         <select x-show="tipoAplicacion==='usuario'" name="user_id"
                                 x-model="vendedorSeleccionado"
@@ -409,7 +413,7 @@
                             <option value="">— Seleccione —</option>
                             @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
                         </select>
-                        <select x-show="tipoAplicacion==='categoria'" name="categoria_id"
+                        <select x-show="tipoAplicacion==='categoria' || tipoAplicacion==='categoria_usuario'" name="categoria_id"
                                 x-model="categoriaSeleccionada"
                                 class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
                             <option value="">— Seleccione —</option>
@@ -427,6 +431,15 @@
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Vendedor *</label>
                     <select name="user_id_producto"
                             x-model="vendedorProductoSeleccionado"
+                            class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">— Seleccione —</option>
+                        @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
+                    </select>
+                </div>
+                <div x-show="tipoAplicacion==='categoria_usuario'" x-cloak>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Vendedor *</label>
+                    <select name="user_id_categoria"
+                            x-model="vendedorCategoriaSeleccionado"
                             class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
                         <option value="">— Seleccione —</option>
                         @foreach($vendedores as $v)<option value="{{ $v->id }}">{{ $v->name }}</option>@endforeach
@@ -465,7 +478,7 @@
                 </div>
                 <div class="text-[11px] text-gray-500 flex gap-1.5 items-start">
                     <i class="fas fa-circle-info shrink-0 mt-0.5"></i>
-                    <span>Si un producto tiene varias reglas que le aplican, gana la más específica: <strong>Producto+Vendedor › Producto › Categoría › Vendedor</strong>. La regla solo afecta ventas nuevas, no las ya registradas.</span>
+                    <span>Si un producto tiene varias reglas que le aplican, gana la más específica: <strong>Producto+Vendedor › Producto › Categoría+Vendedor › Categoría › Vendedor</strong>. La regla solo afecta ventas nuevas, no las ya registradas.</span>
                 </div>
 
                 <div x-show="tipoCalculo==='porcentaje_margen'" x-cloak
@@ -747,6 +760,7 @@ function comisionesApp() {
         vendedorSeleccionado: '',
         categoriaSeleccionada: '',
         vendedorProductoSeleccionado: '',
+        vendedorCategoriaSeleccionado: '',
         valorComision: '',
         editComisionId: null,
         editComisionNombre: '',
@@ -777,10 +791,14 @@ function comisionesApp() {
                 quien = this.productoSeleccionado
                     ? `por cada unidad vendida de "${nombresProductos[this.productoSeleccionado]}", lo venda quien lo venda`
                     : 'por cada unidad vendida del producto que selecciones, lo venda quien lo venda';
-            } else {
+            } else if (this.tipoAplicacion === 'producto_usuario') {
                 const prod = this.productoSeleccionado ? nombresProductos[this.productoSeleccionado] : 'el producto que selecciones';
                 const vend = this.vendedorProductoSeleccionado ? nombresVendedores[this.vendedorProductoSeleccionado] : 'el vendedor que selecciones';
                 quien = `solo cuando ${vend} venda "${prod}" (no aplica si lo vende otro vendedor, ni si ${vend} vende otro producto)`;
+            } else {
+                const cat = this.categoriaSeleccionada ? nombresCategorias[this.categoriaSeleccionada] : 'la categoría que selecciones';
+                const vend = this.vendedorCategoriaSeleccionado ? nombresVendedores[this.vendedorCategoriaSeleccionado] : 'el vendedor que selecciones';
+                quien = `solo cuando ${vend} venda algo de la categoría "${cat}" (no aplica si lo vende otro vendedor, ni si ${vend} vende de otra categoría)`;
             }
 
             return `Se pagará ${calculo} ${quien}.`;
@@ -823,6 +841,7 @@ function comisionesApp() {
             this.vendedorSeleccionado = '';
             this.categoriaSeleccionada = '';
             this.vendedorProductoSeleccionado = '';
+            this.vendedorCategoriaSeleccionado = '';
             this.valorComision = '';
         },
 

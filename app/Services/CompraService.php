@@ -538,6 +538,25 @@ class CompraService
     {
         DB::transaction(function () use ($compra, $datos, $detalles) {
 
+            // Al crear la compra con "el precio ya incluye IGV" marcado, el
+            // subtotal de CADA detalle se guarda tal cual se ingresó (con IGV
+            // incluido), mientras que la cabecera (compra.subtotal) sí queda
+            // separada en base+IGV — es decir, sum(detalles.subtotal) puede
+            // coincidir con compra.total en vez de con compra.subtotal. Antes
+            // de tocar nada, detectamos cuál es el caso de ESTA compra
+            // comparando su estado actual, así el recálculo de abajo aplica el
+            // mismo criterio con el que se guardó originalmente (si no, se
+            // vuelve a sumar el 18% sobre un monto que ya lo tenía incluido).
+            $tipoOp    = $compra->tipo_operacion ?? '01';
+            $incluyeIgv = array_key_exists('incluye_igv', $datos)
+                ? filter_var($datos['incluye_igv'], FILTER_VALIDATE_BOOLEAN)
+                : (bool) $compra->incluye_igv;
+
+            $sumaDetalleOriginal = $compra->detalles->sum('subtotal');
+            $detalleGuardaConIgv = $tipoOp === '01' && $incluyeIgv
+                && abs($sumaDetalleOriginal - (float) $compra->total) < 0.05
+                && abs($sumaDetalleOriginal - (float) $compra->subtotal) >= 0.05;
+
             // ── 1. Actualizar detalles (cantidad / precio) ──────────────────
             foreach ($detalles as $item) {
                 $detalle = DetalleCompra::find($item['id']);
@@ -603,18 +622,23 @@ class CompraService
 
             // ── 2. Recalcular totales de la compra ──────────────────────────
             $compra->load('detalles'); // refrescar detalles tras los updates
-            $tipoOp = $compra->tipo_operacion ?? '01';
 
-            $subtotalNuevo = $compra->detalles->sum('subtotal');
+            $sumaDetalleNueva = $compra->detalles->sum('subtotal');
 
-            if ($tipoOp === '01') {
-                // Gravado: el subtotal YA incluye IGV si la compra lo maneja así,
-                // o no. Respetamos la misma lógica original: subtotal sin IGV.
-                $igvNuevo   = round($subtotalNuevo * 0.18, 2);
-                $totalNuevo = round($subtotalNuevo + $igvNuevo, 2);
+            if ($tipoOp !== '01' || !$incluyeIgv) {
+                $subtotalNuevo = $sumaDetalleNueva;
+                $igvNuevo      = 0;
+                $totalNuevo    = $sumaDetalleNueva;
+            } elseif ($detalleGuardaConIgv) {
+                // Los detalles guardan precio CON IGV incluido: se extrae la base.
+                $subtotalNuevo = round($sumaDetalleNueva / 1.18, 2);
+                $igvNuevo      = round($sumaDetalleNueva - $subtotalNuevo, 2);
+                $totalNuevo    = $sumaDetalleNueva;
             } else {
-                $igvNuevo   = 0;
-                $totalNuevo = $subtotalNuevo;
+                // Los detalles guardan precio SIN IGV: se agrega el 18% encima.
+                $subtotalNuevo = $sumaDetalleNueva;
+                $igvNuevo      = round($sumaDetalleNueva * 0.18, 2);
+                $totalNuevo    = round($subtotalNuevo + $igvNuevo, 2);
             }
 
             // ── 3. Actualizar cabecera ──────────────────────────────────────
@@ -623,7 +647,12 @@ class CompraService
                     'proveedor_id', 'numero_factura', 'almacen_id',
                     'fecha', 'forma_pago', 'condicion_pago', 'observaciones',
                 ])),
-                ['subtotal' => $subtotalNuevo, 'igv' => $igvNuevo, 'total' => $totalNuevo]
+                [
+                    'incluye_igv' => $incluyeIgv,
+                    'subtotal'    => $subtotalNuevo,
+                    'igv'         => $igvNuevo,
+                    'total'       => $totalNuevo,
+                ]
             );
 
             $compra->update($camposCabecera);

@@ -36,6 +36,7 @@ class ClienteController extends Controller
             'distrito' => 'nullable|string|max:100',
             'provincia' => 'nullable|string|max:100',
             'departamento' => 'nullable|string|max:100',
+            'ubigeo' => 'nullable|string|max:6',
             'telefono' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'estado' => 'required|in:activo,inactivo',
@@ -73,6 +74,7 @@ class ClienteController extends Controller
             'distrito' => 'nullable|string|max:100',
             'provincia' => 'nullable|string|max:100',
             'departamento' => 'nullable|string|max:100',
+            'ubigeo' => 'nullable|string|max:6',
             'telefono' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'estado' => 'required|in:activo,inactivo',
@@ -124,6 +126,7 @@ class ClienteController extends Controller
                 'distrito'     => $result['data']['distrito']          ?? '',
                 'provincia'    => $result['data']['provincia']         ?? '',
                 'departamento' => $result['data']['departamento']      ?? '',
+                'ubigeo'       => $result['data']['ubigeo']             ?? '',
             ]);
         }
 

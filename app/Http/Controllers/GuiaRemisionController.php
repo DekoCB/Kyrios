@@ -208,6 +208,14 @@ class GuiaRemisionController extends Controller
             'detalles.producto.unidadMedida', 'detalles.variante',
         ]);
 
+        // Los IMEIs no se guardan en guia_remision_detalles: se registran en el
+        // MovimientoInventario que se crea junto con la guía (mismo numero_guia),
+        // vía TrasladoImei. Se recuperan aquí para poder listarlos en el PDF.
+        $movimientosPorLinea = \App\Models\MovimientoInventario::where('numero_guia', $guia->numero_guia)
+            ->with('imeisTrasladados.imei')
+            ->get()
+            ->keyBy(fn($m) => $m->producto_id . '-' . ($m->variante_id ?? ''));
+
         $empresa = Empresa::first();
 
         $pdf = Pdf::setOptions([
@@ -215,7 +223,7 @@ class GuiaRemisionController extends Controller
             'isRemoteEnabled'      => true,
             'defaultFont'          => 'DejaVu Sans',
             'chroot'               => public_path(),
-        ])->loadView('pdf.guia-remision-modulo', compact('guia', 'empresa'));
+        ])->loadView('pdf.guia-remision-modulo', compact('guia', 'empresa', 'movimientosPorLinea'));
 
         $pdf->setPaper('A4', 'portrait');
 
@@ -280,6 +288,10 @@ class GuiaRemisionController extends Controller
         if (!($result['success'] ?? false)) {
             return response()->json(['error' => $result['message'] ?? 'RUC no encontrado.'], 404);
         }
-        return response()->json(['nombre' => $result['data']['razon_social'] ?? null]);
+
+        $data           = $result['data'];
+        $data['nombre'] = $data['razon_social'] ?? null;
+
+        return response()->json($data);
     }
 }

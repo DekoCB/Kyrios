@@ -100,6 +100,69 @@
     </div>
     @endif
 
+    {{-- Resumen mensual (para pago mensual) --}}
+    @if($resumenMensualPorMes->isNotEmpty())
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6" x-data="{ mesAbierto: '{{ $resumenMensualPorMes->keys()->first() }}' }">
+        <div class="bg-linear-to-r from-indigo-900 to-indigo-700 px-6 py-4 flex items-center gap-3">
+            <div class="bg-white/20 rounded-xl p-2.5"><i class="fas fa-calendar-alt text-white text-xl"></i></div>
+            <div>
+                <h2 class="text-base font-bold text-white">Resumen Mensual</h2>
+                <p class="text-indigo-200 text-xs">Totales por vendedor y mes, para liquidar el pago mensual</p>
+            </div>
+        </div>
+        <div class="divide-y divide-gray-100">
+            @foreach($resumenMensualPorMes as $mes => $filas)
+                @php
+                    $mesLabel = \Carbon\Carbon::createFromFormat('Y-m', $mes)->locale('es')->translatedFormat('F Y');
+                    $mesLabel = ucfirst($mesLabel);
+                    $totalPendienteMes = $filas->sum(fn($f) => $f['comision_pendiente'] + $f['bonus_pendiente']);
+                    $totalPagadoMes    = $filas->sum(fn($f) => $f['comision_pagado']    + $f['bonus_pagado']);
+                @endphp
+                <div>
+                    <button type="button" @click="mesAbierto = (mesAbierto === '{{ $mes }}' ? null : '{{ $mes }}')"
+                            class="w-full px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition text-left">
+                        <span class="font-semibold text-gray-800 text-sm flex items-center gap-2">
+                            <i class="fas fa-chevron-right text-xs text-gray-400 transition-transform" :class="mesAbierto === '{{ $mes }}' ? 'rotate-90' : ''"></i>
+                            {{ $mesLabel }}
+                        </span>
+                        <span class="flex items-center gap-3 text-xs">
+                            <span class="text-amber-600 font-semibold">Pendiente: S/ {{ number_format($totalPendienteMes, 2) }}</span>
+                            <span class="text-green-600 font-semibold">Pagado: S/ {{ number_format($totalPagadoMes, 2) }}</span>
+                        </span>
+                    </button>
+                    <div x-show="mesAbierto === '{{ $mes }}'" x-cloak class="overflow-x-auto border-t border-gray-100">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left font-semibold text-gray-500 uppercase">Vendedor</th>
+                                    <th class="px-4 py-2 text-right font-semibold text-gray-500 uppercase">Comisión Pend.</th>
+                                    <th class="px-4 py-2 text-right font-semibold text-gray-500 uppercase">Comisión Pag.</th>
+                                    <th class="px-4 py-2 text-right font-semibold text-gray-500 uppercase">Bono Pend.</th>
+                                    <th class="px-4 py-2 text-right font-semibold text-gray-500 uppercase">Bono Pag.</th>
+                                    <th class="px-4 py-2 text-right font-semibold text-gray-500 uppercase">Total mes</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                @foreach($filas as $fila)
+                                @php $totalFila = $fila['comision_pendiente'] + $fila['comision_pagado'] + $fila['bonus_pendiente'] + $fila['bonus_pagado']; @endphp
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-2 font-medium text-gray-700">{{ $fila['vendedor_nombre'] }}</td>
+                                    <td class="px-4 py-2 text-right text-amber-600">S/ {{ number_format($fila['comision_pendiente'], 2) }}</td>
+                                    <td class="px-4 py-2 text-right text-green-600">S/ {{ number_format($fila['comision_pagado'], 2) }}</td>
+                                    <td class="px-4 py-2 text-right text-amber-600">S/ {{ number_format($fila['bonus_pendiente'], 2) }}</td>
+                                    <td class="px-4 py-2 text-right text-green-600">S/ {{ number_format($fila['bonus_pagado'], 2) }}</td>
+                                    <td class="px-4 py-2 text-right font-bold text-gray-800">S/ {{ number_format($totalFila, 2) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     {{-- Tabs comisiones / bonos --}}
     <div class="flex gap-1 mb-4 bg-white border border-gray-200 rounded-xl p-1 w-fit shadow-sm">
         <button @click="tab='comisiones'"

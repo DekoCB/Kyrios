@@ -1648,7 +1648,7 @@
                     </h3>
                     <button type="button"
                             x-show="orden.guia.transportista_doc || orden.guia.transportista_nombre"
-                            @click="orden.guia.transportista_doc=''; orden.guia.transportista_nombre=''; localStorage.removeItem('pos_transportista_data'); errorTransportista=''"
+                            @click="orden.guia.transportista_doc=''; orden.guia.transportista_nombre=''; localStorage.removeItem('pos_transportista_data'); errorTransportista=''; transportistaEstado=''; transportistaCondicion=''; transportistaInfo=null"
                             class="ml-auto text-[10px] text-gray-400 hover:text-red-500 transition flex items-center gap-1">
                         <i class="fas fa-times-circle"></i> Limpiar
                     </button>
@@ -1682,6 +1682,27 @@
                         </label>
                         <input type="text" x-model="orden.guia.transportista_nombre" placeholder="Nombre del transportista"
                                class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    </div>
+                </div>
+                <div x-show="transportistaEstado || transportistaCondicion" x-cloak class="flex flex-wrap gap-2 mt-2 text-xs">
+                    <span x-show="transportistaEstado" class="px-2 py-1 rounded-full font-medium"
+                          :class="transportistaEstado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                        <i class="fas fa-circle mr-1"></i> Estado: <span x-text="transportistaEstado"></span>
+                    </span>
+                    <span x-show="transportistaCondicion" class="px-2 py-1 rounded-full font-medium"
+                          :class="transportistaCondicion === 'HABIDO' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'">
+                        <i class="fas fa-check-circle mr-1"></i> <span x-text="transportistaCondicion"></span>
+                    </span>
+                </div>
+                <div x-show="transportistaCamposExtra.length" x-cloak
+                     class="mt-2 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5">
+                    <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+                        <i class="fas fa-circle-info mr-1"></i> Información completa (SUNAT)
+                    </p>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+                        <template x-for="[label, valor] in transportistaCamposExtra" :key="label">
+                            <div class="truncate"><span class="text-gray-400" x-text="label + ':'"></span> <span class="text-gray-700 dark:text-gray-200 font-medium" x-text="valor"></span></div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -1808,6 +1829,7 @@ $clientesJson = $clientes->map(fn($c) => [
     'departamento'     => $c->departamento     ?? '',
     'provincia'        => $c->provincia        ?? '',
     'distrito'         => $c->distrito         ?? '',
+    'ubigeo'           => $c->ubigeo           ?? '',
 ])->values();
 @endphp
 
@@ -1861,6 +1883,9 @@ function posApp() {
         sidebarCollapsed:JSON.parse(localStorage.getItem('pos_sidebar_collapsed') ?? 'false'),
         buscandoTransportista: false,
         errorTransportista:    '',
+        transportistaEstado:    '',
+        transportistaCondicion: '',
+        transportistaInfo:      null,
         formatoImpresion:localStorage.getItem('pos_formato')                      ?? 'ticket',
         hora:            new Date().toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
 
@@ -1932,6 +1957,32 @@ function posApp() {
 
         // ── Computed: active order ──
         get orden() { return this.ordenes[this.ordenActiva]; },
+
+        // Desglose completo de dirección devuelto por la API de RUC (apis.net.pe),
+        // filtrando los campos vacíos o en '-' que la API deja sin dato.
+        get transportistaCamposExtra() {
+            const info = this.transportistaInfo;
+            if (!info) return [];
+            const campos = [
+                ['Tipo Doc.',       info.tipo],
+                ['Dirección fiscal', info.direccion_fiscal],
+                ['Ubigeo',          info.ubigeo],
+                ['Distrito',        info.distrito],
+                ['Provincia',       info.provincia],
+                ['Departamento',    info.departamento],
+                ['Tipo de vía',     info.via_tipo],
+                ['Nombre de vía',   info.via_nombre],
+                ['Número',          info.numero],
+                ['Interior',        info.interior],
+                ['Dpto.',           info.dpto],
+                ['Lote',            info.lote],
+                ['Manzana',         info.manzana],
+                ['Kilómetro',       info.kilometro],
+                ['Zona (tipo)',     info.zona_tipo],
+                ['Zona (código)',   info.zona_codigo],
+            ];
+            return campos.filter(([, v]) => v && v !== '-');
+        },
 
         // ── Computed: financials ──
         get total() {
@@ -2771,14 +2822,18 @@ function posApp() {
             if (!g.ubigeo_partida && this.empresaUbigeo) {
                 g.ubigeo_partida = this.empresaUbigeo;
             }
-            if (!g.direccion_llegada && this.orden.clienteId) {
+            if (this.orden.clienteId && (!g.direccion_llegada || !g.ubigeo_llegada)) {
                 const cliente = this.clientes.find(c => String(c.id) === String(this.orden.clienteId));
-                if (cliente?.direccion) g.direccion_llegada = cliente.direccion;
+                if (!g.direccion_llegada && cliente?.direccion) g.direccion_llegada = cliente.direccion;
+                if (!g.ubigeo_llegada && cliente?.ubigeo)       g.ubigeo_llegada    = cliente.ubigeo;
             }
             // Precargar el último conductor privado usado (desde la BD — se guarda
             // solo con vincularse a la última guía de remisión registrada, sin
-            // depender de localStorage del navegador).
-            if (!g.conductor_dni && !g.conductor_nombre && !g.placa_vehiculo && this.ultimoConductor) {
+            // depender de localStorage del navegador). Solo aplica a transporte
+            // privado: si se precarga en una guía pública, el PDF terminaba
+            // imprimiendo al conductor de una guía privada anterior como si
+            // fuera el transportista.
+            if (g.modalidad === 'privado' && !g.conductor_dni && !g.conductor_nombre && !g.placa_vehiculo && this.ultimoConductor) {
                 g.conductor_dni      = this.ultimoConductor.conductor_dni      || '';
                 g.conductor_nombre   = this.ultimoConductor.conductor_nombre   || '';
                 g.conductor_licencia = this.ultimoConductor.conductor_licencia || '';
@@ -2831,8 +2886,11 @@ function posApp() {
         async buscarTransportistaGuia() {
             const doc = this.orden.guia.transportista_doc.trim();
             if (!doc) return;
-            this.buscandoTransportista = true;
-            this.errorTransportista    = '';
+            this.buscandoTransportista  = true;
+            this.errorTransportista     = '';
+            this.transportistaEstado    = '';
+            this.transportistaCondicion = '';
+            this.transportistaInfo      = null;
             try {
                 let url = '';
                 if (this.orden.guia.transportista_tipo_doc === 'RUC') {
@@ -2846,7 +2904,13 @@ function posApp() {
                 const data = await res.json();
                 if (res.ok && data.nombre) {
                     this.orden.guia.transportista_nombre = data.nombre;
-                    this.toast('success', 'Nombre cargado correctamente');
+                    this.transportistaEstado    = data.estado    || '';
+                    this.transportistaCondicion = data.condicion || '';
+                    // El RUC (tipo '20' o cualquiera) trae desglose completo de
+                    // dirección; el DNI solo trae nombre, así que no hay nada más
+                    // que mostrar en ese caso.
+                    this.transportistaInfo = this.orden.guia.transportista_tipo_doc === 'RUC' ? data : null;
+                    this.toast('success', 'Datos cargados correctamente');
                 } else {
                     this.errorTransportista = data.error || 'No encontrado. Ingrese el nombre manualmente.';
                 }

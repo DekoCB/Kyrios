@@ -28,6 +28,13 @@ class GuiaRemisionService
                 throw new \Exception("El número de guía '{$numeroGuia}' ya está en uso.");
             }
 
+            // Por modalidad: en pública no se conoce al chofer (solo la empresa
+            // transportista); en privada no hay transportista (es vehículo/chofer
+            // propio). Se descarta el bloque que no aplica aunque el formulario
+            // lo haya enviado (p. ej. datos de un conductor precargado de una
+            // guía privada anterior), para no guardar datos ajenos a la modalidad.
+            $esPublico = $datos['modalidad'] === 'publico';
+
             $guia = GuiaRemision::create([
                 'almacen_id'             => $datos['almacen_id'],
                 'tipo_destino'           => $datos['tipo_destino'],
@@ -45,13 +52,13 @@ class GuiaRemisionService
                 'ubigeo_partida'         => $datos['ubigeo_partida']     ?? null,
                 'direccion_llegada'      => $datos['direccion_llegada']  ?? null,
                 'ubigeo_llegada'         => $datos['ubigeo_llegada']     ?? null,
-                'transportista_tipo_doc' => $datos['transportista_tipo_doc'] ?? null,
-                'transportista_doc'      => $datos['transportista_doc']      ?? null,
-                'transportista_nombre'   => $datos['transportista_nombre']   ?? null,
-                'conductor_dni'          => $datos['conductor_dni']          ?? null,
-                'conductor_nombre'       => $datos['conductor_nombre']       ?? null,
-                'conductor_licencia'     => $datos['conductor_licencia']     ?? null,
-                'placa_vehiculo'         => $datos['placa_vehiculo']         ?? null,
+                'transportista_tipo_doc' => $esPublico ? ($datos['transportista_tipo_doc'] ?? null) : null,
+                'transportista_doc'      => $esPublico ? ($datos['transportista_doc']      ?? null) : null,
+                'transportista_nombre'   => $esPublico ? ($datos['transportista_nombre']   ?? null) : null,
+                'conductor_dni'          => $esPublico ? null : ($datos['conductor_dni']      ?? null),
+                'conductor_nombre'       => $esPublico ? null : ($datos['conductor_nombre']   ?? null),
+                'conductor_licencia'     => $esPublico ? null : ($datos['conductor_licencia'] ?? null),
+                'placa_vehiculo'         => $esPublico ? null : ($datos['placa_vehiculo']      ?? null),
                 'estado'                 => 'pendiente',
             ]);
 
@@ -94,6 +101,11 @@ class GuiaRemisionService
                 }
             }
 
+            // Ver comentario equivalente en crear(): en pública no se guarda
+            // conductor/placa (no se conoce al chofer del tercero), en privada
+            // no se guarda transportista (no aplica, es vehículo propio).
+            $esPublico = $datos['modalidad'] === 'publico';
+
             $guia = GuiaRemision::create([
                 'almacen_id'             => $datos['almacen_id'],
                 'tipo_destino'           => 'almacen',
@@ -109,13 +121,13 @@ class GuiaRemisionService
                 'ubigeo_partida'         => $datos['ubigeo_partida']         ?? null,
                 'direccion_llegada'      => $datos['direccion_llegada']      ?? null,
                 'ubigeo_llegada'         => $datos['ubigeo_llegada']         ?? null,
-                'transportista_tipo_doc' => $datos['transportista_tipo_doc'] ?? null,
-                'transportista_doc'      => $datos['transportista_doc']      ?? null,
-                'transportista_nombre'   => $datos['transportista_nombre']   ?? null,
-                'conductor_dni'          => $datos['conductor_dni']          ?? null,
-                'conductor_nombre'       => $datos['conductor_nombre']       ?? null,
-                'conductor_licencia'     => $datos['conductor_licencia']     ?? null,
-                'placa_vehiculo'         => $datos['placa_vehiculo']         ?? null,
+                'transportista_tipo_doc' => $esPublico ? ($datos['transportista_tipo_doc'] ?? null) : null,
+                'transportista_doc'      => $esPublico ? ($datos['transportista_doc']      ?? null) : null,
+                'transportista_nombre'   => $esPublico ? ($datos['transportista_nombre']   ?? null) : null,
+                'conductor_dni'          => $esPublico ? null : ($datos['conductor_dni']      ?? null),
+                'conductor_nombre'       => $esPublico ? null : ($datos['conductor_nombre']   ?? null),
+                'conductor_licencia'     => $esPublico ? null : ($datos['conductor_licencia'] ?? null),
+                'placa_vehiculo'         => $esPublico ? null : ($datos['placa_vehiculo']      ?? null),
                 'estado'                 => 'pendiente',
             ]);
 
