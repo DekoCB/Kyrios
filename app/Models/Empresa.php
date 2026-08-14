@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Empresa extends Model
 {
@@ -49,8 +50,9 @@ class Empresa extends Model
     public function getCertificadoPemContentAttribute(): ?string
     {
         if (!$this->certificado_pem_path) return null;
-        $path = storage_path('app/' . $this->certificado_pem_path);
-        return file_exists($path) ? file_get_contents($path) : null;
+        return Storage::disk('local')->exists($this->certificado_pem_path)
+            ? Storage::disk('local')->get($this->certificado_pem_path)
+            : null;
     }
 
     public function isSunatBeta(): bool
@@ -61,7 +63,7 @@ class Empresa extends Model
     public function tieneCertificado(): bool
     {
         return !empty($this->certificado_pem_path)
-            && file_exists(storage_path('app/' . $this->certificado_pem_path));
+            && Storage::disk('local')->exists($this->certificado_pem_path);
     }
 
     public function tieneCredencialesSunat(): bool

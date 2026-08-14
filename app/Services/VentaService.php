@@ -503,28 +503,36 @@ class VentaService
             $tipoNc      = $venta->tipo_comprobante === 'factura' ? 'nc_factura' : 'nc_boleta';
             $motivoDesc  = self::MOTIVOS_NC[$motivoCodigo];
 
-            // Buscar serie de NC correspondiente al tipo de comprobante de origen
+            // Buscar serie de NC (código SUNAT '07' - Nota de Crédito). SUNAT exige series
+            // distintas según el documento que se afecta: prefijo "F" para Notas de Factura,
+            // prefijo "B" para Notas de Boleta (rechaza con error 2116 si no se respeta esto,
+            // aunque el código de tipo_comprobante '07' sea el mismo en ambos casos).
+            $prefijoSerie = $venta->tipo_comprobante === 'factura' ? 'F' : 'B';
             $serieNc = \App\Models\SerieComprobante::where('sucursal_id', $venta->sucursal_id)
-                ->where('tipo_comprobante', $tipoNc)
+                ->where('tipo_comprobante', '07')
+                ->where('serie', 'like', $prefijoSerie . '%')
                 ->where('activo', true)
                 ->lockForUpdate()
                 ->first();
 
             if (!$serieNc) {
                 throw new \Exception(
-                    "No existe una serie activa de {$tipoNc} para esta sucursal. " .
+                    "No existe una serie activa de Nota de Crédito ({$prefijoSerie}..) para esta sucursal. " .
                     "Configure la serie en Administración → Series de Comprobantes."
                 );
             }
 
-            $correlativo = $serieNc->correlativo_actual + 1;
-            $serieNc->update(['correlativo_actual' => $correlativo]);
+            $correlativo = $serieNc->correlativo_actual;
+            $serieNc->increment('correlativo_actual');
 
             $datosAnteriores = $venta->only(['codigo', 'estado_pago', 'estado_sunat', 'total']);
 
-            // Crear el registro de la Nota de Crédito
+            // Crear el registro de la Nota de Crédito.
+            // El código incluye la serie porque el correlativo reinicia en 1 por cada
+            // serie (FC01, BC01, …) — usar solo el correlativo colisionaría (NC-00001
+            // se repetiría en la primera NC de Factura y la primera de Boleta).
             $nc = Venta::create([
-                'codigo'                 => 'NC-' . str_pad($correlativo, 5, '0', STR_PAD_LEFT),
+                'codigo'                 => 'NC-' . $serieNc->serie . '-' . str_pad($correlativo, 5, '0', STR_PAD_LEFT),
                 'user_id'                => auth()->id(),
                 'cliente_id'             => $venta->cliente_id,
                 'almacen_id'             => $venta->almacen_id,

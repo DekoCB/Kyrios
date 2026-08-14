@@ -33,12 +33,17 @@ class SerieComprobante extends Model
      * Tipos estándar que toda sucursal debe tener.
      */
     public const TIPOS_ESTANDAR = [
-        ['tipo_comprobante' => '01', 'tipo_nombre' => 'Factura Electrónica',          'serie_template' => 'FA{N}', 'formato_impresion' => 'A4'],
-        ['tipo_comprobante' => '03', 'tipo_nombre' => 'Boleta de Venta Electrónica',  'serie_template' => 'BA{N}', 'formato_impresion' => 'ticket'],
-        ['tipo_comprobante' => '07', 'tipo_nombre' => 'Nota de Crédito',              'serie_template' => 'FC{N}', 'formato_impresion' => 'A4'],
-        ['tipo_comprobante' => '08', 'tipo_nombre' => 'Nota de Débito',               'serie_template' => 'FD{N}', 'formato_impresion' => 'A4'],
-        ['tipo_comprobante' => '09', 'tipo_nombre' => 'Guía de Remisión Remitente',   'serie_template' => 'T{N}01', 'formato_impresion' => 'A4'],
-        ['tipo_comprobante' => 'NE', 'tipo_nombre' => 'Nota de Entrega/Cotización',   'serie_template' => 'CO{N}', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => '01', 'tipo_nombre' => 'Factura Electrónica',            'serie_template' => 'FA{N}', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => '03', 'tipo_nombre' => 'Boleta de Venta Electrónica',    'serie_template' => 'BA{N}', 'formato_impresion' => 'ticket'],
+        // SUNAT exige que la Nota de Crédito/Débito de una Factura y la de una Boleta usen
+        // series con prefijo distinto (F.. vs B..) — no se puede compartir una sola serie "07"
+        // para ambas, aunque el código SUNAT del documento sea el mismo. Ver generarNotaCredito().
+        ['tipo_comprobante' => '07', 'tipo_nombre' => 'Nota de Crédito (Factura)',      'serie_template' => 'FC{N}', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => '07', 'tipo_nombre' => 'Nota de Crédito (Boleta)',       'serie_template' => 'BC{N}', 'formato_impresion' => 'ticket'],
+        ['tipo_comprobante' => '08', 'tipo_nombre' => 'Nota de Débito (Factura)',       'serie_template' => 'FD{N}', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => '08', 'tipo_nombre' => 'Nota de Débito (Boleta)',        'serie_template' => 'BD{N}', 'formato_impresion' => 'ticket'],
+        ['tipo_comprobante' => '09', 'tipo_nombre' => 'Guía de Remisión Remitente',     'serie_template' => 'T{N}01', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => 'NE', 'tipo_nombre' => 'Nota de Entrega/Cotización',     'serie_template' => 'CO{N}', 'formato_impresion' => 'A4'],
     ];
 
     // ── Relaciones ─────────────────────────────────────────────

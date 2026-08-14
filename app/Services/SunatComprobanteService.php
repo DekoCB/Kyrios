@@ -9,10 +9,15 @@ use Greenter\Model\Sale\Invoice;
 use Greenter\Model\Sale\Note;
 use Greenter\Model\Sale\SaleDetail;
 use Greenter\Model\Sale\Legend;
+use Greenter\Model\Sale\FormaPagos\FormaPagoContado;
+use Greenter\Model\Sale\FormaPagos\FormaPagoCredito;
 use Greenter\Model\Company\Company;
 use Greenter\Model\Company\Address;
 use Greenter\Model\Client\Client;
 use Greenter\Ws\Services\SunatEndpoints;
+use Greenter\Ws\Services\SoapClient;
+use Greenter\Ws\Services\ConsultCdrService;
+use Greenter\Ws\Services\WsdlProvider;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -62,7 +67,7 @@ class SunatComprobanteService
         try {
             $see = $this->crearSee($empresa);
 
-            if (in_array($venta->tipo_comprobante, ['nota_credito', 'nota_debito'])) {
+            if (in_array($venta->tipo_comprobante, ['nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'])) {
                 $document = $this->buildNote($venta, $empresa);
             } else {
                 $document = $this->buildInvoice($venta, $empresa);
@@ -100,6 +105,75 @@ class SunatComprobanteService
         }
     }
 
+    /**
+     * Consulta en SUNAT el estado de un comprobante ya enviado, usando el
+     * servicio oficial de consulta por RUC+tipo+serie+correlativo (no
+     * requiere ticket: Facturas/Boletas se procesan de forma síncrona).
+     */
+    public function consultarEstado(Venta $venta): array
+    {
+        $empresa = Empresa::instancia();
+        if (!$empresa) {
+            return ['success' => false, 'message' => 'Empresa no configurada.'];
+        }
+        if (!$empresa->tieneCredencialesSunat()) {
+            return ['success' => false, 'message' => 'Credenciales SOL no configuradas.'];
+        }
+        if (!$venta->sunat_enviado_at) {
+            return ['success' => false, 'message' => 'Este comprobante no ha sido enviado a SUNAT.'];
+        }
+        if ($empresa->isSunatBeta()) {
+            // SUNAT no ofrece ambiente Beta para el servicio de consulta (billConsultService).
+            // En Beta/Producción, Factura y Boleta ya devuelven el estado final de forma
+            // síncrona al momento del envío, así que no hace falta consultar después.
+            return ['success' => false, 'message' => 'La consulta de estado solo está disponible en modo Producción. En Beta, el estado ya se obtiene de inmediato al enviar el comprobante.'];
+        }
+
+        $venta->load('serieComprobante');
+
+        $tipoDoc = match ($venta->tipo_comprobante) {
+            'factura'      => '01',
+            'boleta'       => '03',
+            'nota_credito' => '07',
+            'nota_debito'  => '08',
+            default        => '03',
+        };
+        $serie       = $venta->serieComprobante?->serie ?? 'B001';
+        $correlativo = (int) ($venta->correlativo ?? 1);
+
+        try {
+            $client = new SoapClient(WsdlProvider::getConsultPath());
+            $client->setCredentials($empresa->ruc . $empresa->sunat_usuario_sol, $empresa->sunat_clave_sol);
+            $client->setService(SunatEndpoints::FE_CONSULTA_CDR);
+
+            $service = new ConsultCdrService();
+            $service->setClient($client);
+
+            $result = $service->getStatusCdr($empresa->ruc, $tipoDoc, $serie, $correlativo);
+
+            if ($result->isSuccess()) {
+                $cdr = $result->getCdrResponse();
+                if ($cdr) {
+                    $venta->sunat_descripcion = $cdr->getDescription();
+                    $venta->estado_sunat      = $cdr->getCode() === '0' ? 'aceptado' : 'rechazado';
+                    $this->guardarCdr($result, $venta);
+                } else {
+                    $venta->sunat_descripcion = $result->getMessage();
+                }
+                $venta->save();
+
+                return ['success' => true, 'message' => $venta->sunat_descripcion, 'estado' => $venta->estado_sunat];
+            }
+
+            $error = $result->getError();
+            return ['success' => false, 'message' => $error ? $error->getMessage() : ($result->getMessage() ?: 'Sin respuesta de SUNAT.')];
+
+        } catch (\Exception $e) {
+            Log::error('SunatComprobanteService::consultarEstado', ['venta' => $venta->id, 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
     private function buildInvoice(Venta $venta, Empresa $empresa): Invoice
     {
         $serie       = $venta->serieComprobante?->serie ?? 'B001';
@@ -125,7 +199,8 @@ class SunatComprobanteService
             ->setTotalImpuestos($igvTotal)
             ->setValorVenta($baseImponibleTotal)
             ->setSubTotal($totalVenta)
-            ->setMtoImpVenta($totalVenta);
+            ->setMtoImpVenta($totalVenta)
+            ->setFormaPago($this->buildFormaPago($venta));
 
         $details = [];
         foreach ($venta->detalles as $det) {
@@ -169,7 +244,7 @@ class SunatComprobanteService
     {
         $serie       = $venta->serieComprobante?->serie ?? 'BC01';
         $correlativo = str_pad($venta->correlativo ?? 1, 8, '0', STR_PAD_LEFT);
-        $tipoDoc     = $venta->tipo_comprobante === 'nota_credito' ? '07' : '08';
+        $tipoDoc     = in_array($venta->tipo_comprobante, ['nc_factura', 'nc_boleta', 'nota_credito']) ? '07' : '08';
 
         $baseImponibleTotal = round((float) $venta->subtotal, 4);
         $igvTotal           = round((float) $venta->igv, 4);
@@ -236,6 +311,15 @@ class SunatComprobanteService
         $note->setLegends([$legend]);
 
         return $note;
+    }
+
+    private function buildFormaPago(Venta $venta)
+    {
+        if ($venta->condicion_pago === 'credito' || $venta->es_credito) {
+            return new FormaPagoCredito(round((float) $venta->total, 4), 'PEN');
+        }
+
+        return new FormaPagoContado();
     }
 
     private function buildCompany(Empresa $empresa): Company

@@ -68,9 +68,10 @@ class SucursalService
             // Reemplazar {N} con el número de sucursal
             $serie = str_replace('{N}', $sufijo, $tipo['serie_template']);
 
-            // Evitar duplicados
+            // Evitar duplicados (por serie exacta: puede haber más de una fila con el
+            // mismo tipo_comprobante, ej. "07" para Factura y "07" para Boleta)
             if (!SerieComprobante::where('sucursal_id', $sucursal->id)
-                ->where('tipo_comprobante', $tipo['tipo_comprobante'])->exists()) {
+                ->where('serie', $serie)->exists()) {
                 SerieComprobante::create([
                     'sucursal_id'       => $sucursal->id,
                     'tipo_comprobante'  => $tipo['tipo_comprobante'],

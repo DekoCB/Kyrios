@@ -203,7 +203,7 @@ class FacturacionElectronicaController extends Controller
 
     public function consultarSunat(Venta $venta)
     {
-        if (!$venta->sunat_api_id) {
+        if (!$venta->sunat_enviado_at) {
             return back()->with('error', 'Este comprobante no ha sido enviado a SUNAT.');
         }
 
