@@ -141,7 +141,7 @@ class DevolucionController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($request, $cantidades) {
+            $resultado = DB::transaction(function () use ($request, $cantidades) {
                 $almacenId = $request->almacen_id;
 
                 // Solo consumir un correlativo real de la serie SUNAT '09' cuando de
@@ -154,8 +154,10 @@ class DevolucionController extends Controller
                     : null;
                 $numeroGuia = $guiaResuelta['numero'] ?? ('DEV-' . strtoupper(uniqid()));
 
+                $montosPorVenta = [];
+
                 foreach ($cantidades as $detalleId => $cantidadSolicitada) {
-                    $detalle = DetalleVenta::with(['producto', 'imei', 'variante', 'movimientosDevolucion'])
+                    $detalle = DetalleVenta::with(['producto', 'variante', 'movimientosDevolucion', 'venta'])
                                            ->findOrFail($detalleId);
 
                     $disponible = $detalle->cantidad_disponible;
@@ -185,11 +187,31 @@ class DevolucionController extends Controller
                         'estado'               => 'confirmado',
                     ]);
 
-                    // Para productos tipo serie (IMEI)
-                    if ($detalle->imei_id && $detalle->imei) {
-                        $detalle->imei->update([
+                    // Para productos tipo serie (IMEI): detalle_ventas.imei_id nunca se
+                    // llena al vender (bug histórico), así que no sirve para ubicar la
+                    // unidad física. Se busca por venta_id + producto_id (+ variante_id),
+                    // igual que en VentaService::revertirStock().
+                    $esSerie = $detalle->producto?->tipo_inventario === 'serie';
+
+                    if ($esSerie) {
+                        $imeisDevueltos = Imei::where('venta_id', $detalle->venta_id)
+                            ->where('producto_id', $detalle->producto_id)
+                            ->when($detalle->variante_id, fn($q) => $q->where('variante_id', $detalle->variante_id))
+                            ->where('estado_imei', Imei::ESTADO_VENDIDO)
+                            ->limit($cantidad)
+                            ->pluck('id');
+
+                        if ($imeisDevueltos->count() < $cantidad) {
+                            throw new \Exception(
+                                "No se encontraron {$cantidad} IMEI(s) vendidos de «{$detalle->producto?->nombre}» para devolver."
+                            );
+                        }
+
+                        Imei::whereIn('id', $imeisDevueltos)->update([
                             'estado_imei' => Imei::ESTADO_EN_STOCK,
                             'almacen_id'  => $almacenId,
+                            'venta_id'    => null,
+                            'fecha_venta' => null,
                         ]);
 
                         $totalStock = Imei::where('producto_id', $detalle->producto_id)
@@ -216,6 +238,13 @@ class DevolucionController extends Controller
                             $detalle->producto->update(['stock_actual' => $totalStock]);
                         }
                     }
+
+                    // Acumular el monto a devolver por venta (una devolución puede
+                    // incluir líneas de varias ventas del mismo cliente).
+                    if ($detalle->venta && $detalle->venta->estado_pago === 'pagado') {
+                        $montosPorVenta[$detalle->venta_id] = ($montosPorVenta[$detalle->venta_id] ?? 0)
+                            + $cantidad * (float) $detalle->precio_con_igv;
+                    }
                 }
 
                 if ($emiteGuiaReal) {
@@ -228,11 +257,55 @@ class DevolucionController extends Controller
                         $request->input('guia', [])
                     ));
                 }
+
+                // Registrar el egreso en caja (efectivo/tarjeta devuelto al cliente).
+                // No se puede escribir en una caja cerrada, así que si no hay una
+                // caja abierta se avisa al usuario para que lo registre a mano.
+                $cajaPendiente  = false;
+                $montoPendiente = 0.0;
+                if (!empty($montosPorVenta)) {
+                    $caja = \App\Models\Caja::where('user_id', auth()->id())
+                        ->where('estado', 'abierta')
+                        ->first();
+
+                    if ($caja) {
+                        $cajaService = app(\App\Services\CajaService::class);
+                        $metodosValidos = ['efectivo', 'yape', 'plin', 'transferencia', 'mixto'];
+                        foreach ($montosPorVenta as $ventaId => $monto) {
+                            $ventaOrigen = \App\Models\Venta::find($ventaId);
+                            $metodoPago  = in_array($ventaOrigen->metodo_pago ?? '', $metodosValidos)
+                                ? $ventaOrigen->metodo_pago
+                                : 'efectivo';
+                            $cajaService->registrarMovimiento(
+                                $caja->id,
+                                'egreso',
+                                round($monto, 2),
+                                'Devolución de cliente - Venta #' . ($ventaOrigen->codigo ?? $ventaId),
+                                $ventaId,
+                                null,
+                                null,
+                                $metodoPago,
+                                null
+                            );
+                        }
+                    } else {
+                        $cajaPendiente  = true;
+                        $montoPendiente = array_sum($montosPorVenta);
+                    }
+                }
+
+                return ['caja_pendiente' => $cajaPendiente, 'monto_pendiente' => $montoPendiente];
             });
+
+            $mensaje = 'Devolución registrada exitosamente.';
+            if ($resultado['caja_pendiente']) {
+                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                    . number_format($resultado['monto_pendiente'], 2) . ' cuando corresponda.';
+            }
 
             return redirect()
                 ->route('devoluciones.index')
-                ->with('success', 'Devolución registrada exitosamente.');
+                ->with('success', $mensaje);
 
         } catch (\Exception $e) {
             return back()->withInput()->with('error', 'Error al registrar la devolución: ' . $e->getMessage());

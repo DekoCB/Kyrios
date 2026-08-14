@@ -696,8 +696,13 @@ class VentaController extends Controller
         $requirioClave = $this->claveTiendaVerificada($venta);
 
         try {
-            app(VentaService::class)->anularVenta($venta, $requirioClave);
-            return redirect()->route('ventas.show', $venta)->with('success', 'Venta anulada correctamente. El stock ha sido revertido.');
+            $cajaActualizada = app(VentaService::class)->anularVenta($venta, $requirioClave);
+            $mensaje = 'Venta anulada correctamente. El stock ha sido revertido.';
+            if (!$cajaActualizada) {
+                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                    . number_format($venta->total, 2) . ' cuando corresponda.';
+            }
+            return redirect()->route('ventas.show', $venta)->with('success', $mensaje);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -722,9 +727,15 @@ class VentaController extends Controller
                 $requirioClave
             );
 
+            $mensaje = "Nota de Crédito {$nc->codigo} generada correctamente. Envíala a SUNAT para completar el proceso.";
+            if (!$nc->getAttribute('caja_actualizada')) {
+                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                    . number_format($nc->total, 2) . ' cuando corresponda.';
+            }
+
             return redirect()
                 ->route('ventas.show', $nc)
-                ->with('success', "Nota de Crédito {$nc->codigo} generada correctamente. Envíala a SUNAT para completar el proceso.");
+                ->with('success', $mensaje);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -735,8 +746,13 @@ class VentaController extends Controller
         $requirioClave = $this->claveTiendaVerificada($venta);
 
         try {
-            app(VentaService::class)->eliminarVenta($venta, $requirioClave);
-            return redirect()->route('ventas.index')->with('success', 'Venta eliminada correctamente. El stock ha sido revertido.');
+            $cajaActualizada = app(VentaService::class)->eliminarVenta($venta, $requirioClave);
+            $mensaje = 'Venta eliminada correctamente. El stock ha sido revertido.';
+            if (!$cajaActualizada) {
+                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                    . number_format($venta->total, 2) . ' cuando corresponda.';
+            }
+            return redirect()->route('ventas.index')->with('success', $mensaje);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }

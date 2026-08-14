@@ -412,7 +412,12 @@ class VentaService
     /**
      * Eliminar (soft-delete) una venta — revierte stock y oculta de las listas normales
      */
-    public function eliminarVenta(Venta $venta, bool $requirioClave = false): void
+    /**
+     * @return bool true si el egreso de caja quedó registrado (o no aplicaba
+     *              porque la venta no estaba pagada); false si estaba pagada
+     *              pero no había caja abierta para registrar la devolución.
+     */
+    public function eliminarVenta(Venta $venta, bool $requirioClave = false): bool
     {
         if ($venta->estado_pago === 'anulado') {
             throw new \Exception('No se puede eliminar una venta ya anulada. Use la papelera directamente si lo necesita.');
@@ -426,7 +431,7 @@ class VentaService
             }
         }
 
-        DB::transaction(function () use ($venta, $requirioClave) {
+        return DB::transaction(function () use ($venta, $requirioClave) {
             $datosAnteriores = $venta->only([
                 'codigo', 'estado_pago', 'estado_sunat', 'total', 'cliente_id', 'fecha', 'tipo_comprobante',
             ]);
@@ -440,14 +445,17 @@ class VentaService
             }
 
             // Si estaba pagada, registrar egreso en caja (devolución)
+            $cajaActualizada = true;
             if ($venta->estado_pago === 'pagado') {
-                $this->registrarEnCaja($venta, 'eliminacion');
+                $cajaActualizada = $this->registrarEnCaja($venta, 'eliminacion');
             }
 
             $this->registrarAuditoria($venta, 'eliminar', $datosAnteriores, null, $requirioClave);
 
             // SoftDelete — la venta desaparece de las listas normales
             $venta->delete();
+
+            return $cajaActualizada;
         });
     }
 
@@ -569,8 +577,15 @@ class VentaService
             }
 
             // Si la NC es por anulación (motivo 01 o 06 = devolución total) → revertir stock
+            $cajaActualizada = true;
             if (in_array($motivoCodigo, ['01', '02', '06'])) {
                 $this->revertirStock($venta, 'Nota de Crédito #' . $nc->codigo);
+
+                // Estado ANTES de marcar el comprobante como anulado — el update()
+                // de abajo muta $venta->estado_pago en memoria, así que si se
+                // comprobara después de esa llamada el "pagado" nunca se detectaría
+                // y el egreso de caja jamás se registraría.
+                $estabaPagada = $datosAnteriores['estado_pago'] === 'pagado';
 
                 // Marcar comprobante original como anulado
                 $venta->update([
@@ -585,8 +600,8 @@ class VentaService
                 }
 
                 // Si estaba pagada → registrar egreso en caja
-                if ($venta->estado_pago === 'pagado') {
-                    $this->registrarEnCaja($venta, 'nota_credito');
+                if ($estabaPagada) {
+                    $cajaActualizada = $this->registrarEnCaja($venta, 'nota_credito');
                 }
             }
 
@@ -601,7 +616,10 @@ class VentaService
                 'user_id'        => auth()->id(),
             ]);
 
-            return $nc->fresh(['ventaOrigen', 'serieComprobante', 'detalles.producto']);
+            $ncFresca = $nc->fresh(['ventaOrigen', 'serieComprobante', 'detalles.producto']);
+            $ncFresca->setAttribute('caja_actualizada', $cajaActualizada);
+
+            return $ncFresca;
         });
     }
 
@@ -610,7 +628,12 @@ class VentaService
      * ⚠ Solo válido si el comprobante NO ha sido aceptado por SUNAT.
      * Si ya fue aceptado, usar generarNotaCredito().
      */
-    public function anularVenta(Venta $venta, bool $requirioClave = false): void
+    /**
+     * @return bool true si el egreso de caja quedó registrado (o no aplicaba
+     *              porque la venta no estaba pagada); false si estaba pagada
+     *              pero no había caja abierta para registrar la devolución.
+     */
+    public function anularVenta(Venta $venta, bool $requirioClave = false): bool
     {
         if (in_array($venta->estado_pago, ['anulado', 'cotizacion'])) {
             throw new \Exception('Esta venta ya está anulada o es una cotización.');
@@ -632,7 +655,7 @@ class VentaService
             }
         }
 
-        DB::transaction(function () use ($venta, $requirioClave) {
+        return DB::transaction(function () use ($venta, $requirioClave) {
             $datosAnteriores = $venta->only([
                 'codigo', 'estado_pago', 'estado_sunat', 'total', 'cliente_id', 'fecha', 'tipo_comprobante',
             ]);
@@ -646,13 +669,16 @@ class VentaService
             }
 
             // Si estaba pagada, registrar egreso en caja (devolución)
+            $cajaActualizada = true;
             if ($venta->estado_pago === 'pagado') {
-                $this->registrarEnCaja($venta, 'anulacion');
+                $cajaActualizada = $this->registrarEnCaja($venta, 'anulacion');
             }
 
             $venta->update(['estado_pago' => 'anulado']);
 
             $this->registrarAuditoria($venta, 'anular', $datosAnteriores, $venta->fresh()->only(['estado_pago']), $requirioClave);
+
+            return $cajaActualizada;
         });
     }
 
@@ -662,9 +688,17 @@ class VentaService
      */
     private function revertirStock(Venta $venta, string $motivo): void
     {
-        $venta->load('detalles');
+        $venta->load('detalles.producto');
         foreach ($venta->detalles as $detalle) {
-            if ($detalle->imei_id) {
+            $esSerie = $detalle->producto?->tipo_inventario === 'serie';
+
+            // NOTA: detalle_ventas.imei_id nunca se llena al crear la venta (bug
+            // histórico), así que NO se puede usar para ubicar el IMEI vendido.
+            // En su lugar se busca por venta_id + producto_id (+ variante_id),
+            // tomando como máximo la cantidad de esta línea — así, si la venta
+            // tiene varias líneas del mismo producto, cada una reclama solo los
+            // IMEIs que le corresponden y no se pisan entre sí.
+            if ($esSerie) {
                 // Producto tipo "serie": el stock real vive en imeis (conteo por estado_imei),
                 // no en stock_almacen — esa tabla es solo para productos tipo "cantidad".
                 // Tocarla aquí para productos serie la contamina con filas que nadie
@@ -673,11 +707,17 @@ class VentaService
                     ->where('estado_imei', 'en_stock')
                     ->count();
 
-                Imei::where('id', $detalle->imei_id)->update([
-                    'estado_imei'      => 'en_stock',
-                    'venta_id'         => null,
-                    'detalle_venta_id' => null,
-                    'fecha_venta'      => null,
+                $imeisVendidos = Imei::where('venta_id', $venta->id)
+                    ->where('producto_id', $detalle->producto_id)
+                    ->when($detalle->variante_id, fn($q) => $q->where('variante_id', $detalle->variante_id))
+                    ->where('estado_imei', 'vendido')
+                    ->limit($detalle->cantidad)
+                    ->pluck('id');
+
+                Imei::whereIn('id', $imeisVendidos)->update([
+                    'estado_imei' => 'en_stock',
+                    'venta_id'    => null,
+                    'fecha_venta' => null,
                 ]);
 
                 // Recontar desde la fuente real (imeis) en vez de incrementar/decrementar:
@@ -706,6 +746,17 @@ class VentaService
                 $stockAnterior = $stock->cantidad;
                 $stock->increment('cantidad', $detalle->cantidad);
                 $stockNuevo = $stock->cantidad;
+
+                // Igual que descontarStock() al vender: mantener sincronizados
+                // producto.stock_actual y producto_variante.stock_actual con el
+                // total real de stock_almacen, si no quedan desfasados tras cada
+                // anulación/eliminación/NC.
+                if ($detalle->variante_id) {
+                    $detalle->variante?->incrementarStock($detalle->cantidad);
+                } else {
+                    $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
+                    \App\Models\Producto::where('id', $detalle->producto_id)->update(['stock_actual' => $totalStock]);
+                }
             }
 
             MovimientoInventario::create([
@@ -905,15 +956,21 @@ class VentaService
     /**
      * Registrar en caja.
      * $contexto: 'venta' (ingreso) | 'anulacion' | 'eliminacion' | 'nota_credito' (egreso/devolución)
+     *
+     * @return bool true si el movimiento quedó registrado; false si no hay caja
+     *              abierta (el llamador debe avisar al usuario para que lo
+     *              registre manualmente — no se puede escribir en una caja
+     *              cerrada, y no existe una caja "correcta" a la que atribuir
+     *              retroactivamente el ajuste).
      */
-    private function registrarEnCaja(Venta $venta, string $contexto)
+    private function registrarEnCaja(Venta $venta, string $contexto): bool
     {
         $caja = \App\Models\Caja::where('user_id', auth()->id())
             ->where('estado', 'abierta')
             ->first();
 
         if (!$caja) {
-            return;
+            return false;
         }
 
         $esDevolucion = in_array($contexto, ['anulacion', 'eliminacion', 'nota_credito']);
@@ -945,7 +1002,7 @@ class VentaService
                     $concepto, $venta->id, null, null, $mp, $ref
                 );
             }
-            return;
+            return true;
         }
 
         // Pago único: extraer referencia si existe
@@ -958,6 +1015,8 @@ class VentaService
             $caja->id, $tipo, $venta->total,
             $concepto, $venta->id, null, null, $metodoPago, $referencia
         );
+
+        return true;
     }
 
     /**
