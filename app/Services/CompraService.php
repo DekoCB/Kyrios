@@ -148,6 +148,12 @@ class CompraService
             // 5. Calcular prorrateo de gastos de importación
             $this->aplicarProrrateo($compra->fresh(['detalles.producto', 'detalles.variante']));
 
+            // Si esta compra viene de "Recibir mercadería" de un Pedido a Proveedor,
+            // cerrar el ciclo marcándolo como recibido.
+            if ($compra->pedido_id) {
+                \App\Models\Pedido::where('id', $compra->pedido_id)->update(['estado' => 'recibido']);
+            }
+
             // 6. Registrar en log para auditoría
             Log::info('Compra registrada', [
                 'compra_id' => $compra->id,

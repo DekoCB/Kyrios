@@ -17,7 +17,7 @@ class DevolucionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('role:Administrador,Almacenero,Vendedor');
+        $this->middleware('role:Administrador,Almacenero,Vendedor,Tienda');
     }
 
     public function index(Request $request)

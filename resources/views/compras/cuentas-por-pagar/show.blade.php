@@ -385,6 +385,7 @@
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cuota</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Método</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sucursal</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Referencia</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registrado por</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Voucher</th>
@@ -407,6 +408,20 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 capitalize">{{ $pago->metodo_pago }}</td>
+                                    <td class="px-4 py-3 text-gray-600">
+                                        @if($pago->sucursal)
+                                            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs">
+                                                {{ $pago->sucursal->nombre }}
+                                            </span>
+                                            @if(!$pago->movimiento_caja_id)
+                                                <span class="block text-xs text-amber-600 mt-0.5" title="No se registró egreso en caja">
+                                                    <i class="fas fa-triangle-exclamation"></i> sin caja
+                                                </span>
+                                            @endif
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-gray-600">{{ $pago->referencia ?? '—' }}</td>
                                     <td class="px-4 py-3 text-gray-600">{{ $pago->usuario->name }}</td>
                                     <td class="px-4 py-3 text-center">
@@ -431,7 +446,7 @@
                                     <td class="px-4 py-2 text-right font-bold text-green-600">
                                         S/ {{ number_format($cuenta->pagos->where('estado','procesado')->sum('monto'), 2) }}
                                     </td>
-                                    <td colspan="5"></td>
+                                    <td colspan="6"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -486,17 +501,32 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Método de pago <span class="text-red-500">*</span>
-                    </label>
-                    <select name="metodo_pago" id="metodoPagoCuota"
-                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100" required>
-                        <option value="transferencia">Transferencia</option>
-                        <option value="cheque">Cheque</option>
-                        <option value="efectivo">Efectivo</option>
-                        <option value="tarjeta">Tarjeta</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Método de pago <span class="text-red-500">*</span>
+                        </label>
+                        <select name="metodo_pago" id="metodoPagoCuota"
+                                class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100" required>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Sucursal (de dónde sale el dinero) <span class="text-red-500">*</span>
+                        </label>
+                        <select name="sucursal_id" id="sucursalCuota"
+                                class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100" required>
+                            <option value="">Seleccionar...</option>
+                            @foreach($sucursales as $s)
+                                <option value="{{ $s->id }}">{{ $s->nombre }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">Se registrará como egreso en la caja abierta de esa sucursal.</p>
+                    </div>
                 </div>
 
                 <div>
@@ -582,17 +612,32 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Método de pago <span class="text-red-500">*</span>
-                    </label>
-                    <select name="metodo_pago"
-                            class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100" required>
-                        <option value="transferencia">Transferencia</option>
-                        <option value="cheque">Cheque</option>
-                        <option value="efectivo">Efectivo</option>
-                        <option value="tarjeta">Tarjeta</option>
-                    </select>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Método de pago <span class="text-red-500">*</span>
+                        </label>
+                        <select name="metodo_pago"
+                                class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100" required>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Sucursal (de dónde sale el dinero) <span class="text-red-500">*</span>
+                        </label>
+                        <select name="sucursal_id"
+                                class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100" required>
+                            <option value="">Seleccionar...</option>
+                            @foreach($sucursales as $s)
+                                <option value="{{ $s->id }}">{{ $s->nombre }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">Se registrará como egreso en la caja abierta de esa sucursal.</p>
+                    </div>
                 </div>
 
                 <div>
@@ -742,7 +787,7 @@ function enviarPagoCuota() {
         btn.innerHTML = '<i class="fas fa-check mr-2"></i>Confirmar Pago';
         if (data.success) {
             cerrarModalPagarCuota();
-            Swal.fire({ icon: 'success', title: '¡Cuota pagada!', text: data.message, timer: 1800, showConfirmButton: false })
+            Swal.fire({ icon: 'success', title: '¡Cuota pagada!', text: data.message, showConfirmButton: true })
                 .then(() => location.reload());
         } else {
             Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#d33' });
@@ -790,7 +835,7 @@ function enviarPagoLibre() {
         btn.innerHTML = '<i class="fas fa-check mr-2"></i>Registrar';
         if (data.success) {
             cerrarModalPagoLibre();
-            Swal.fire({ icon: 'success', title: '¡Pago registrado!', timer: 1800, showConfirmButton: false })
+            Swal.fire({ icon: 'success', title: '¡Pago registrado!', text: data.message, showConfirmButton: true })
                 .then(() => location.reload());
         } else {
             Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#d33' });

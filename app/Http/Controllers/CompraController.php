@@ -90,41 +90,36 @@ class CompraController extends Controller
 
         $marcas = Marca::where('estado', 'activo')->orderBy('nombre')->get();
 
-        $productos = Producto::with(['categoria', 'marca', 'modelo', 'variantesActivas.color'])
-            ->where('estado', 'activo')
-            ->orderBy('nombre')
-            ->get()
-            ->map(function($producto) {
-                $variantes = $producto->variantesActivas->map(fn($v) => [
-                    'id'           => $v->id,
-                    'color_id'     => $v->color_id,
-                    'color_nombre' => $v->color?->nombre,
-                    'color_hex'    => $v->color?->codigo_hex,
-                    'capacidad'    => $v->capacidad,
-                    'stock_actual' => (int)$v->stock_actual,
-                ]);
-                return [
-                    'id'              => $producto->id,
-                    'nombre'          => $producto->nombre,
-                    'tipo_inventario' => $producto->tipo_inventario,
-                    'categoria'       => $producto->categoria->nombre ?? 'N/A',
-                    'categoria_id'    => $producto->categoria_id,
-                    'marca_id'        => $producto->marca_id,
-                    'marca'           => $producto->marca?->nombre,
-                    'modelo_id'       => $producto->modelo_id,
-                    'modelo'          => $producto->modelo?->nombre,
-                    'unidad_medida'   => $producto->unidadMedida?->abreviatura ?? 'UND',
-                    'requiere_imei'   => $producto->tipo_inventario === 'serie',
-                    'tiene_variantes' => $variantes->isNotEmpty(),
-                    'variantes'       => $variantes,
-                ];
-            });
+        $productos = app(VarianteService::class)->getProductosParaSelectorCompra();
 
         $colores    = Color::where('estado', 'activo')->orderBy('nombre')->get();
         $categorias = Categoria::activas()->orderBy('nombre')->get();
         $unidades   = UnidadMedida::where('estado', 'activo')->orderBy('nombre')->get();
 
-        return view('compras.create', compact('proveedores', 'almacenesCentral', 'almacenesTienda', 'productos', 'colores', 'marcas', 'categorias', 'unidades'));
+        // Si venimos de "Recibir mercadería" de un Pedido a Proveedor, precargar
+        // proveedor/almacén/productos para no tener que volver a tipearlos.
+        $pedidoOrigen = null;
+        if (request()->filled('pedido_id')) {
+            $pedido = \App\Models\Pedido::with('detalles.producto', 'detalles.variante')
+                ->find(request()->integer('pedido_id'));
+
+            if ($pedido && $pedido->estado === 'aprobado' && !$pedido->compra()->exists()) {
+                $pedidoOrigen = [
+                    'id'           => $pedido->id,
+                    'codigo'       => $pedido->codigo,
+                    'proveedor_id' => $pedido->proveedor_id,
+                    'almacen_id'   => $pedido->almacen_id,
+                    'detalles'     => $pedido->detalles->map(fn($d) => [
+                        'producto_id'         => $d->producto_id,
+                        'variante_id'         => $d->variante_id,
+                        'cantidad'            => $d->cantidad,
+                        'precio_referencial'  => $d->precio_referencial,
+                    ]),
+                ];
+            }
+        }
+
+        return view('compras.create', compact('proveedores', 'almacenesCentral', 'almacenesTienda', 'productos', 'colores', 'marcas', 'categorias', 'unidades', 'pedidoOrigen'));
     }
 
     public function store(Request $request)
@@ -133,6 +128,7 @@ class CompraController extends Controller
         $validated = $request->validate([
             // Datos principales
             'proveedor_id' => 'required|exists:proveedores,id',
+            'pedido_id' => 'nullable|exists:pedidos,id',
             'almacen_id' => 'required|exists:almacenes,id',
             'numero_factura' => 'required|string|max:50|unique:compras,numero_factura,NULL,id,proveedor_id,' . $request->proveedor_id,
             'fecha' => 'required|date',
@@ -269,6 +265,7 @@ class CompraController extends Controller
             // Preparar datos para el servicio
             $datosCompra = [
                 'proveedor_id' => $validated['proveedor_id'],
+                'pedido_id' => $validated['pedido_id'] ?? null,
                 'user_id' => auth()->id(),
                 'almacen_id' => $validated['almacen_id'],
                 'numero_factura' => $validated['numero_factura'],

@@ -60,6 +60,46 @@ class VarianteService
     }
 
     /**
+     * Dataset de productos activos + sus variantes, listo para @json() en el
+     * selector con búsqueda usado por Compras (compras/create.blade.php) y
+     * por Pedidos a Proveedor (pedidos/create.blade.php).
+     */
+    public function getProductosParaSelectorCompra(): \Illuminate\Support\Collection
+    {
+        return Producto::with(['categoria', 'marca', 'modelo', 'variantesActivas.color'])
+            ->where('estado', 'activo')
+            ->orderBy('nombre')
+            ->get()
+            ->map(function ($producto) {
+                $variantes = $producto->variantesActivas->map(fn($v) => [
+                    'id'                  => $v->id,
+                    'color_id'            => $v->color_id,
+                    'color_nombre'        => $v->color?->nombre,
+                    'color_hex'           => $v->color?->codigo_hex,
+                    'capacidad'           => $v->capacidad,
+                    'stock_actual'        => (int) $v->stock_actual,
+                    'ultimo_costo_compra' => $v->ultimo_costo_compra ? (float) $v->ultimo_costo_compra : null,
+                ]);
+                return [
+                    'id'                  => $producto->id,
+                    'nombre'              => $producto->nombre,
+                    'tipo_inventario'     => $producto->tipo_inventario,
+                    'categoria'           => $producto->categoria->nombre ?? 'N/A',
+                    'categoria_id'        => $producto->categoria_id,
+                    'marca_id'            => $producto->marca_id,
+                    'marca'               => $producto->marca?->nombre,
+                    'modelo_id'           => $producto->modelo_id,
+                    'modelo'              => $producto->modelo?->nombre,
+                    'unidad_medida'       => $producto->unidadMedida?->abreviatura ?? 'UND',
+                    'requiere_imei'       => $producto->tipo_inventario === 'serie',
+                    'tiene_variantes'     => $variantes->isNotEmpty(),
+                    'variantes'           => $variantes,
+                    'ultimo_costo_compra' => $producto->ultimo_costo_compra ? (float) $producto->ultimo_costo_compra : null,
+                ];
+            });
+    }
+
+    /**
      * Listado de variantes de un producto, para consumo en la UI.
      */
     public function getVariantesParaSelector(Producto $producto, ?int $almacenId = null): array

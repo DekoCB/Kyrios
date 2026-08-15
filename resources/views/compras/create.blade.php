@@ -57,6 +57,17 @@
             </div>
         @endif
 
+        @if($pedidoOrigen ?? null)
+            <div class="mb-4 bg-indigo-50 border-l-4 border-indigo-500 text-indigo-800 p-3 rounded-lg flex items-start text-sm">
+                <i class="fas fa-clipboard-check mt-0.5 mr-2"></i>
+                <span>
+                    Recibiendo mercadería del pedido <strong>{{ $pedidoOrigen['codigo'] }}</strong> —
+                    proveedor, almacén y productos se precargaron. Completa factura, precios finales
+                    e IMEIs (si aplica) y guarda para cerrar el pedido.
+                </span>
+            </div>
+        @endif
+
         <!-- Formulario principal -->
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <!-- Cabecera decorativa -->
@@ -69,6 +80,9 @@
 
             <form action="{{ route('compras.store') }}" method="POST" id="compraForm" class="p-5">
                 @csrf
+                @if($pedidoOrigen ?? null)
+                    <input type="hidden" name="pedido_id" value="{{ $pedidoOrigen['id'] }}">
+                @endif
 
                 <!-- TIPO DE COMPRA -->
                 <div class="mb-5">
@@ -307,10 +321,10 @@
                                 Proveedor <span class="text-red-500">*</span>
                             </label>
                             {{-- Campo oculto que envía el ID al servidor --}}
-                            <input type="hidden" name="proveedor_id" id="proveedor_id" value="{{ old('proveedor_id') }}">
+                            <input type="hidden" name="proveedor_id" id="proveedor_id" value="{{ old('proveedor_id', $pedidoOrigen['proveedor_id'] ?? '') }}">
 
                             {{-- Input de búsqueda --}}
-                            <div class="relative" id="proveedor_busqueda_wrap" style="{{ old('proveedor_id') ? 'display:none' : '' }}">
+                            <div class="relative" id="proveedor_busqueda_wrap" style="{{ old('proveedor_id', $pedidoOrigen['proveedor_id'] ?? null) ? 'display:none' : '' }}">
                                 <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 pointer-events-none text-sm"></i>
                                 <input type="text"
                                        id="buscar_proveedor"
@@ -326,7 +340,8 @@
 
                             {{-- Proveedor seleccionado (card) --}}
                             @php
-                                $provSeleccionado = old('proveedor_id') ? $proveedores->firstWhere('id', old('proveedor_id')) : null;
+                                $provSeleccionadoId = old('proveedor_id', $pedidoOrigen['proveedor_id'] ?? null);
+                                $provSeleccionado = $provSeleccionadoId ? $proveedores->firstWhere('id', $provSeleccionadoId) : null;
                             @endphp
                             <div id="proveedor_seleccionado"
                                  class="{{ $provSeleccionado ? '' : 'hidden' }} mt-1.5 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
@@ -378,13 +393,14 @@
                                 Almacén de Destino <span class="text-red-500">*</span>
                             </label>
                             <div class="relative">
+                                @php $almacenSeleccionado = old('almacen_id', $pedidoOrigen['almacen_id'] ?? null); @endphp
                                 <select name="almacen_id" id="almacen_id" required
                                         class="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm appearance-none bg-white text-sm">
                                     <option value="">— Seleccione un almacén —</option>
                                     @if($almacenesCentral->isNotEmpty())
                                         <optgroup label="── Almacenes Centrales">
                                             @foreach($almacenesCentral as $alm)
-                                                <option value="{{ $alm->id }}" {{ old('almacen_id') == $alm->id ? 'selected' : '' }}>
+                                                <option value="{{ $alm->id }}" {{ $almacenSeleccionado == $alm->id ? 'selected' : '' }}>
                                                     {{ $alm->nombre }}
                                                 </option>
                                             @endforeach
@@ -393,7 +409,7 @@
                                     @if($almacenesTienda->isNotEmpty())
                                         <optgroup label="── Almacenes de Tienda">
                                             @foreach($almacenesTienda as $alm)
-                                                <option value="{{ $alm->id }}" {{ old('almacen_id') == $alm->id ? 'selected' : '' }}>
+                                                <option value="{{ $alm->id }}" {{ $almacenSeleccionado == $alm->id ? 'selected' : '' }}>
                                                     {{ $alm->nombre }}
                                                 </option>
                                             @endforeach
@@ -3299,6 +3315,44 @@ function guardarNuevoProducto() {
         Swal.fire({ icon: 'error', title: 'Error de conexión', text: 'No se pudo conectar al servidor.', confirmButtonColor: '#d33' });
     });
 }
+
+// ============================================
+// PRECARGA DESDE PEDIDO A PROVEEDOR (Recibir mercadería)
+// ============================================
+@if($pedidoOrigen ?? null)
+(function precargarDesdePedido() {
+    const detalles = @json($pedidoOrigen['detalles']);
+
+    detalles.forEach(function (d) {
+        const cantidad = parseInt(d.cantidad) || 1;
+        const inicio = contadorProductos;
+
+        if (d.variante_id) {
+            agregarFilaConVariante({ id: d.producto_id }, d.variante_id, cantidad);
+        } else {
+            for (let i = 0; i < cantidad; i++) {
+                agregarProducto();
+                const idx = contadorProductos - 1;
+                const sel = document.getElementById(`producto_select_${idx}`);
+                if (sel) {
+                    sel.value = d.producto_id;
+                    sel.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+
+        if (d.precio_referencial) {
+            for (let idx = inicio; idx < contadorProductos; idx++) {
+                const inputPrecio = document.getElementById(`precio_${idx}`);
+                if (inputPrecio) {
+                    inputPrecio.value = d.precio_referencial;
+                    calcularSubtotal(idx);
+                }
+            }
+        }
+    });
+})();
+@endif
 </script>
 
 <!-- ============================================================ -->

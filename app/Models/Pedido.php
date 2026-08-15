@@ -12,6 +12,7 @@ class Pedido extends Model
     protected $fillable = [
         'codigo',
         'proveedor_id',
+        'almacen_id',
         'user_id',
         'fecha',
         'fecha_esperada',
@@ -29,6 +30,11 @@ class Pedido extends Model
         return $this->belongsTo(Proveedor::class);
     }
 
+    public function almacen()
+    {
+        return $this->belongsTo(Almacen::class);
+    }
+
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -37,6 +43,15 @@ class Pedido extends Model
     public function detalles()
     {
         return $this->hasMany(DetallePedido::class);
+    }
+
+    /**
+     * Compra generada al recibir la mercadería (registrarCompra() enlaza
+     * pedido_id cuando la compra viene de "Recibir mercadería").
+     */
+    public function compra()
+    {
+        return $this->hasOne(Compra::class);
     }
 
     public function scopePendientes($query)

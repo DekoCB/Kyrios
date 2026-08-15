@@ -10,6 +10,8 @@ class Pago extends Model
 
     protected $fillable = [
         'cuenta_por_pagar_id',
+        'sucursal_id',
+        'movimiento_caja_id',
         'monto',
         'fecha_pago',
         'metodo_pago',
@@ -40,5 +42,15 @@ class Pago extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function sucursal()
+    {
+        return $this->belongsTo(Sucursal::class);
+    }
+
+    public function movimientoCaja()
+    {
+        return $this->belongsTo(MovimientoCaja::class);
     }
 }

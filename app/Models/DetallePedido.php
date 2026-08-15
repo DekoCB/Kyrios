@@ -12,6 +12,7 @@ class DetallePedido extends Model
     protected $fillable = [
         'pedido_id',
         'producto_id',
+        'variante_id',
         'cantidad',
         'precio_referencial',
     ];
@@ -29,5 +30,10 @@ class DetallePedido extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class);
+    }
+
+    public function variante()
+    {
+        return $this->belongsTo(ProductoVariante::class, 'variante_id');
     }
 }

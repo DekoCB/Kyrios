@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Caja;
 use App\Models\CuentaPorPagar;
 use App\Models\Cuota;
 use App\Models\Proveedor;
 use App\Models\Pago;
+use App\Models\Sucursal;
+use App\Services\CajaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -66,8 +69,36 @@ class CuentaPorPagarController extends Controller
      */
     public function show(CuentaPorPagar $cuenta)
     {
-        $cuenta->load(['proveedor', 'compra', 'pagos.usuario', 'cuotas.pago']);
-        return view('compras.cuentas-por-pagar.show', compact('cuenta'));
+        $cuenta->load(['proveedor', 'compra', 'pagos.usuario', 'pagos.sucursal', 'cuotas.pago']);
+        $sucursales = Sucursal::where('estado', 'activo')->orderBy('nombre')->get();
+        return view('compras.cuentas-por-pagar.show', compact('cuenta', 'sucursales'));
+    }
+
+    /**
+     * Registrar el egreso en la caja abierta de la sucursal elegida.
+     *
+     * @return Caja|null la caja donde quedó registrado, o null si esa sucursal
+     *                    no tiene ninguna caja abierta (el llamador debe avisar
+     *                    al usuario para que lo registre manualmente).
+     */
+    private function registrarEgresoCajaProveedor(CuentaPorPagar $cuenta, int $sucursalId, float $monto, string $concepto): ?\App\Models\MovimientoCaja
+    {
+        $caja = Caja::where('sucursal_id', $sucursalId)
+            ->where('estado', 'abierta')
+            ->first();
+
+        if (!$caja) {
+            return null;
+        }
+
+        return app(CajaService::class)->registrarMovimiento(
+            $caja->id,
+            'egreso',
+            $monto,
+            $concepto,
+            null,
+            $cuenta->compra_id
+        );
     }
 
     /**
@@ -134,6 +165,7 @@ class CuentaPorPagarController extends Controller
             'monto'         => 'required|numeric|min:0.01',
             'fecha_pago'    => 'required|date',
             'metodo_pago'   => 'required|in:transferencia,cheque,efectivo,tarjeta',
+            'sucursal_id'   => 'required|exists:sucursales,id',
             'referencia'    => 'nullable|string|max:100',
             'observaciones' => 'nullable|string|max:255',
             'comprobante'   => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
@@ -155,8 +187,18 @@ class CuentaPorPagarController extends Controller
                 $comprobantePath = $file->store('comprobantes/pagos', 'public');
             }
 
+            $sucursal = Sucursal::findOrFail($request->sucursal_id);
+            $movimiento = $this->registrarEgresoCajaProveedor(
+                $cuenta,
+                $sucursal->id,
+                (float) $request->monto,
+                "Pago a proveedor {$cuenta->proveedor->razon_social} - Factura {$cuenta->numero_factura} - Cuota {$cuota->numero_cuota}/{$cuota->total_cuotas}"
+            );
+
             $pago = Pago::create([
                 'cuenta_por_pagar_id'       => $cuenta->id,
+                'sucursal_id'               => $sucursal->id,
+                'movimiento_caja_id'        => $movimiento?->id,
                 'monto'                     => $request->monto,
                 'fecha_pago'                => $request->fecha_pago,
                 'metodo_pago'               => $request->metodo_pago,
@@ -190,7 +232,13 @@ class CuentaPorPagarController extends Controller
 
             DB::commit();
 
-            return response()->json(['success' => true, 'message' => 'Cuota registrada como pagada.']);
+            $mensaje = 'Cuota registrada como pagada.';
+            if (!$movimiento) {
+                $mensaje .= " Aviso: {$sucursal->nombre} no tiene una caja abierta — registra manualmente el egreso de S/ "
+                    . number_format($request->monto, 2) . ' cuando corresponda.';
+            }
+
+            return response()->json(['success' => true, 'message' => $mensaje]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -256,6 +304,7 @@ class CuentaPorPagarController extends Controller
             'monto' => 'required|numeric|min:0.01|max:' . $cuenta->saldo_pendiente,
             'fecha_pago' => 'required|date',
             'metodo_pago' => 'required|in:transferencia,cheque,efectivo,tarjeta',
+            'sucursal_id' => 'required|exists:sucursales,id',
             'referencia' => 'nullable|string|max:100',
             'observaciones' => 'nullable|string|max:255',
             'numero_cuota' => 'nullable|integer|min:1',
@@ -269,16 +318,26 @@ class CuentaPorPagarController extends Controller
             // Subir comprobante si existe
             $comprobantePath = null;
             $comprobanteOriginalName = null;
-            
+
             if ($request->hasFile('comprobante')) {
                 $file = $request->file('comprobante');
                 $comprobanteOriginalName = $file->getClientOriginalName();
                 $comprobantePath = $file->store('comprobantes/pagos', 'public');
             }
 
+            $sucursal = Sucursal::findOrFail($validated['sucursal_id']);
+            $movimiento = $this->registrarEgresoCajaProveedor(
+                $cuenta,
+                $sucursal->id,
+                (float) $validated['monto'],
+                "Pago a proveedor {$cuenta->proveedor->razon_social} - Factura {$cuenta->numero_factura}"
+            );
+
             // Crear el pago
             $pago = Pago::create([
                 'cuenta_por_pagar_id' => $cuenta->id,
+                'sucursal_id' => $sucursal->id,
+                'movimiento_caja_id' => $movimiento?->id,
                 'monto' => $validated['monto'],
                 'fecha_pago' => $validated['fecha_pago'],
                 'metodo_pago' => $validated['metodo_pago'],
@@ -297,7 +356,7 @@ class CuentaPorPagarController extends Controller
             $saldoPendiente = $cuenta->monto_total - $nuevoPagado;
 
             $nuevoEstado = $saldoPendiente <= 0 ? 'pagado' : 'parcial';
-            
+
             if ($saldoPendiente > 0 && $cuenta->fecha_vencimiento && now()->greaterThan($cuenta->fecha_vencimiento)) {
                 $nuevoEstado = 'vencido';
             }
@@ -310,9 +369,15 @@ class CuentaPorPagarController extends Controller
 
             DB::commit();
 
+            $mensaje = 'Pago registrado correctamente.';
+            if (!$movimiento) {
+                $mensaje .= " Aviso: {$sucursal->nombre} no tiene una caja abierta — registra manualmente el egreso de S/ "
+                    . number_format($validated['monto'], 2) . ' cuando corresponda.';
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Pago registrado correctamente'
+                'message' => $mensaje,
             ]);
 
         } catch (\Exception $e) {

@@ -706,6 +706,13 @@
                         </a>
                     </li>
 
+                    <li>
+                        <a href="{{ route('devoluciones.index') }}"
+                            class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors ml-4 {{ request()->routeIs('devoluciones.*') ? 'bg-blue-600' : '' }}">
+                            <i class="fas fa-undo-alt mr-3 text-sm w-4"></i>Devoluciones
+                        </a>
+                    </li>
+
                     {{-- Separador visual --}}
                     <li class="px-4 py-2 mt-2">
                         <div class="border-t border-blue-800"></div>
@@ -713,7 +720,7 @@
 
                     {{-- GRUPO: INVENTARIO --}}
                     <li class="px-4 text-xs font-semibold text-blue-300 uppercase tracking-wider">Inventario</li>
-                    
+
                     <li>
                         <a href="{{ route('tienda.inventario.ver') }}"
                             class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors ml-4 {{ request()->routeIs('tienda.inventario.ver') ? 'bg-blue-600' : '' }}">

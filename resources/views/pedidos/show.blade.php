@@ -63,6 +63,7 @@
                                 </a>
                             </dd>
                         </div>
+                        <div class="flex justify-between"><dt class="text-gray-500">Almacén destino:</dt><dd class="font-semibold">{{ $pedido->almacen->nombre ?? 'No especificado' }}</dd></div>
                         <div class="flex justify-between"><dt class="text-gray-500">Fecha:</dt><dd>{{ $pedido->fecha->format('d/m/Y') }}</dd></div>
                         <div class="flex justify-between"><dt class="text-gray-500">Fecha Esperada:</dt><dd>{{ $pedido->fecha_esperada ? $pedido->fecha_esperada->format('d/m/Y') : 'No especificada' }}</dd></div>
                         <div class="flex justify-between"><dt class="text-gray-500">Creado por:</dt><dd>{{ $pedido->usuario->name ?? '-' }}</dd></div>
@@ -88,14 +89,13 @@
                             @endif
 
                             @if($pedido->estado === 'aprobado')
-                                <form action="{{ route('pedidos.cambiar-estado', $pedido) }}" method="POST">
-                                    @csrf @method('PATCH')
-                                    <input type="hidden" name="estado" value="recibido">
-                                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
-                                            onclick="return confirm('¿Marcar como recibido?')">
-                                        <i class="fas fa-box-open mr-2"></i>Marcar como Recibido
-                                    </button>
-                                </form>
+                                <a href="{{ route('compras.create', ['pedido_id' => $pedido->id]) }}"
+                                   class="block w-full text-center bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
+                                    <i class="fas fa-box-open mr-2"></i>Recibir Mercadería
+                                </a>
+                                <p class="text-xs text-gray-400 text-center -mt-1">
+                                    Te lleva a registrar la Compra real (factura, IMEIs, precios finales). El pedido pasará a "Recibido" automáticamente al guardarla.
+                                </p>
                             @endif
 
                             <form action="{{ route('pedidos.cambiar-estado', $pedido) }}" method="POST">
@@ -106,6 +106,16 @@
                                     <i class="fas fa-times mr-2"></i>Cancelar Pedido
                                 </button>
                             </form>
+                        </div>
+                    @elseif($pedido->estado === 'recibido')
+                        <div class="text-center py-6">
+                            <i class="fas fa-check-circle text-4xl text-green-500 mb-2"></i>
+                            <p class="text-sm text-gray-500">Mercadería recibida.</p>
+                            @if($pedido->compra)
+                                <a href="{{ route('compras.show', $pedido->compra) }}" class="inline-block mt-2 text-sm text-blue-600 hover:underline">
+                                    <i class="fas fa-file-invoice mr-1"></i>Ver Compra {{ $pedido->compra->numero_factura }}
+                                </a>
+                            @endif
                         </div>
                     @else
                         <div class="text-center py-6 text-gray-400">
@@ -174,6 +184,11 @@
                                 <td class="px-6 py-4 text-sm">
                                     <span class="font-medium text-gray-900">{{ $detalle->producto->nombre ?? '-' }}</span>
                                     <span class="text-gray-400 text-xs ml-1">({{ $detalle->producto->codigo ?? '' }})</span>
+                                    @if($detalle->variante)
+                                        <span class="block text-xs text-indigo-600 mt-0.5">
+                                            <i class="fas fa-tag mr-1"></i>{{ $detalle->variante->nombre_completo }}
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 text-sm text-center font-bold">{{ $detalle->cantidad }}</td>
                                 <td class="px-6 py-4 text-sm text-right">

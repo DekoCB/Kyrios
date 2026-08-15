@@ -525,7 +525,7 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // MÓDULO DE DEVOLUCIONES
     // ========================================
-    Route::prefix('devoluciones')->name('devoluciones.')->middleware('role:Administrador,Almacenero,Vendedor')->group(function () {
+    Route::prefix('devoluciones')->name('devoluciones.')->middleware('role:Administrador,Almacenero,Vendedor,Tienda')->group(function () {
         Route::get('/', [DevolucionController::class, 'index'])->name('index');
         Route::get('/create', [DevolucionController::class, 'create'])->name('create');
         Route::post('/', [DevolucionController::class, 'store'])->name('store');
