@@ -121,6 +121,11 @@
                                 @if($caja->fecha_cierre) — {{ $caja->fecha_cierre->format('H:i') }}@endif
                             </p>
                         @endif
+                        @if($caja->devoluciones_count > 0)
+                            <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-orange-50 text-orange-600">
+                                <i class="fas fa-rotate-left"></i> {{ $caja->devoluciones_count }} devolución(es)/anulación(es)
+                            </span>
+                        @endif
                     </td>
                     @if($isAdmin)
                         <td class="px-4 py-3 text-sm text-gray-700">{{ $caja->usuario->name ?? '—' }}</td>

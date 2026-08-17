@@ -21,6 +21,12 @@ class CajaController extends Controller
         $isAdmin = $user->role->nombre === 'Administrador';
 
         $query = Caja::with(['usuario', 'almacen', 'sucursal'])
+            // Movimientos de devolución/anulación son egresos ligados a una venta;
+            // se cuentan aparte para poder avisar en el listado que esa caja tuvo
+            // alguno, sin obligar a entrar al detalle para enterarse.
+            ->withCount(['movimientos as devoluciones_count' => function ($q) {
+                $q->where('tipo', 'egreso')->whereNotNull('venta_id');
+            }])
             ->orderBy('created_at', 'desc');
 
         if (!$isAdmin) {

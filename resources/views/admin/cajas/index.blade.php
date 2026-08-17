@@ -141,6 +141,17 @@
                                 </td>
                                 <td class="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                                     {{ $caja->fecha_cierre?->format('d/m/Y H:i') ?? '—' }}
+                                    @php
+                                        $numDevoluciones = $caja->movimientos
+                                            ->where('tipo', 'egreso')
+                                            ->whereNotNull('venta_id')
+                                            ->count();
+                                    @endphp
+                                    @if($numDevoluciones > 0)
+                                        <span class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-600 whitespace-nowrap">
+                                            <i class="fas fa-rotate-left"></i> {{ $numDevoluciones }} dev./anul.
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 text-right text-gray-700">S/ {{ number_format($caja->monto_inicial, 2) }}</td>
                                 <td class="px-4 py-3 text-right text-gray-700">S/ {{ number_format($caja->total_ventas, 2) }}</td>

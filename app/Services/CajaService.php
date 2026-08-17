@@ -204,10 +204,20 @@ class CajaService
         $ventasPlin          = $ingresos->whereNotNull('venta_id')->where('metodo_pago', 'plin')->sum('monto');
         $ventasTransferencia = $ingresos->whereNotNull('venta_id')->where('metodo_pago', 'transferencia')->sum('monto');
         $ventasMixto         = $ingresos->whereNotNull('venta_id')->where('metodo_pago', 'mixto')->sum('monto');
+
+        // El "saldo esperado (efectivo)" reconcilia el CONTEO FÍSICO del cajón, así
+        // que solo puede moverse por movimientos en efectivo. Una devolución o la
+        // reversión de una venta anulada pagada por Yape/Plin/Transferencia/Mixto
+        // no saca billetes del cajón, así que no debe restar de aquí (antes se
+        // restaba igual, y eso inflaba el "sobrante" al cerrar caja). Lo mismo
+        // aplica a ingresos manuales registrados en un método distinto a efectivo.
         $ingresosManual      = $ingresos->whereNull('venta_id')
             ->whereNotIn('concepto', ['Sobrante en cierre de caja'])
+            ->where('metodo_pago', 'efectivo')
             ->sum('monto');
-        $egresosTotal        = $egresos->whereNotIn('concepto', ['Faltante en cierre de caja'])->sum('monto');
+        $egresosTotal        = $egresos->whereNotIn('concepto', ['Faltante en cierre de caja'])
+            ->where('metodo_pago', 'efectivo')
+            ->sum('monto');
 
         // total_ventas incluye todos los métodos de pago (efectivo, yape, plin, transferencia, mixto)
         $totalVentas = $ingresos->whereNotNull('venta_id')->sum('monto');
