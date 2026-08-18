@@ -178,6 +178,76 @@ class CajaService
     }
 
     /**
+     * Caja donde se registró el ingreso original de una venta pagada (todos
+     * los movimientos de una misma venta —incluidos los de un pago mixto—
+     * quedan en la misma caja porque se crean en un solo lote). Null si esa
+     * venta nunca llegó a generar un ingreso de caja.
+     */
+    public function cajaDeVenta(int $ventaId): ?Caja
+    {
+        $cajaId = MovimientoCaja::where('venta_id', $ventaId)
+            ->where('tipo', 'ingreso')
+            ->value('caja_id');
+
+        return $cajaId ? Caja::find($cajaId) : null;
+    }
+
+    /**
+     * Escribe un movimiento de corrección (devolución, anulación,
+     * eliminación) y actualiza monto_final, funcionando tanto si la caja
+     * sigue abierta (igual que registrarMovimiento) como si ya está
+     * cerrada. registrarMovimiento() bloquea escribir en una caja cerrada
+     * a propósito para operaciones normales del día a día; esto es
+     * explícitamente una corrección retroactiva, así que además recalcula
+     * diferencia_cierre reutilizando getArqueo(), que ya sabe qué métodos
+     * de pago afectan el conteo físico de efectivo y cuáles no.
+     */
+    public function registrarCorreccion(
+        Caja $caja,
+        string $tipo,
+        float $monto,
+        string $concepto,
+        ?int $ventaId,
+        string $metodoPago,
+        ?string $referencia = null
+    ): MovimientoCaja {
+        if ($caja->estado === 'abierta') {
+            return $this->registrarMovimiento(
+                $caja->id, $tipo, $monto, $concepto, $ventaId, null, null, $metodoPago, $referencia
+            );
+        }
+
+        $movimiento = MovimientoCaja::create([
+            'caja_id'     => $caja->id,
+            'user_id'     => auth()->id(),
+            'venta_id'    => $ventaId,
+            'tipo'        => $tipo,
+            'metodo_pago' => $metodoPago,
+            'monto'       => $monto,
+            'concepto'    => $concepto . ' [caja ya cerrada — corrección retroactiva]',
+            'referencia'  => $referencia,
+        ]);
+
+        $tipo === 'ingreso' ? $caja->increment('monto_final', $monto) : $caja->decrement('monto_final', $monto);
+
+        $this->recalcularDiferenciaCierre($caja);
+
+        return $movimiento;
+    }
+
+    /**
+     * Vuelve a calcular diferencia_cierre de una caja cerrada a partir de su
+     * arqueo actual (monto_real_cierre es el conteo físico ya hecho, eso no
+     * cambia; lo que se corrige es cuánto se ESPERABA según los movimientos
+     * vigentes ahora mismo).
+     */
+    public function recalcularDiferenciaCierre(Caja $caja): void
+    {
+        $arqueo = $this->getArqueo($caja->fresh('movimientos'));
+        $caja->update(['diferencia_cierre' => (float) $caja->monto_real_cierre - $arqueo['saldo_esperado']]);
+    }
+
+    /**
      * Obtener la caja activa del usuario.
      */
     public function cajaActiva(?int $userId = null): ?Caja

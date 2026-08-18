@@ -15,6 +15,7 @@ use App\Models\CuotaCobro;
 use App\Models\PagoCredito;
 use App\Models\AuditoriaVenta;
 use App\Models\Caja;
+use App\Models\MovimientoCaja;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -149,18 +150,24 @@ class VentaService
 
             // Crear guía de remisión si se proporcionaron datos
             if ($guiaData) {
+                $guiaService = app(\App\Services\GuiaRemisionService::class);
+
                 // Mismo resolutor de numeración que usa el módulo de Guías de Remisión
                 // y los traslados: evita duplicar la lógica (y que se le olvide
                 // guia_serie_id, como pasaba antes aquí).
-                $resuelto = app(\App\Services\GuiaRemisionService::class)->resolverNumeroGuia($venta->almacen_id);
+                $resuelto = $guiaService->resolverNumeroGuia($venta->almacen_id);
 
+                // El formulario del POS manda ambos bloques (conductor y
+                // transportista) siempre, y puede traer datos precargados de
+                // la modalidad contraria (último conductor usado, transportista
+                // guardado en localStorage) — se descarta el que no aplica.
                 GuiaRemision::create(array_merge(
                     [
                         'venta_id'      => $venta->id,
                         'numero_guia'   => $resuelto['numero'],
                         'guia_serie_id' => $resuelto['serie_id'],
                     ],
-                    $guiaData
+                    $guiaService->sanitizarPorModalidad($guiaData)
                 ));
             }
 
@@ -396,6 +403,14 @@ class VentaService
         if (!empty($datos['guia'])) {
             $guiaData = array_filter($datos['guia'], fn($v) => $v !== null && $v !== '');
             if (!empty($guiaData)) {
+                // Si se está tocando la modalidad, descartar el bloque contrario
+                // explícitamente — el form de edición solo expone los campos de
+                // transportista, así que si una guía privada pasa a pública acá
+                // nunca se manda conductor_dni/nombre/licencia/placa_vehiculo, y
+                // sin esto ->update() (parcial) dejaba esos datos viejos intactos
+                // en una guía que ya dice "pública".
+                $guiaData = app(\App\Services\GuiaRemisionService::class)->sanitizarPorModalidad($guiaData);
+
                 if ($venta->guiaRemision) {
                     $venta->guiaRemision->update($guiaData);
                 } else {
@@ -413,9 +428,15 @@ class VentaService
      * Eliminar (soft-delete) una venta — revierte stock y oculta de las listas normales
      */
     /**
-     * @return bool true si el egreso de caja quedó registrado (o no aplicaba
+     * Eliminar es "como si la venta nunca hubiera existido": si estaba
+     * pagada, se revierte (borra) el ingreso original en su caja — sin
+     * dejar un movimiento nuevo de compensación. Es distinto de anular, que
+     * conserva la venta como registro visible y sí deja un egreso nuevo
+     * (ver anularVenta / registrarEnCaja).
+     *
+     * @return bool true si el ingreso de caja quedó revertido (o no aplicaba
      *              porque la venta no estaba pagada); false si estaba pagada
-     *              pero no había caja abierta para registrar la devolución.
+     *              pero no se encontró el movimiento de ingreso original.
      */
     public function eliminarVenta(Venta $venta, bool $requirioClave = false): bool
     {
@@ -444,10 +465,10 @@ class VentaService
                 $venta->cuentaPorCobrar->update(['estado' => 'anulado']);
             }
 
-            // Si estaba pagada, registrar egreso en caja (devolución)
+            // Si estaba pagada, revertir el ingreso original en su caja
             $cajaActualizada = true;
             if ($venta->estado_pago === 'pagado') {
-                $cajaActualizada = $this->registrarEnCaja($venta, 'eliminacion');
+                $cajaActualizada = $this->revertirIngresoEnCaja($venta);
             }
 
             $this->registrarAuditoria($venta, 'eliminar', $datosAnteriores, null, $requirioClave);
@@ -629,9 +650,15 @@ class VentaService
      * Si ya fue aceptado, usar generarNotaCredito().
      */
     /**
+     * A diferencia de eliminar, aquí la venta queda visible (marcada
+     * "Anulado") y, si estaba pagada, se deja un egreso NUEVO en su caja
+     * original (aunque ya esté cerrada) en vez de borrar el ingreso —
+     * queda rastro visible de la corrección.
+     *
      * @return bool true si el egreso de caja quedó registrado (o no aplicaba
      *              porque la venta no estaba pagada); false si estaba pagada
-     *              pero no había caja abierta para registrar la devolución.
+     *              pero no se encontró ninguna caja (ni la original de la
+     *              venta ni una abierta del usuario actual) para registrarlo.
      */
     public function anularVenta(Venta $venta, bool $requirioClave = false): bool
     {
@@ -957,17 +984,21 @@ class VentaService
      * Registrar en caja.
      * $contexto: 'venta' (ingreso) | 'anulacion' | 'eliminacion' | 'nota_credito' (egreso/devolución)
      *
-     * @return bool true si el movimiento quedó registrado; false si no hay caja
-     *              abierta (el llamador debe avisar al usuario para que lo
-     *              registre manualmente — no se puede escribir en una caja
-     *              cerrada, y no existe una caja "correcta" a la que atribuir
-     *              retroactivamente el ajuste).
+     * @return bool true si el movimiento quedó registrado; false si no hay
+     *              ninguna caja a la que atribuirlo (ni la caja original de
+     *              la venta, ni una caja abierta del usuario actual).
      */
     private function registrarEnCaja(Venta $venta, string $contexto): bool
     {
-        $caja = \App\Models\Caja::where('user_id', auth()->id())
-            ->where('estado', 'abierta')
-            ->first();
+        $cajaService = app(CajaService::class);
+
+        // Para devoluciones (anular/eliminar/NC) el movimiento debe caer en
+        // la caja donde se registró originalmente el ingreso de esta venta
+        // — no en "la que esté abierta ahora", que puede ser otra sesión de
+        // caja distinta (u otro día). Para una venta nueva ('venta') todavía
+        // no existe ese ingreso, así que cae directo al fallback.
+        $caja = $cajaService->cajaDeVenta($venta->id)
+            ?? Caja::where('user_id', auth()->id())->where('estado', 'abierta')->first();
 
         if (!$caja) {
             return false;
@@ -989,18 +1020,13 @@ class VentaService
         ];
         $concepto = $conceptos[$contexto] ?? 'Venta #' . $venta->codigo;
 
-        $cajaService = app(CajaService::class);
-
-        // Para pagos mixtos: crear un movimiento por cada método con su referencia
+        // Para pagos mixtos: un movimiento por cada método con su referencia
         $pagosDetalle = $venta->pagos_detalle ?? [];
         if ($tipo === 'ingreso' && count($pagosDetalle) > 1) {
             foreach ($pagosDetalle as $pd) {
                 $mp  = in_array($pd['metodo'] ?? '', $metodosValidos) ? $pd['metodo'] : 'efectivo';
                 $ref = $pd['referencia'] ?? null;
-                $cajaService->registrarMovimiento(
-                    $caja->id, $tipo, (float) $pd['monto'],
-                    $concepto, $venta->id, null, null, $mp, $ref
-                );
+                $cajaService->registrarCorreccion($caja, $tipo, (float) $pd['monto'], $concepto, $venta->id, $mp, $ref);
             }
             return true;
         }
@@ -1011,10 +1037,44 @@ class VentaService
             $referencia = $pagosDetalle[0]['referencia'] ?? null;
         }
 
-        $cajaService->registrarMovimiento(
-            $caja->id, $tipo, $venta->total,
-            $concepto, $venta->id, null, null, $metodoPago, $referencia
-        );
+        $cajaService->registrarCorreccion($caja, $tipo, (float) $venta->total, $concepto, $venta->id, $metodoPago, $referencia);
+
+        return true;
+    }
+
+    /**
+     * Revierte (borra) el/los movimiento(s) de ingreso original de una venta
+     * en su caja, dejando la caja como si esa venta nunca se hubiera pagado
+     * — sin crear ningún movimiento nuevo. Usado por eliminarVenta(); a
+     * diferencia de anular/NC, aquí no debe quedar rastro de compensación.
+     *
+     * @return bool true si se encontró y revirtió el ingreso; false si la
+     *              venta no tenía ningún ingreso de caja que revertir.
+     */
+    private function revertirIngresoEnCaja(Venta $venta): bool
+    {
+        $ingresos = MovimientoCaja::where('venta_id', $venta->id)
+            ->where('tipo', 'ingreso')
+            ->get();
+
+        if ($ingresos->isEmpty()) {
+            return false;
+        }
+
+        $caja = Caja::find($ingresos->first()->caja_id);
+        if (!$caja) {
+            return false;
+        }
+
+        $total = (float) $ingresos->sum('monto');
+
+        MovimientoCaja::whereIn('id', $ingresos->pluck('id'))->delete();
+
+        $caja->decrement('monto_final', $total);
+
+        if ($caja->estado === 'cerrada') {
+            app(CajaService::class)->recalcularDiferenciaCierre($caja);
+        }
 
         return true;
     }

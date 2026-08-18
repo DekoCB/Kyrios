@@ -699,7 +699,7 @@ class VentaController extends Controller
             $cajaActualizada = app(VentaService::class)->anularVenta($venta, $requirioClave);
             $mensaje = 'Venta anulada correctamente. El stock ha sido revertido.';
             if (!$cajaActualizada) {
-                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                $mensaje .= ' Aviso: no se encontró ninguna caja asociada a esta venta — registra manualmente el egreso de S/ '
                     . number_format($venta->total, 2) . ' cuando corresponda.';
             }
             return redirect()->route('ventas.show', $venta)->with('success', $mensaje);
@@ -729,7 +729,7 @@ class VentaController extends Controller
 
             $mensaje = "Nota de Crédito {$nc->codigo} generada correctamente. Envíala a SUNAT para completar el proceso.";
             if (!$nc->getAttribute('caja_actualizada')) {
-                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                $mensaje .= ' Aviso: no se encontró ninguna caja asociada a esta venta — registra manualmente el egreso de S/ '
                     . number_format($nc->total, 2) . ' cuando corresponda.';
             }
 
@@ -749,8 +749,8 @@ class VentaController extends Controller
             $cajaActualizada = app(VentaService::class)->eliminarVenta($venta, $requirioClave);
             $mensaje = 'Venta eliminada correctamente. El stock ha sido revertido.';
             if (!$cajaActualizada) {
-                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
-                    . number_format($venta->total, 2) . ' cuando corresponda.';
+                $mensaje .= ' Aviso: no se encontró el ingreso original en caja para revertirlo — verifica manualmente si corresponde restar S/ '
+                    . number_format($venta->total, 2) . '.';
             }
             return redirect()->route('ventas.index')->with('success', $mensaje);
         } catch (\Exception $e) {

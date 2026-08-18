@@ -1531,7 +1531,7 @@
                                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                                     : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'"
                                    class="flex items-center gap-2 border rounded-xl px-3 py-2.5 cursor-pointer transition">
-                                <input type="radio" x-model="orden.guia.modalidad" value="privado" class="hidden">
+                                <input type="radio" x-model="orden.guia.modalidad" value="privado" class="hidden" @change="onModalidadGuiaChange()">
                                 <i class="fas fa-car text-sm"></i>
                                 <span class="text-xs font-semibold">Privado</span>
                             </label>
@@ -1539,7 +1539,7 @@
                                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                                     : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-300'"
                                    class="flex items-center gap-2 border rounded-xl px-3 py-2.5 cursor-pointer transition">
-                                <input type="radio" x-model="orden.guia.modalidad" value="publico" class="hidden">
+                                <input type="radio" x-model="orden.guia.modalidad" value="publico" class="hidden" @change="onModalidadGuiaChange()">
                                 <i class="fas fa-truck text-sm"></i>
                                 <span class="text-xs font-semibold">Público</span>
                             </label>
@@ -2839,8 +2839,9 @@ function posApp() {
                 g.conductor_licencia = this.ultimoConductor.conductor_licencia || '';
                 g.placa_vehiculo     = this.ultimoConductor.placa_vehiculo     || '';
             }
-            // Precargar datos del transportista desde sesión anterior
-            if (!g.transportista_doc && !g.transportista_nombre) {
+            // Precargar datos del transportista desde sesión anterior — solo
+            // aplica a transporte público (mismo motivo que el conductor arriba).
+            if (g.modalidad === 'publico' && !g.transportista_doc && !g.transportista_nombre) {
                 try {
                     const savedT = JSON.parse(localStorage.getItem('pos_transportista_data') || 'null');
                     if (savedT) {
@@ -2857,6 +2858,18 @@ function posApp() {
             this.showModalGuia = false;
             if (!this.orden.guia.guardada) {
                 this.orden.envioProvincia = false;
+            }
+        },
+
+        // Al cambiar de modalidad dentro del modal, limpiar el bloque que ya
+        // no aplica — si no, queda guardado en memoria (aunque oculto) y se
+        // manda igual al confirmar la venta.
+        onModalidadGuiaChange() {
+            const g = this.orden.guia;
+            if (g.modalidad === 'publico') {
+                g.conductor_dni = ''; g.conductor_nombre = ''; g.conductor_licencia = ''; g.placa_vehiculo = '';
+            } else {
+                g.transportista_tipo_doc = 'RUC'; g.transportista_doc = ''; g.transportista_nombre = '';
             }
         },
 

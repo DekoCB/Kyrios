@@ -443,7 +443,10 @@ Route::middleware('auth')->group(function () {
     // MÓDULO DE TRASLADOS
     // ========================================
     Route::prefix('traslados')->name('traslados.')->middleware('auth')->group(function () {
-        Route::middleware('role:Administrador,Almacenero')->group(function () {
+        // Historial, stock y creación: Tienda tiene acceso completo, igual
+        // que Almacenero — puede tanto recibir traslados (pendientes/
+        // confirmar, abajo) como iniciarlos.
+        Route::middleware('role:Administrador,Almacenero,Tienda')->group(function () {
             Route::get('/', [TrasladoController::class, 'index'])->name('index');
             Route::get('/stock', [TrasladoController::class, 'stock'])->name('stock');
             Route::get('/create', [TrasladoController::class, 'create'])->name('create');
@@ -457,11 +460,13 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:Administrador,Almacenero,Tienda')->group(function () {
             Route::get('/pendientes', [TrasladoController::class, 'pendientes'])->name('pendientes');
             Route::post('/{traslado}/confirmar', [TrasladoController::class, 'confirmar'])->name('confirmar');
-        });
-
-        Route::middleware('role:Administrador,Almacenero')->group(function () {
             Route::get('/{traslado}', [TrasladoController::class, 'show'])->name('show');
             Route::get('/{traslado}/guia-pdf', [TrasladoController::class, 'guiaPdf'])->name('guia-pdf');
+        });
+
+        // Anular queda restringido: cancelar un traslado ya registrado es una
+        // decisión más sensible que iniciarlo o recibirlo.
+        Route::middleware('role:Administrador,Almacenero')->group(function () {
             Route::post('/{traslado}/anular', [TrasladoController::class, 'anular'])->name('anular');
         });
     });
@@ -469,18 +474,27 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // MÓDULO GUÍAS DE REMISIÓN
     // ========================================
-    Route::prefix('guias-remision')->name('guias-remision.')->middleware(['auth', 'role:Administrador,Almacenero'])->group(function () {
-        Route::get('/',                         [\App\Http\Controllers\GuiaRemisionController::class, 'index'])->name('index');
-        Route::get('/create',                   [\App\Http\Controllers\GuiaRemisionController::class, 'create'])->name('create');
-        Route::post('/',                        [\App\Http\Controllers\GuiaRemisionController::class, 'store'])->name('store');
-        Route::get('/{guiasRemision}',          [\App\Http\Controllers\GuiaRemisionController::class, 'show'])->name('show');
-        Route::patch('/{guiasRemision}/estado', [\App\Http\Controllers\GuiaRemisionController::class, 'updateEstado'])->name('update-estado');
-        Route::get('/{guiasRemision}/pdf',      [\App\Http\Controllers\GuiaRemisionController::class, 'pdf'])->name('pdf');
-        Route::post('/{guiasRemision}/enviar-sunat',    [\App\Http\Controllers\GuiaRemisionController::class, 'enviarSunat'])->name('enviar-sunat');
-        Route::post('/{guiasRemision}/consultar-sunat', [\App\Http\Controllers\GuiaRemisionController::class, 'consultarSunat'])->name('consultar-sunat');
-        Route::get('/buscar-destinatario',      [\App\Http\Controllers\GuiaRemisionController::class, 'buscarDestinatario'])->name('buscar-destinatario');
-        Route::get('/api/ruc/{ruc}',            [\App\Http\Controllers\GuiaRemisionController::class, 'buscarRuc'])->name('api.ruc');
-        Route::get('/api/dni/{dni}',            [\App\Http\Controllers\DniLookupController::class, 'buscar'])->name('api.dni');
+    Route::prefix('guias-remision')->name('guias-remision.')->middleware(['auth'])->group(function () {
+        // Crear un traslado (arriba) redirige aquí para emitir su guía, así
+        // que Tienda necesita el mismo acceso para poder terminar ese flujo.
+        Route::middleware('role:Administrador,Almacenero,Tienda')->group(function () {
+            Route::get('/',                    [\App\Http\Controllers\GuiaRemisionController::class, 'index'])->name('index');
+            Route::get('/create',              [\App\Http\Controllers\GuiaRemisionController::class, 'create'])->name('create');
+            Route::post('/',                   [\App\Http\Controllers\GuiaRemisionController::class, 'store'])->name('store');
+            Route::get('/{guiasRemision}',     [\App\Http\Controllers\GuiaRemisionController::class, 'show'])->name('show');
+            Route::get('/{guiasRemision}/pdf', [\App\Http\Controllers\GuiaRemisionController::class, 'pdf'])->name('pdf');
+            Route::get('/buscar-destinatario', [\App\Http\Controllers\GuiaRemisionController::class, 'buscarDestinatario'])->name('buscar-destinatario');
+            Route::get('/api/ruc/{ruc}',       [\App\Http\Controllers\GuiaRemisionController::class, 'buscarRuc'])->name('api.ruc');
+            Route::get('/api/dni/{dni}',       [\App\Http\Controllers\DniLookupController::class, 'buscar'])->name('api.dni');
+        });
+
+        // Envío/consulta SUNAT y cambio manual de estado quedan restringidos
+        // — son acciones de cumplimiento, no parte del flujo de traslado.
+        Route::middleware('role:Administrador,Almacenero')->group(function () {
+            Route::patch('/{guiasRemision}/estado',         [\App\Http\Controllers\GuiaRemisionController::class, 'updateEstado'])->name('update-estado');
+            Route::post('/{guiasRemision}/enviar-sunat',    [\App\Http\Controllers\GuiaRemisionController::class, 'enviarSunat'])->name('enviar-sunat');
+            Route::post('/{guiasRemision}/consultar-sunat', [\App\Http\Controllers\GuiaRemisionController::class, 'consultarSunat'])->name('consultar-sunat');
+        });
     });
 
     // ========================================

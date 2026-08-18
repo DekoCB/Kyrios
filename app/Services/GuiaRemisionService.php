@@ -15,6 +15,39 @@ use Illuminate\Support\Facades\DB;
 
 class GuiaRemisionService
 {
+    /**
+     * Descarta del array de datos de guía el bloque (conductor/vehículo vs
+     * transportista) que no corresponde a la modalidad indicada — mismo
+     * criterio que crear()/crearParaTraslado(), reutilizable por los flujos
+     * que arman su propia GuiaRemision directamente (VentaService,
+     * DevolucionController) en vez de pasar por crear(). Sin esto, un
+     * formulario que precargó datos de la modalidad contraria (o un campo
+     * que quedó con un valor viejo al cambiar de modalidad) los termina
+     * guardando igual.
+     *
+     * No hace nada si $datos no trae 'modalidad' — en una actualización
+     * parcial que no toca la guía, no hay que inventar un criterio.
+     */
+    public function sanitizarPorModalidad(array $datos): array
+    {
+        if (!isset($datos['modalidad'])) {
+            return $datos;
+        }
+
+        if ($datos['modalidad'] === 'publico') {
+            $datos['conductor_dni']      = null;
+            $datos['conductor_nombre']   = null;
+            $datos['conductor_licencia'] = null;
+            $datos['placa_vehiculo']     = null;
+        } else {
+            $datos['transportista_tipo_doc'] = null;
+            $datos['transportista_doc']      = null;
+            $datos['transportista_nombre']   = null;
+        }
+
+        return $datos;
+    }
+
     public function crear(array $datos): GuiaRemision
     {
         return DB::transaction(function () use ($datos) {

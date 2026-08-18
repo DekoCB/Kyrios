@@ -248,49 +248,56 @@ class DevolucionController extends Controller
                 }
 
                 if ($emiteGuiaReal) {
+                    // Descarta el bloque (conductor vs. transportista) que no
+                    // corresponde a la modalidad elegida — este formulario solo
+                    // tiene campos de conductor/placa, así que sin esto una
+                    // devolución marcada "pública" igual guardaba lo que haya
+                    // quedado en esos inputs.
                     GuiaRemision::create(array_merge(
                         [
                             'numero_guia'   => $numeroGuia,
                             'guia_serie_id' => $guiaResuelta['serie_id'],
                             'motivo_traslado' => 'DEVOLUCION',
                         ],
-                        $request->input('guia', [])
+                        app(\App\Services\GuiaRemisionService::class)->sanitizarPorModalidad($request->input('guia', []))
                     ));
                 }
 
-                // Registrar el egreso en caja (efectivo/tarjeta devuelto al cliente).
-                // No se puede escribir en una caja cerrada, así que si no hay una
-                // caja abierta se avisa al usuario para que lo registre a mano.
+                // Registrar el egreso en la caja donde se registró el ingreso
+                // original de cada venta (aunque ya esté cerrada) — no en "la
+                // que esté abierta ahora", que puede ser otra sesión distinta
+                // u otro día. Solo queda pendiente de registro manual si esa
+                // venta nunca generó ingreso de caja y tampoco hay ninguna
+                // caja abierta a la que atribuir la devolución.
                 $cajaPendiente  = false;
                 $montoPendiente = 0.0;
                 if (!empty($montosPorVenta)) {
-                    $caja = \App\Models\Caja::where('user_id', auth()->id())
-                        ->where('estado', 'abierta')
-                        ->first();
+                    $cajaService = app(\App\Services\CajaService::class);
+                    $metodosValidos = ['efectivo', 'yape', 'plin', 'transferencia', 'mixto'];
 
-                    if ($caja) {
-                        $cajaService = app(\App\Services\CajaService::class);
-                        $metodosValidos = ['efectivo', 'yape', 'plin', 'transferencia', 'mixto'];
-                        foreach ($montosPorVenta as $ventaId => $monto) {
-                            $ventaOrigen = \App\Models\Venta::find($ventaId);
-                            $metodoPago  = in_array($ventaOrigen->metodo_pago ?? '', $metodosValidos)
-                                ? $ventaOrigen->metodo_pago
-                                : 'efectivo';
-                            $cajaService->registrarMovimiento(
-                                $caja->id,
-                                'egreso',
-                                round($monto, 2),
-                                'Devolución de cliente - Venta #' . ($ventaOrigen->codigo ?? $ventaId),
-                                $ventaId,
-                                null,
-                                null,
-                                $metodoPago,
-                                null
-                            );
+                    foreach ($montosPorVenta as $ventaId => $monto) {
+                        $caja = $cajaService->cajaDeVenta((int) $ventaId)
+                            ?? \App\Models\Caja::where('user_id', auth()->id())->where('estado', 'abierta')->first();
+
+                        if (!$caja) {
+                            $cajaPendiente   = true;
+                            $montoPendiente += $monto;
+                            continue;
                         }
-                    } else {
-                        $cajaPendiente  = true;
-                        $montoPendiente = array_sum($montosPorVenta);
+
+                        $ventaOrigen = \App\Models\Venta::find($ventaId);
+                        $metodoPago  = in_array($ventaOrigen->metodo_pago ?? '', $metodosValidos)
+                            ? $ventaOrigen->metodo_pago
+                            : 'efectivo';
+                        $cajaService->registrarCorreccion(
+                            $caja,
+                            'egreso',
+                            round($monto, 2),
+                            'Devolución de cliente - Venta #' . ($ventaOrigen->codigo ?? $ventaId),
+                            $ventaId,
+                            $metodoPago,
+                            null
+                        );
                     }
                 }
 
@@ -299,7 +306,7 @@ class DevolucionController extends Controller
 
             $mensaje = 'Devolución registrada exitosamente.';
             if ($resultado['caja_pendiente']) {
-                $mensaje .= ' Aviso: no hay una caja abierta — registra manualmente el egreso de S/ '
+                $mensaje .= ' Aviso: no se encontró ninguna caja asociada a esas ventas — registra manualmente el egreso de S/ '
                     . number_format($resultado['monto_pendiente'], 2) . ' cuando corresponda.';
             }
 
