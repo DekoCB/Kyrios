@@ -514,6 +514,10 @@ class VentaService
             throw new \Exception('Las cotizaciones no requieren nota de crédito.');
         }
 
+        if ($venta->estado_pago === 'anulado') {
+            throw new \Exception('Esta venta ya está anulada. No se puede generar otra nota de crédito sobre ella.');
+        }
+
         // Verificar que no tenga ya una NC de anulación activa
         $ncExistente = $venta->notasCredito()
             ->where('motivo_nc_codigo', '01')
