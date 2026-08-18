@@ -353,7 +353,7 @@
                         <div>
                             <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Traslado</label>
                             <input type="date" name="guia[fecha_traslado]"
-                                   value="{{ old('guia.fecha_traslado', now()->format('Y-m-d')) }}"
+                                   value="{{ old('guia.fecha_traslado') }}"
                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-400">
                         </div>
                         <div>
