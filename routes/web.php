@@ -544,6 +544,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [DevolucionController::class, 'create'])->name('create');
         Route::post('/', [DevolucionController::class, 'store'])->name('store');
         Route::get('/{devolucion}', [DevolucionController::class, 'show'])->name('show');
+        Route::post('/{devolucion}/anular', [DevolucionController::class, 'anular'])
+            ->middleware('role:Administrador,Almacenero,Tienda')->name('anular');
     });
 
     // ========================================

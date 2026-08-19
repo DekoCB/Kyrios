@@ -57,7 +57,8 @@ class DetalleVenta extends Model
     public function movimientosDevolucion()
     {
         return $this->hasMany(MovimientoInventario::class)
-                    ->where('tipo_movimiento', 'devolucion');
+                    ->where('tipo_movimiento', 'devolucion')
+                    ->where('estado', '!=', 'anulado');
     }
 
     public function getCantidadDevueltaAttribute(): int

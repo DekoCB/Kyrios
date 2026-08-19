@@ -6,6 +6,7 @@ use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\ComisionRegla;
 use App\Models\ComisionDetalleVenta;
+use App\Models\MovimientoInventario;
 
 class ComisionService
 {
@@ -68,6 +69,59 @@ class ComisionService
             });
 
         return $creadas;
+    }
+
+    /**
+     * Ajusta la comisión de un detalle de venta a la cantidad que sigue
+     * efectivamente vendida (original menos lo devuelto y no anulado).
+     * Se recalcula desde cero cada vez a partir de la comisión ya
+     * registrada, así que sirve tanto para una devolución nueva (baja el
+     * monto) como para "Anular Devolución" (vuelve a subirlo). No toca
+     * comisiones ya marcadas "pagado" — ese dinero ya salió, queda para
+     * ajuste manual con el vendedor.
+     */
+    public function recalcularPorDevolucion(DetalleVenta $detalle): void
+    {
+        $comision = ComisionDetalleVenta::where('detalle_venta_id', $detalle->id)->first();
+        if (!$comision || $comision->estado === 'pagado') {
+            return;
+        }
+
+        $cantidadOriginal = (int) $detalle->cantidad;
+        if ($cantidadOriginal <= 0) {
+            return;
+        }
+
+        $cantidadDevuelta = (int) MovimientoInventario::where('detalle_venta_id', $detalle->id)
+            ->where('tipo_movimiento', 'devolucion')
+            ->where('estado', '!=', 'anulado')
+            ->sum('cantidad');
+
+        $cantidadEfectiva = max(0, $cantidadOriginal - $cantidadDevuelta);
+
+        if ($cantidadEfectiva <= 0) {
+            $comision->delete();
+            return;
+        }
+
+        $factor = $cantidadEfectiva / $cantidadOriginal;
+
+        if ($comision->tipo_calculo === 'monto_fijo') {
+            $nuevoMonto  = round((float) $comision->valor_configurado * $cantidadEfectiva, 2);
+            $nuevoMargen = $comision->margen_calculado;
+        } elseif (!is_null($comision->margen_calculado)) {
+            $nuevoMargen = round((float) $comision->margen_calculado * $factor, 2);
+            $nuevoMonto  = round($nuevoMargen * (float) $comision->valor_configurado / 100, 2);
+        } else {
+            $subtotalEfectivo = round((float) $detalle->subtotal_con_igv * $factor, 2);
+            $nuevoMonto  = round($subtotalEfectivo * (float) $comision->valor_configurado / 100, 2);
+            $nuevoMargen = null;
+        }
+
+        $comision->update([
+            'monto_comision'   => $nuevoMonto,
+            'margen_calculado' => $nuevoMargen,
+        ]);
     }
 
     private function crearComisionDetalle(DetalleVenta $detalle, int $vendedorId, ComisionRegla $regla): void

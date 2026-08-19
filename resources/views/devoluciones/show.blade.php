@@ -14,11 +14,54 @@
     <div class="md:ml-64 p-4 md:p-8">
         <x-header title="Detalle de Devolución" subtitle="Información del movimiento de devolución" />
 
-        <div class="flex items-center mb-6 gap-2">
+        <div class="flex items-center justify-between mb-6 gap-2">
             <a href="{{ route('devoluciones.index') }}" class="text-blue-600 hover:text-blue-800">
                 <i class="fas fa-arrow-left mr-1"></i> Volver
             </a>
+
+            @if($estaAnulada)
+                <span class="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1.5 rounded-lg">
+                    <i class="fas fa-ban mr-1"></i> Devolución Anulada
+                </span>
+            @elseif(in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero', 'Tienda']))
+                <button type="button" onclick="document.getElementById('modalAnularDevolucion').classList.remove('hidden')"
+                        class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition">
+                    <i class="fas fa-ban"></i> Anular Devolución
+                </button>
+            @endif
         </div>
+
+        @if(!$estaAnulada && in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero', 'Tienda']))
+        {{-- Modal confirmación anular --}}
+        <div id="modalAnularDevolucion" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+                <h3 class="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle text-red-500"></i> Anular Devolución
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Esto revertirá el stock devuelto y el ingreso/egreso de caja generado por esta devolución.
+                    Si alguna unidad ya se volvió a vender o trasladar, la anulación se bloqueará.
+                </p>
+                <form method="POST" action="{{ route('devoluciones.anular', $devolucion->id) }}">
+                    @csrf
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Motivo (opcional)</label>
+                    <textarea name="motivo" maxlength="500" rows="2"
+                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-red-400"
+                              placeholder="Ej: se registró por error"></textarea>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('modalAnularDevolucion').classList.add('hidden')"
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                            Sí, anular
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endif
 
         <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
             <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">

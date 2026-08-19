@@ -23,7 +23,7 @@ class DevolucionController extends Controller
     public function index(Request $request)
     {
         $query = MovimientoInventario::query()
-            ->selectRaw('
+            ->selectRaw("
                 numero_guia,
                 MIN(id)           AS id,
                 MIN(almacen_id)   AS almacen_id,
@@ -31,8 +31,9 @@ class DevolucionController extends Controller
                 MIN(created_at)   AS created_at,
                 MIN(observaciones) AS observaciones,
                 COUNT(*)          AS total_items,
-                SUM(cantidad)     AS total_cantidad
-            ')
+                SUM(cantidad)     AS total_cantidad,
+                MAX(CASE WHEN estado = 'anulado' THEN 1 ELSE 0 END) AS anulada
+            ")
             ->where('tipo_movimiento', 'devolucion')
             ->groupBy('numero_guia');
 
@@ -71,10 +72,13 @@ class DevolucionController extends Controller
         // Stats globales (sin filtros)
         $stats = [
             'total_guias'    => MovimientoInventario::where('tipo_movimiento', 'devolucion')
+                                    ->where('estado', '!=', 'anulado')
                                     ->distinct('numero_guia')->count('numero_guia'),
             'total_unidades' => MovimientoInventario::where('tipo_movimiento', 'devolucion')
+                                    ->where('estado', '!=', 'anulado')
                                     ->sum('cantidad'),
             'hoy'            => MovimientoInventario::where('tipo_movimiento', 'devolucion')
+                                    ->where('estado', '!=', 'anulado')
                                     ->whereDate('created_at', today())
                                     ->distinct('numero_guia')->count('numero_guia'),
         ];
@@ -245,6 +249,11 @@ class DevolucionController extends Controller
                         $montosPorVenta[$detalle->venta_id] = ($montosPorVenta[$detalle->venta_id] ?? 0)
                             + $cantidad * (float) $detalle->precio_con_igv;
                     }
+
+                    // Prorratear (o eliminar) la comisión del vendedor por las
+                    // unidades devueltas — no se le paga comisión por lo que el
+                    // cliente terminó devolviendo.
+                    app(\App\Services\ComisionService::class)->recalcularPorDevolucion($detalle);
                 }
 
                 if ($emiteGuiaReal) {
@@ -330,6 +339,185 @@ class DevolucionController extends Controller
 
         $guia = GuiaRemision::where('numero_guia', $devolucion->numero_guia)->first();
 
-        return view('devoluciones.show', compact('devolucion', 'todosMovimientos', 'guia'));
+        $estaAnulada = $todosMovimientos->contains(fn($m) => $m->estado === 'anulado');
+
+        return view('devoluciones.show', compact('devolucion', 'todosMovimientos', 'guia', 'estaAnulada'));
+    }
+
+    /**
+     * Anular una devolución: revierte el stock (y los IMEIs) que había
+     * devuelto, revierte el egreso de caja que generó, y marca sus
+     * movimientos como 'anulado' (no se borran, para no perder rastro
+     * de auditoría). Si alguna unidad ya se volvió a vender/trasladar
+     * desde entonces, no hay suficiente stock para revertir y se bloquea
+     * con un mensaje claro en vez de dejar stock negativo.
+     */
+    public function anular(Request $request, MovimientoInventario $devolucion)
+    {
+        $request->validate([
+            'motivo' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $resultado = DB::transaction(function () use ($request, $devolucion) {
+                $grupo = MovimientoInventario::with(['producto', 'variante', 'detalleVenta.venta'])
+                    ->where('numero_guia', $devolucion->numero_guia)
+                    ->where('tipo_movimiento', 'devolucion')
+                    ->get();
+
+                if ($grupo->isEmpty()) {
+                    throw new \Exception('No se encontraron movimientos para esta devolución.');
+                }
+
+                if ($grupo->contains(fn($m) => $m->estado === 'anulado')) {
+                    throw new \Exception('Esta devolución ya fue anulada.');
+                }
+
+                // Si de verdad se emitió una guía de remisión y ya fue transmitida
+                // a SUNAT, el sistema no puede comunicar la baja del documento —
+                // hay que resolverlo manualmente antes de anular aquí.
+                $guia = GuiaRemision::where('numero_guia', $devolucion->numero_guia)->first();
+                if ($guia && in_array($guia->sunat_estado, ['enviado', 'aceptado'])) {
+                    throw new \Exception(
+                        'Esta devolución generó una guía de remisión ya enviada a SUNAT (' . $guia->numero_guia . '). ' .
+                        'No puede anularse desde aquí — gestione la baja del documento primero.'
+                    );
+                }
+
+                $montosPorVenta = [];
+                $observacionAnulacion = 'ANULADO' . ($request->filled('motivo') ? ": {$request->motivo}" : '')
+                    . ' — por ' . auth()->user()?->name . ' el ' . now()->format('d/m/Y H:i');
+
+                foreach ($grupo as $mov) {
+                    $detalle = $mov->detalleVenta;
+                    $esSerie = $mov->producto?->tipo_inventario === 'serie';
+
+                    if ($esSerie) {
+                        // Igual que al registrar la devolución: no hay trazabilidad
+                        // por IMEI individual, así que se toman como máximo $cantidad
+                        // unidades que sigan en stock en ese almacén (no necesariamente
+                        // las mismas piezas físicas que se devolvieron).
+                        $imeisDisponibles = Imei::where('producto_id', $mov->producto_id)
+                            ->where('almacen_id', $mov->almacen_id)
+                            ->when($mov->variante_id, fn($q) => $q->where('variante_id', $mov->variante_id))
+                            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
+                            ->limit($mov->cantidad)
+                            ->pluck('id');
+
+                        if ($imeisDisponibles->count() < $mov->cantidad) {
+                            throw new \Exception(
+                                "No se puede anular: solo hay {$imeisDisponibles->count()} de {$mov->cantidad} unidad(es) de «{$mov->producto?->nombre}» " .
+                                "aún disponibles (parte ya se volvió a vender o trasladar)."
+                            );
+                        }
+
+                        Imei::whereIn('id', $imeisDisponibles)->update([
+                            'estado_imei' => Imei::ESTADO_VENDIDO,
+                            'venta_id'    => $detalle?->venta_id,
+                            'fecha_venta' => $detalle?->venta?->fecha ?? now(),
+                        ]);
+
+                        $totalStock = Imei::where('producto_id', $mov->producto_id)
+                            ->where('estado_imei', Imei::ESTADO_EN_STOCK)->count();
+                        $mov->producto->update(['stock_actual' => $totalStock]);
+
+                        if ($mov->variante_id && $mov->variante) {
+                            $varianteStock = Imei::where('variante_id', $mov->variante_id)
+                                ->where('estado_imei', Imei::ESTADO_EN_STOCK)->count();
+                            $mov->variante->update(['stock_actual' => $varianteStock]);
+                        }
+                    } else {
+                        $stockAlm = StockAlmacen::where('producto_id', $mov->producto_id)
+                            ->where('almacen_id', $mov->almacen_id)
+                            ->first();
+
+                        if (!$stockAlm || $stockAlm->cantidad < $mov->cantidad) {
+                            throw new \Exception(
+                                "No se puede anular: el stock de «{$mov->producto?->nombre}» ya cambió y no queda suficiente para revertir."
+                            );
+                        }
+
+                        $stockAlm->decrement('cantidad', $mov->cantidad);
+
+                        if ($mov->variante) {
+                            $mov->variante->decrementarStock($mov->cantidad);
+                        } else {
+                            $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
+                            $mov->producto->update(['stock_actual' => $totalStock]);
+                        }
+                    }
+
+                    if ($detalle?->venta && $detalle->venta->estado_pago === 'pagado') {
+                        $montosPorVenta[$detalle->venta_id] = ($montosPorVenta[$detalle->venta_id] ?? 0)
+                            + $mov->cantidad * (float) $detalle->precio_con_igv;
+                    }
+
+                    $obsActual = $mov->observaciones;
+                    $mov->update([
+                        'estado'        => 'anulado',
+                        'observaciones' => $obsActual ? "{$obsActual}\n{$observacionAnulacion}" : $observacionAnulacion,
+                    ]);
+
+                    // Al anular la devolución, esas unidades vuelven a contar
+                    // como vendidas — se recalcula la comisión (puede volver a
+                    // subir). No toca comisiones ya pagadas.
+                    if ($detalle) {
+                        app(\App\Services\ComisionService::class)->recalcularPorDevolucion($detalle);
+                    }
+                }
+
+                if ($guia) {
+                    $guia->update(['estado' => 'anulada']);
+                }
+
+                // Revertir el egreso que la devolución había registrado: un
+                // ingreso nuevo en la misma caja de origen (aunque ya esté
+                // cerrada), dejando rastro visible en vez de borrar el egreso.
+                $cajaPendiente  = false;
+                $montoPendiente = 0.0;
+                if (!empty($montosPorVenta)) {
+                    $cajaService    = app(\App\Services\CajaService::class);
+                    $metodosValidos = ['efectivo', 'yape', 'plin', 'transferencia', 'mixto'];
+
+                    foreach ($montosPorVenta as $ventaId => $monto) {
+                        $caja = $cajaService->cajaDeVenta((int) $ventaId)
+                            ?? \App\Models\Caja::where('user_id', auth()->id())->where('estado', 'abierta')->first();
+
+                        if (!$caja) {
+                            $cajaPendiente   = true;
+                            $montoPendiente += $monto;
+                            continue;
+                        }
+
+                        $ventaOrigen = \App\Models\Venta::find($ventaId);
+                        $metodoPago  = in_array($ventaOrigen->metodo_pago ?? '', $metodosValidos)
+                            ? $ventaOrigen->metodo_pago
+                            : 'efectivo';
+                        $cajaService->registrarCorreccion(
+                            $caja,
+                            'ingreso',
+                            round($monto, 2),
+                            'Reversión de devolución - Venta #' . ($ventaOrigen->codigo ?? $ventaId),
+                            $ventaId,
+                            $metodoPago,
+                            null
+                        );
+                    }
+                }
+
+                return ['caja_pendiente' => $cajaPendiente, 'monto_pendiente' => $montoPendiente];
+            });
+
+            $mensaje = 'Devolución anulada correctamente. El stock fue revertido.';
+            if ($resultado['caja_pendiente']) {
+                $mensaje .= ' Aviso: no se encontró ninguna caja asociada — registra manualmente el ingreso de S/ '
+                    . number_format($resultado['monto_pendiente'], 2) . ' cuando corresponda.';
+            }
+
+            return redirect()->route('devoluciones.index')->with('success', $mensaje);
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al anular la devolución: ' . $e->getMessage());
+        }
     }
 }

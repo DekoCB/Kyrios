@@ -272,6 +272,7 @@ class InventarioReportesController extends Controller
 
         $neto = MovimientoInventario::where('producto_id', $p->id)
             ->where('almacen_id', $almacenId)
+            ->where('estado', '!=', 'anulado')
             ->selectRaw("
                 SUM(CASE WHEN tipo_movimiento IN ('ingreso','devolucion') THEN cantidad ELSE 0 END) -
                 SUM(CASE WHEN tipo_movimiento IN ('salida','merma') THEN cantidad ELSE 0 END) AS neto

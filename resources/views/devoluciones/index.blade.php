@@ -164,6 +164,9 @@
                                 <span class="font-mono text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded">
                                     {{ $dev->numero_guia }}
                                 </span>
+                                @if($dev->anulada)
+                                    <span class="ml-1 bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">Anulada</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <span class="inline-flex items-center justify-center w-7 h-7 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">

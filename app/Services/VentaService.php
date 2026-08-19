@@ -16,6 +16,7 @@ use App\Models\PagoCredito;
 use App\Models\AuditoriaVenta;
 use App\Models\Caja;
 use App\Models\MovimientoCaja;
+use App\Models\ComisionDetalleVenta;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -42,6 +43,37 @@ class VentaService
         } catch (\Throwable $e) {
             Log::warning('Bonos no calculados para venta #' . $venta->id . ': ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Si alguna comisión de esta venta ya fue pagada al vendedor, no se puede
+     * anular/eliminar la venta ni generar NC de anulación desde el sistema —
+     * ese dinero ya salió, hay que resolverlo manualmente con el vendedor
+     * antes de tocar el comprobante.
+     */
+    private function bloquearSiComisionPagada(Venta $venta): void
+    {
+        $venta->load('detalles');
+        $detalleIds = $venta->detalles->pluck('id');
+
+        if (ComisionDetalleVenta::whereIn('detalle_venta_id', $detalleIds)->where('estado', 'pagado')->exists()) {
+            throw new \Exception(
+                'No se puede anular ni eliminar esta venta: ya se pagó una comisión sobre ella. ' .
+                'Resuelve el ajuste con el vendedor antes de continuar.'
+            );
+        }
+    }
+
+    /**
+     * Borra las comisiones pendientes (no pagadas) ligadas a los detalles de
+     * esta venta. Se asume que bloquearSiComisionPagada() ya se llamó antes
+     * en la misma operación, así que cualquier comisión que quede aquí es
+     * segura de eliminar (no hay dinero de por medio).
+     */
+    private function eliminarComisionesPendientes(Venta $venta): void
+    {
+        $detalleIds = $venta->detalles->pluck('id');
+        ComisionDetalleVenta::whereIn('detalle_venta_id', $detalleIds)->where('estado', 'pendiente')->delete();
     }
 
     /**
@@ -452,12 +484,15 @@ class VentaService
             }
         }
 
+        $this->bloquearSiComisionPagada($venta);
+
         return DB::transaction(function () use ($venta, $requirioClave) {
             $datosAnteriores = $venta->only([
                 'codigo', 'estado_pago', 'estado_sunat', 'total', 'cliente_id', 'fecha', 'tipo_comprobante',
             ]);
 
             $this->revertirStock($venta, 'Eliminación de venta #' . $venta->codigo);
+            $this->eliminarComisionesPendientes($venta);
 
             // Si es crédito sin pagos, anular la cuenta por cobrar y sus cuotas
             if ($venta->es_credito && $venta->cuentaPorCobrar) {
@@ -530,6 +565,12 @@ class VentaService
         // Si tiene cuenta por cobrar con pagos, bloquear
         if ($venta->es_credito && $venta->cuentaPorCobrar && $venta->cuentaPorCobrar->pagos()->count() > 0) {
             throw new \Exception('No se puede generar NC: la venta tiene pagos de crédito registrados. Gestione la devolución manualmente.');
+        }
+
+        // Si la NC revertirá stock (anulación/devolución total) y ya se pagó
+        // una comisión sobre esta venta, bloquear igual que anularVenta/eliminarVenta.
+        if (in_array($motivoCodigo, ['01', '02', '06'])) {
+            $this->bloquearSiComisionPagada($venta);
         }
 
         return DB::transaction(function () use ($venta, $motivoCodigo, $requirioClave) {
@@ -605,6 +646,7 @@ class VentaService
             $cajaActualizada = true;
             if (in_array($motivoCodigo, ['01', '02', '06'])) {
                 $this->revertirStock($venta, 'Nota de Crédito #' . $nc->codigo);
+                $this->eliminarComisionesPendientes($venta);
 
                 // Estado ANTES de marcar el comprobante como anulado — el update()
                 // de abajo muta $venta->estado_pago en memoria, así que si se
@@ -686,12 +728,15 @@ class VentaService
             }
         }
 
+        $this->bloquearSiComisionPagada($venta);
+
         return DB::transaction(function () use ($venta, $requirioClave) {
             $datosAnteriores = $venta->only([
                 'codigo', 'estado_pago', 'estado_sunat', 'total', 'cliente_id', 'fecha', 'tipo_comprobante',
             ]);
 
             $this->revertirStock($venta, 'Anulación de venta #' . $venta->codigo);
+            $this->eliminarComisionesPendientes($venta);
 
             // Si es crédito sin pagos, anular la cuenta por cobrar y sus cuotas
             if ($venta->es_credito && $venta->cuentaPorCobrar) {
