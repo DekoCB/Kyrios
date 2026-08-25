@@ -227,6 +227,10 @@ class SunatComprobanteService
                 ->setMtoValorUnitario($precioSinIgv)
                 ->setMtoPrecioUnitario($precioConIgv);
 
+            if ($det->producto?->codigo_sunat) {
+                $detail->setCodProdSunat($det->producto->codigo_sunat);
+            }
+
             $details[] = $detail;
         }
 
@@ -300,6 +304,11 @@ class SunatComprobanteService
                 ->setMtoValorVenta($baseLinea)
                 ->setMtoValorUnitario($precioSinIgv)
                 ->setMtoPrecioUnitario($precioConIgv);
+
+            if ($det->producto?->codigo_sunat) {
+                $detail->setCodProdSunat($det->producto->codigo_sunat);
+            }
+
             $details[] = $detail;
         }
 

@@ -11,6 +11,7 @@ use App\Models\Catalogo\Marca;
 use App\Models\Catalogo\Modelo;
 use App\Models\Catalogo\Color;
 use App\Models\Catalogo\UnidadMedida;
+use App\Models\Catalogo\ProductoSunat;
 use App\Services\CodigoBarrasService;
 use App\Services\VarianteService;
 use Illuminate\Http\Request;
@@ -192,7 +193,8 @@ public function create()
         
         // Códigos
         'codigo_barras' => 'nullable|string|max:50|unique:productos,codigo_barras',
-        
+        'codigo_sunat' => 'nullable|string|regex:/^\d{8}$/',
+
         // Stock
         'stock_minimo' => 'required|integer|min:0',
         'stock_maximo' => 'required|integer|min:1',
@@ -365,14 +367,20 @@ public function create()
         // Obtener códigos de barras (opcional)
         $codigosBarras = $producto->codigosBarras ?? collect();
 
+        // Descripción del código SUNAT ya asignado (para preseleccionar en el buscador)
+        $productoSunatSeleccionado = $producto->codigo_sunat
+            ? ProductoSunat::where('codigo', $producto->codigo_sunat)->first()
+            : null;
+
         return view('inventario.productos.edit', compact(
-            'producto', 
-            'categorias', 
-            'marcas', 
+            'producto',
+            'categorias',
+            'marcas',
             'modelos',
             'colores',
             'unidades',
-            'codigosBarras'
+            'codigosBarras',
+            'productoSunatSeleccionado'
         ));
     }
 
@@ -401,6 +409,7 @@ public function create()
         
         // Código de barras (único excepto este producto)
         'codigo_barras' => 'nullable|string|max:100|unique:productos,codigo_barras,' . $producto->id,
+        'codigo_sunat' => 'nullable|string|regex:/^\d{8}$/',
 
         // Imagen
         'imagen' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',

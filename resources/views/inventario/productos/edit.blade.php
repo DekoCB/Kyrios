@@ -260,6 +260,74 @@
                                 @enderror
                             </div>
 
+                            <!-- Código de Producto SUNAT (UNSPSC) -->
+                            <div class="md:col-span-2" x-data="{
+                                query: '{{ $productoSunatSeleccionado ? addslashes($productoSunatSeleccionado->codigo . ' — ' . $productoSunatSeleccionado->producto) : '' }}',
+                                resultados: [],
+                                mostrarDropdown: false,
+                                seleccionado: {{ $productoSunatSeleccionado ? '{codigo: ' . json_encode($productoSunatSeleccionado->codigo) . ', producto: ' . json_encode($productoSunatSeleccionado->producto) . '}' : 'null' }},
+                                buscando: false,
+                                buscar() {
+                                    if (this.query.trim().length < 2) { this.resultados = []; this.mostrarDropdown = false; return; }
+                                    this.buscando = true;
+                                    fetch(`{{ route('catalogo.productos-sunat.buscar') }}?q=${encodeURIComponent(this.query.trim())}`)
+                                        .then(r => r.json())
+                                        .then(data => { this.resultados = data; this.mostrarDropdown = true; this.buscando = false; })
+                                        .catch(() => { this.buscando = false; });
+                                },
+                                elegir(r) {
+                                    this.seleccionado = r;
+                                    this.query = r.codigo + ' — ' + r.producto;
+                                    this.mostrarDropdown = false;
+                                },
+                                quitar() {
+                                    this.seleccionado = null;
+                                    this.query = '';
+                                    this.resultados = [];
+                                }
+                            }">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Código de Producto SUNAT (UNSPSC)
+                                    <span class="ml-1 text-xs font-normal text-gray-400">— opcional</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="text"
+                                           x-model="query"
+                                           @input.debounce.400ms="buscar()"
+                                           @focus="if (resultados.length) mostrarDropdown = true"
+                                           @click.outside="mostrarDropdown = false"
+                                           autocomplete="off"
+                                           placeholder="Buscar por código o descripción (ej: diesel, oro, teléfono...)"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <template x-if="seleccionado">
+                                        <button type="button" @click="quitar()"
+                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </template>
+
+                                    <div x-show="mostrarDropdown && resultados.length > 0" x-cloak
+                                         class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                        <template x-for="r in resultados" :key="r.id">
+                                            <button type="button" @click="elegir(r)"
+                                                    class="w-full text-left px-4 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                                                <span class="font-mono text-xs text-blue-700" x-text="r.codigo"></span>
+                                                <span class="block text-sm text-gray-800" x-text="r.producto"></span>
+                                                <span class="block text-xs text-gray-400" x-text="[r.segmento, r.clase].filter(Boolean).join(' › ')"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="codigo_sunat" :value="seleccionado ? seleccionado.codigo : ''">
+                                @error('codigo_sunat')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Requerido por SUNAT desde ago-2026 solo para bienes específicos (Anexos 25.1/25.2/25.3); para el resto es opcional.
+                                </p>
+                            </div>
+
                             <!-- Descripción -->
                             <div class="md:col-span-2">
                                 <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>

@@ -27,7 +27,7 @@ class Producto extends Model
         'stock_actual', 'stock_minimo', 'stock_maximo', 'ubicacion',
         'costo_promedio', 'ultimo_costo_compra', 'fecha_ultima_compra',
         'estado', 'imagen', 'creado_por', 'modificado_por',
-        'codigo_barras'
+        'codigo_barras', 'codigo_sunat'
     ];
 
     /**

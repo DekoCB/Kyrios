@@ -580,6 +580,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('modelos', App\Http\Controllers\Catalogo\ModeloController::class)->parameters(['modelos' => 'modelo']);
         Route::get('modelos-por-marca/{marcaId}', [App\Http\Controllers\Catalogo\ModeloController::class, 'getModelosPorMarca'])->name('modelos.por-marca');
         Route::get('marcas-por-categoria/{categoriaId}', [App\Http\Controllers\Catalogo\MarcaController::class, 'getMarcasPorCategoria'])->name('marcas.por-categoria');
+
+        Route::get('productos-sunat/buscar', [App\Http\Controllers\Catalogo\ProductoSunatController::class, 'buscar'])->name('productos-sunat.buscar');
     });
 
     // ========================================
