@@ -22,7 +22,7 @@ class ProductoSunatController extends Controller
 
         $resultados = ProductoSunat::buscar($termino)
             ->limit(20)
-            ->get(['id', 'codigo', 'producto', 'clase', 'segmento']);
+            ->get(['id', 'codigo', 'producto', 'clase', 'familia', 'segmento']);
 
         return response()->json($resultados);
     }

@@ -384,6 +384,10 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Código de Producto SUNAT (UNSPSC)
                                     <span class="ml-1 text-xs font-normal text-gray-400">— opcional</span>
+                                    <a href="https://cpe.sunat.gob.pe/informacion_general/codigoproducto" target="_blank" rel="noopener"
+                                       class="ml-2 text-xs font-normal text-blue-600 hover:underline">
+                                        <i class="fas fa-external-link-alt text-[10px] mr-0.5"></i>Ver catálogo oficial SUNAT
+                                    </a>
                                 </label>
                                 <div class="relative">
                                     <input type="text"
@@ -408,7 +412,7 @@
                                                     class="w-full text-left px-4 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                                                 <span class="font-mono text-xs text-blue-700" x-text="r.codigo"></span>
                                                 <span class="block text-sm text-gray-800" x-text="r.producto"></span>
-                                                <span class="block text-xs text-gray-400" x-text="[r.segmento, r.clase].filter(Boolean).join(' › ')"></span>
+                                                <span class="block text-xs text-gray-400" x-text="[r.segmento, r.familia, r.clase].filter(Boolean).join(' › ')"></span>
                                             </button>
                                         </template>
                                     </div>
@@ -419,7 +423,7 @@
                                 @enderror
                                 <p class="text-xs text-gray-500 mt-1">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    Requerido por SUNAT desde ago-2026 solo para bienes específicos (Anexos 25.1/25.2/25.3); para el resto es opcional.
+                                    Busca por descripción o código (ej: "diesel", "oro", "teléfono"). Opcional para la mayoría de productos; SUNAT lo exige desde agosto 2026 solo para ciertos bienes regulados (metales preciosos, combustibles, bienes con detracción/percepción).
                                 </p>
                             </div>
 
