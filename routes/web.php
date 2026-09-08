@@ -469,6 +469,12 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:Administrador,Almacenero')->group(function () {
             Route::post('/{traslado}/anular', [TrasladoController::class, 'anular'])->name('anular');
         });
+
+        // Eliminar es más sensible aún que anular (oculta del historial incluso
+        // traslados ya confirmados/anulados) — solo Administrador.
+        Route::middleware('role:Administrador')->group(function () {
+            Route::delete('/{traslado}', [TrasladoController::class, 'eliminar'])->name('eliminar');
+        });
     });
 
     // ========================================

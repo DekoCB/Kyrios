@@ -64,7 +64,9 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @php
                         $colores = ['pendiente' => 'bg-yellow-100 text-yellow-800', 'confirmado' => 'bg-green-100 text-green-800', 'anulado' => 'bg-red-100 text-red-800'];
-                        $puedeGestionarAnulacion = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
+                        $rolActual = auth()->user()->role->nombre;
+                        $puedeGestionarAnulacion = in_array($rolActual, ['Administrador', 'Almacenero']);
+                        $puedeEliminar = $rolActual === 'Administrador';
                     @endphp
 
                     @forelse($traslados as $guia => $movimientos)
@@ -76,7 +78,7 @@
                         $estado = $todosConfirmados ? 'confirmado' : ($todosPendientes ? 'pendiente' : 'mixto');
                         $puedeAnular = $todosPendientes && $puedeGestionarAnulacion;
                     @endphp
-                        <tr class="hover:bg-gray-50" @if($puedeAnular) x-data="{ showAnular: false }" @endif>
+                        <tr class="hover:bg-gray-50" @if($puedeAnular || $puedeEliminar) x-data="{ showAnular: false, showEliminar: false }" @endif>
                             <td class="px-6 py-4 text-sm font-mono font-semibold text-blue-600">
                                 {{ $esGuia ? $guia : '—' }}
                             </td>
@@ -160,6 +162,63 @@
                                                     <button type="submit"
                                                             class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition">
                                                         <i class="fas fa-ban mr-1"></i> Confirmar Anulación
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    @endif
+
+                                    @if($puedeEliminar)
+                                    <button type="button" @click="showEliminar = true" title="Eliminar del historial"
+                                            class="text-gray-500 hover:text-gray-800 font-medium">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+
+                                    {{-- Modal de eliminación --}}
+                                    <div x-show="showEliminar" x-cloak class="fixed inset-0 z-50 flex items-center justify-center" style="display: none;">
+                                        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showEliminar = false"></div>
+                                        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 text-left">
+                                            <div class="flex items-center gap-3 mb-4">
+                                                <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                                                    <i class="fas fa-trash-alt text-gray-600"></i>
+                                                </div>
+                                                <div>
+                                                    <h3 class="text-lg font-bold text-gray-900">Eliminar del Historial</h3>
+                                                    <p class="text-sm text-gray-500">{{ $esGuia ? $guia : '#' . $primero->id }}</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                                @if($estado === 'pendiente')
+                                                    Este traslado sigue pendiente: se devolverá el stock reservado al almacén origen y la guía de remisión asociada quedará anulada.
+                                                @elseif($estado === 'anulado')
+                                                    El stock de este traslado ya fue devuelto al anularse, así que no se vuelve a tocar. Solo desaparecerá de este listado; el registro se conserva internamente para auditoría.
+                                                @else
+                                                    Se intentará devolver al almacén origen todo el stock/IMEIs que siga en tránsito o en el almacén destino. Si alguna unidad ya se vendió o se movió de nuevo desde destino, la eliminación fallará con un aviso — no se puede devolver lo que ya no está ahí.
+                                                @endif
+                                            </div>
+
+                                            <form action="{{ route('traslados.eliminar', $primero) }}" method="POST">
+                                                @csrf
+                                                @method('DELETE')
+                                                <div class="mb-4">
+                                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
+                                                        Motivo de eliminación
+                                                    </label>
+                                                    <textarea name="motivo" rows="3"
+                                                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 resize-none"
+                                                              placeholder="Describe el motivo de la eliminación..."></textarea>
+                                                </div>
+                                                <div class="flex gap-3">
+                                                    <button type="button" @click="showEliminar = false"
+                                                            class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+                                                        Cancelar
+                                                    </button>
+                                                    <button type="submit"
+                                                            class="flex-1 px-4 py-2.5 bg-gray-700 hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition">
+                                                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Eliminación
                                                     </button>
                                                 </div>
                                             </form>

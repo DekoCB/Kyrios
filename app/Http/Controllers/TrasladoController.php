@@ -25,6 +25,7 @@ class TrasladoController extends Controller
         // Agrupar por numero_guia para mostrar un traslado por grupo
         $todos = MovimientoInventario::with('producto', 'almacen', 'almacenDestino', 'usuario')
             ->where('tipo_movimiento', 'transferencia')
+            ->noEliminados()
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -151,6 +152,7 @@ class TrasladoController extends Controller
             ])
             ->where('tipo_movimiento', 'transferencia')
             ->where('estado', 'pendiente')
+            ->noEliminados()
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -239,6 +241,27 @@ class TrasladoController extends Controller
             return redirect()
                 ->route('traslados.index')
                 ->with('success', 'Traslado anulado correctamente. El stock fue devuelto al almacén origen.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function eliminar(Request $request, MovimientoInventario $traslado)
+    {
+        $request->validate([
+            'motivo' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            app(TrasladoService::class)->eliminarTraslado(
+                $traslado->id,
+                auth()->id(),
+                $request->input('motivo')
+            );
+
+            return redirect()
+                ->route('traslados.index')
+                ->with('success', 'Traslado eliminado del historial correctamente.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }

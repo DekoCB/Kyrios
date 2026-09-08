@@ -328,6 +328,153 @@ class TrasladoService
         });
     }
 
+    /**
+     * Elimina (oculta) un traslado del historial y devuelve el stock a origen,
+     * sin importar si estaba pendiente o ya confirmado. No hace un delete()
+     * real — MovimientoInventario::boot() lo bloquea a propósito por
+     * trazabilidad — solo marca eliminado_en/eliminado_por para que
+     * desaparezca de los listados.
+     *
+     * - pendiente: revierte la reserva en origen (igual que anularTraslado()).
+     * - confirmado: revierte trayendo el stock/IMEIs de vuelta desde el
+     *   almacén destino hacia el origen. Si alguna unidad ya no está
+     *   disponible en destino (se vendió, se trasladó de nuevo, etc.) se
+     *   aborta con un error explícito — no se puede devolver lo que ya no
+     *   está ahí.
+     * - anulado: el stock ya se devolvió cuando se anuló; no se vuelve a
+     *   tocar, solo se oculta.
+     */
+    public function eliminarTraslado(int $movimientoId, int $usuarioId, ?string $motivo = null): void
+    {
+        DB::transaction(function () use ($movimientoId, $usuarioId, $motivo) {
+
+            $representante = MovimientoInventario::with('producto')->findOrFail($movimientoId);
+
+            $grupo = $representante->numero_guia
+                ? MovimientoInventario::with(['producto', 'imeisTrasladados'])
+                    ->where('numero_guia', $representante->numero_guia)
+                    ->where('tipo_movimiento', 'transferencia')
+                    ->noEliminados()
+                    ->get()
+                : collect([$representante->load('imeisTrasladados')]);
+
+            if ($grupo->isEmpty()) {
+                throw new \Exception('No se encontraron movimientos para este traslado.');
+            }
+
+            // 1) Validar TODO antes de mover nada: si un producto ya no puede
+            //    devolverse, se aborta completo en vez de dejar el traslado
+            //    revertido a medias.
+            foreach ($grupo as $movimiento) {
+                if ($movimiento->estado !== 'confirmado') {
+                    continue;
+                }
+
+                $esSerie = $movimiento->producto->tipo_inventario === 'serie';
+
+                if ($esSerie) {
+                    $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
+                    $disponibles = Imei::whereIn('id', $imeiIds)
+                        ->where('almacen_id', $movimiento->almacen_destino_id)
+                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
+                        ->count();
+
+                    if ($disponibles !== count($imeiIds)) {
+                        throw new \Exception(
+                            "Producto «{$movimiento->producto->nombre}»: uno o más IMEIs ya no están disponibles en el almacén destino (vendidos o trasladados de nuevo). No se puede eliminar ni devolver el stock."
+                        );
+                    }
+                } else {
+                    $stockDestino = StockAlmacen::where('producto_id', $movimiento->producto_id)
+                        ->where('almacen_id', $movimiento->almacen_destino_id)
+                        ->first();
+
+                    if (!$stockDestino || $stockDestino->cantidad < $movimiento->cantidad) {
+                        throw new \Exception(
+                            "Producto «{$movimiento->producto->nombre}»: no hay suficiente stock en el almacén destino para devolver (disponible: " . ($stockDestino->cantidad ?? 0) . "). Probablemente ya se vendió."
+                        );
+                    }
+                }
+            }
+
+            // 2) Aplicar la reversión ya validada.
+            $huboReversion = false;
+
+            foreach ($grupo as $movimiento) {
+                $esSerie = $movimiento->producto->tipo_inventario === 'serie';
+
+                if ($movimiento->estado === 'pendiente') {
+                    $huboReversion = true;
+
+                    if ($esSerie) {
+                        $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
+                        if (!empty($imeiIds)) {
+                            Imei::whereIn('id', $imeiIds)
+                                ->where('estado_imei', Imei::ESTADO_EN_TRANSITO)
+                                ->update(['estado_imei' => Imei::ESTADO_EN_STOCK]);
+                        }
+                    } else {
+                        $stockOrigen = StockAlmacen::firstOrCreate(
+                            ['producto_id' => $movimiento->producto_id, 'almacen_id' => $movimiento->almacen_id],
+                            ['cantidad' => 0]
+                        );
+                        $stockOrigen->increment('cantidad', $movimiento->cantidad);
+                    }
+                } elseif ($movimiento->estado === 'confirmado') {
+                    $huboReversion = true;
+
+                    if ($esSerie) {
+                        $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
+                        Imei::whereIn('id', $imeiIds)->update([
+                            'almacen_id'  => $movimiento->almacen_id,
+                            'estado_imei' => Imei::ESTADO_EN_STOCK,
+                        ]);
+                    } else {
+                        StockAlmacen::where('producto_id', $movimiento->producto_id)
+                            ->where('almacen_id', $movimiento->almacen_destino_id)
+                            ->decrement('cantidad', $movimiento->cantidad);
+
+                        $stockOrigen = StockAlmacen::firstOrCreate(
+                            ['producto_id' => $movimiento->producto_id, 'almacen_id' => $movimiento->almacen_id],
+                            ['cantidad' => 0]
+                        );
+                        $stockOrigen->increment('cantidad', $movimiento->cantidad);
+                    }
+                }
+                // estado === 'anulado': el stock ya se devolvió antes, no se toca.
+
+                if ($esSerie) {
+                    $totalStock = Imei::where('producto_id', $movimiento->producto_id)
+                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
+                        ->count();
+                } else {
+                    $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
+                }
+                $movimiento->producto->update(['stock_actual' => $totalStock]);
+            }
+
+            if ($huboReversion && $representante->numero_guia) {
+                \App\Models\GuiaRemision::where('numero_guia', $representante->numero_guia)
+                    ->where('estado', '!=', 'anulada')
+                    ->update(['estado' => 'anulada']);
+            }
+
+            $observacionEliminacion = 'ELIMINADO DEL HISTORIAL' . ($motivo ? ": {$motivo}" : '')
+                . ' — por ' . auth()->user()?->name . ' el ' . now()->format('d/m/Y H:i');
+
+            foreach ($grupo as $movimiento) {
+                $obsActual = $movimiento->observaciones;
+                $movimiento->update([
+                    'estado'             => 'anulado',
+                    'eliminado_en'       => now(),
+                    'eliminado_por'      => $usuarioId,
+                    'motivo_eliminacion' => $motivo,
+                    'observaciones'      => $obsActual ? "{$obsActual}\n{$observacionEliminacion}" : $observacionEliminacion,
+                ]);
+            }
+        });
+    }
+
     // ───────────────────────────────────────────────────────────────────────
 
     private function resolverNumeroGuiaAutomatico(int $almacenId, ?int $serieId = null): string

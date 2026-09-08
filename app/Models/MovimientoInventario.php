@@ -45,6 +45,9 @@ class MovimientoInventario extends Model
         'fecha_confirmacion',
         'variante_id',
         'detalle_venta_id',
+        'eliminado_en',
+        'eliminado_por',
+        'motivo_eliminacion',
     ];
 
     /**
@@ -57,6 +60,7 @@ class MovimientoInventario extends Model
         'stock_anterior' => 'integer',
         'stock_nuevo' => 'integer',
         'tipo_movimiento' => 'string',
+        'eliminado_en' => 'datetime',
     ];
 
     /**
@@ -271,6 +275,22 @@ class MovimientoInventario extends Model
     public function usuarioConfirma()
     {
         return $this->belongsTo(User::class, 'usuario_confirma_id');
+    }
+
+    public function usuarioElimina()
+    {
+        return $this->belongsTo(User::class, 'eliminado_por');
+    }
+
+    /**
+     * Scope: excluye movimientos ocultados desde el historial (ver eliminado_en).
+     * No usa Eloquent SoftDeletes a propósito: el modelo prohíbe delete() por
+     * trazabilidad (ver boot() abajo), así que "eliminar" solo oculta la fila
+     * de listados puntuales, nunca la excluye globalmente de reportes/Kardex.
+     */
+    public function scopeNoEliminados($query)
+    {
+        return $query->whereNull('eliminado_en');
     }
       // NUEVA RELACIÓN: IMEI (legado - un solo IMEI)
     public function motivoMovimiento()
