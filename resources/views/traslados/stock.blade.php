@@ -32,6 +32,11 @@
             <span class="text-sm font-semibold text-blue-700 flex items-center gap-1">
                 <i class="fas fa-boxes"></i> Stock por Almacén
             </span>
+            <span class="text-gray-300">|</span>
+            <a href="{{ route('traslados.create') }}"
+               class="text-sm text-gray-600 hover:text-blue-700 flex items-center gap-1">
+                <i class="fas fa-plus-circle"></i> Nuevo Traslado
+            </a>
         </div>
 
         {{-- Filtros --}}
