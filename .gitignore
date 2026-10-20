@@ -28,4 +28,5 @@ Thumbs.db
 /storage/*.key
 /vendor
 npm-debug.log
-yarn-error.logerror_log
+yarn-error.log
+error_log
