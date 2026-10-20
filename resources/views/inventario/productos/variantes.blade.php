@@ -17,7 +17,7 @@
     <div x-show="open" x-cloak
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div @click.outside="open = false"
-             class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+             class="bg-white rounded-2xl shadow-xl w-full {{ $producto->tipo_producto_id ? 'max-w-3xl max-h-[92vh] overflow-y-auto' : 'max-w-md' }}">
             <div class="bg-gradient-to-r from-indigo-700 to-indigo-600 px-5 py-4 rounded-t-2xl flex items-center justify-between">
                 <h3 class="text-white font-bold flex items-center gap-2">
                     <i class="fas fa-pencil-alt"></i> Editar Variante
@@ -30,6 +30,11 @@
                 @csrf
                 @method('PUT')
 
+                @if($producto->tipo_producto_id)
+                    <p class="text-xs text-gray-500">Código Kyrios: <span class="font-mono font-semibold text-gray-800" x-text="form.codigo_kyrios"></span>
+                        (no cambia al editar)</p>
+                    @include('inventario.productos.partials.campos-variante-kyrios', ['modo' => 'editar'])
+                @else
                 {{-- Color --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
@@ -49,6 +54,7 @@
                            placeholder="Ej: 64GB, 128GB, 256GB"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
                 </div>
+                @endif
 
                 {{-- Stock Mínimo --}}
                 <div>
@@ -187,6 +193,10 @@
                               method="POST" class="p-5 space-y-4">
                             @csrf
 
+                            @if($producto->tipo_producto_id)
+                                <p class="text-xs text-gray-500">El código Kyrios (<span class="font-mono">KY-…</span>) se asigna automáticamente al guardar.</p>
+                                @include('inventario.productos.partials.campos-variante-kyrios', ['modo' => 'nuevo'])
+                            @else
                             {{-- Color --}}
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -226,6 +236,7 @@
                                     <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
+                            @endif
 
                             @if($producto->tipo_inventario === 'cantidad')
                             {{-- Stock inicial (solo para tipo cantidad) --}}
@@ -270,6 +281,7 @@
                     @else
                         <div class="divide-y divide-gray-100">
                             @foreach($producto->variantes->sortBy('estado') as $variante)
+                              <div>
                                 <div class="p-4 flex items-center justify-between gap-4
                                     {{ $variante->estado === 'inactivo' ? 'opacity-50 bg-gray-50' : '' }}">
                                     <div class="flex items-center gap-4 min-w-0">
@@ -287,11 +299,29 @@
                                         <div class="min-w-0">
                                             <div class="flex items-center gap-2 flex-wrap">
                                                 <span class="font-semibold text-gray-900 text-sm">{{ $variante->nombre_completo }}</span>
-                                                <span class="font-mono text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{{ $variante->sku }}</span>
+                                                <span class="font-mono text-xs {{ $variante->codigo_kyrios ? 'text-gray-800 font-semibold' : 'text-gray-400' }} bg-gray-100 px-2 py-0.5 rounded">{{ $variante->codigo_kyrios ?? $variante->sku }}</span>
+                                                @if($variante->codigo_excel)
+                                                    <span class="font-mono text-xs text-gray-400 border border-gray-200 px-2 py-0.5 rounded" title="2° código (Excel anterior)">2°: {{ $variante->codigo_excel }}</span>
+                                                @endif
+                                                @if($variante->estado_dano && $variante->estado_dano !== 'ninguno')
+                                                    @php $claseDano = ['leve' => 'bg-yellow-100 text-yellow-800', 'moderado' => 'bg-cyan-100 text-cyan-800', 'grave' => 'bg-gray-700 text-white'][$variante->estado_dano]; @endphp
+                                                    <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $claseDano }}" title="{{ $variante->observacion_dano }}">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>Daño {{ $variante->estado_dano }}
+                                                    </span>
+                                                @endif
                                                 @if($variante->estado === 'inactivo')
                                                     <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Inactiva</span>
                                                 @endif
                                             </div>
+                                            @if($variante->codigo_fabricante || $variante->socket || $variante->potencia_w)
+                                                <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
+                                                    @if($variante->codigo_fabricante)<span>Fab.: <span class="font-mono">{{ $variante->codigo_fabricante }}</span></span>@endif
+                                                    @if($variante->socket)<span>Socket {{ $variante->socket }}@if($variante->num_lamparas) {{ $variante->num_lamparas }}@endif</span>@endif
+                                                    @if($variante->potencia_w)<span>{{ rtrim(rtrim($variante->potencia_w, '0'), '.') }} W</span>@endif
+                                                    @if($variante->diametro)<span>Ø {{ rtrim(rtrim($variante->diametro, '0'), '.') }} mm</span>@endif
+                                                    @if($variante->alto)<span>Alto {{ rtrim(rtrim($variante->alto, '0'), '.') }} mm</span>@endif
+                                                </div>
+                                            @endif
                                             <div class="flex items-center gap-4 mt-1 text-xs text-gray-500">
                                                 @if($variante->color)
                                                     <span><i class="fas fa-circle mr-1 text-gray-300"></i>{{ $variante->color->nombre }}</span>
@@ -330,12 +360,11 @@
                                         @if($variante->estado === 'activo')
                                             {{-- Editar --}}
                                             <button type="button"
-                                                    @click="openEdit({
-                                                        id: {{ $variante->id }},
-                                                        color_id: '{{ $variante->color_id ?? '' }}',
-                                                        capacidad: '{{ $variante->capacidad ?? '' }}',
-                                                        stock_minimo: '{{ $variante->stock_minimo }}'
-                                                    })"
+                                                    @click="openEdit({{ \Illuminate\Support\Js::from(array_merge(
+                                                        ['id' => $variante->id, 'color_id' => $variante->color_id ?? '', 'capacidad' => $variante->capacidad ?? '', 'stock_minimo' => $variante->stock_minimo, 'codigo_kyrios' => $variante->codigo_kyrios],
+                                                        collect(['codigo_fabricante','codigo_excel','acabado_1','acabado_2','tamano','diametro','alto','ancho','profundidad','alto_suspendido','diametro_agujero','socket','num_lamparas','potencia_w','lumenes','temperatura_color','tonalidad_luz','estado_dano','observacion_dano'])
+                                                            ->mapWithKeys(fn ($c) => [$c => $variante->{$c} ?? ''])->all()
+                                                    )) }})"
                                                     class="text-indigo-400 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition"
                                                     title="Editar">
                                                 <i class="fas fa-pencil-alt text-sm"></i>
@@ -356,6 +385,49 @@
                                         @endif
                                     </div>
                                 </div>
+
+                                {{-- Imágenes de la variante (máximo 6) --}}
+                                @if($variante->estado === 'activo')
+                                    @php $imgs = $variante->imagenes; $max = \App\Models\ProductoImagen::MAX_POR_VARIANTE; @endphp
+                                    <div class="px-4 pb-4 -mt-1">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="text-xs font-medium text-gray-500 mr-1"><i class="fas fa-images mr-1"></i>Imágenes {{ $imgs->count() }}/{{ $max }}</span>
+                                            @foreach($imgs as $img)
+                                                <div class="relative group">
+                                                    <img src="{{ $img->url }}" alt="Imagen {{ $img->orden }}"
+                                                         class="h-16 w-16 rounded-lg object-cover border-2 {{ $img->es_principal ? 'border-indigo-500' : 'border-gray-200' }}">
+                                                    <div class="absolute inset-0 rounded-lg bg-black/55 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1">
+                                                        @unless($img->es_principal)
+                                                            <form action="{{ route('inventario.productos.imagenes.principal', $img) }}" method="POST">
+                                                                @csrf
+                                                                <button class="text-white hover:text-yellow-300 text-xs p-1" title="Marcar como principal"><i class="fas fa-star"></i></button>
+                                                            </form>
+                                                        @endunless
+                                                        <form action="{{ route('inventario.productos.imagenes.destroy', $img) }}" method="POST" onsubmit="return confirm('¿Eliminar esta imagen?')">
+                                                            @csrf @method('DELETE')
+                                                            <button class="text-white hover:text-red-300 text-xs p-1" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                                        </form>
+                                                    </div>
+                                                    @if($img->es_principal)
+                                                        <span class="absolute -top-1 -right-1 bg-indigo-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px]"><i class="fas fa-star"></i></span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                            @if($imgs->count() < $max)
+                                                <form action="{{ route('inventario.productos.variantes.imagenes.store', $variante) }}" method="POST" enctype="multipart/form-data"
+                                                      class="flex items-center gap-2">
+                                                    @csrf
+                                                    <label class="h-16 w-16 rounded-lg border-2 border-dashed border-gray-300 hover:border-indigo-400 text-gray-400 hover:text-indigo-500 flex flex-col items-center justify-center cursor-pointer text-[10px] text-center leading-tight">
+                                                        <i class="fas fa-plus mb-0.5"></i>Agregar
+                                                        <input type="file" name="imagenes[]" accept="image/jpeg,image/png,image/webp" multiple class="hidden"
+                                                               onchange="if (this.files.length > {{ $max - $imgs->count() }}) { alert('Solo puede agregar {{ $max - $imgs->count() }} imagen(es) más a esta variante.'); this.value = ''; return; } this.form.submit();">
+                                                    </label>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endif
+                              </div>
                             @endforeach
                         </div>
                     @endif
@@ -368,12 +440,10 @@ function editModal() {
     return {
         open: false,
         formAction: '',
-        form: { color_id: '', capacidad: '', stock_minimo: 0 },
+        form: { color_id: '', capacidad: '', stock_minimo: 0, codigo_kyrios: '' },
         openEdit(variante) {
             this.formAction = '{{ url("inventario/productos/variantes") }}/' + variante.id;
-            this.form.color_id     = variante.color_id;
-            this.form.capacidad    = variante.capacidad;
-            this.form.stock_minimo = variante.stock_minimo;
+            this.form = Object.assign({}, variante);
             this.open = true;
         }
     }

@@ -301,7 +301,7 @@
                             <i class="fas fa-building text-white/80"></i>
                         @endif
                     </a>
-                    <h1 class="brand-title">{{ $empresa?->nombre_display ?? 'CORPORACIÓN ADIVON SAC' }}</h1>
+                    <h1 class="brand-title">{{ $empresa?->nombre_display ?? config('app.name') }}</h1>
                     <p class="brand-subtitle">Sistema de Gestión de Importaciones</p>
 
                     <div class="feature-list">
@@ -345,7 +345,7 @@
                                 <i class="fas fa-building text-white/80 text-2xl"></i>
                             @endif
                         </div>
-                        <h1>{{ $empresa?->nombre_display ?? 'CORPORACIÓN ADIVON SAC' }}</h1>
+                        <h1>{{ $empresa?->nombre_display ?? config('app.name') }}</h1>
                         <p>Sistema de Gestión de Importaciones</p>
                     </div>
 
@@ -354,7 +354,7 @@
                     </div>
 
                     <div class="form-footer">
-                        &copy; {{ date('Y') }} {{ $empresa?->nombre_display ?? 'Corporación Adivon SAC' }}. Todos los derechos reservados.
+                        &copy; {{ date('Y') }} {{ $empresa?->nombre_display ?? config('app.name') }}. Todos los derechos reservados.
                     </div>
                 </div>
             </div>

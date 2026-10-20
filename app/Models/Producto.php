@@ -27,7 +27,11 @@ class Producto extends Model
         'stock_actual', 'stock_minimo', 'stock_maximo', 'ubicacion',
         'costo_promedio', 'ultimo_costo_compra', 'fecha_ultima_compra',
         'estado', 'imagen', 'creado_por', 'modificado_por',
-        'codigo_barras', 'codigo_sunat'
+        'codigo_barras', 'codigo_sunat',
+        'tipo_producto_id', 'tipo_luminaria_id', 'nombre_fabrica', 'nombre_kyrios', 'linea', 'procedencia',
+        'fuente_luz', 'uso', 'aplicacion_2', 'material_1', 'material_2', 'nivel_potencia', 'voltaje',
+        'ip', 'ik', 'cri', 'angulo_apertura', 'driver', 'regulable', 'protocolo_regulacion',
+        'ficha_tecnica', 'observaciones', 'estilos', 'tipos_instalacion', 'tipos_proyecto',
     ];
 
     /**
@@ -45,6 +49,10 @@ class Producto extends Model
         'fecha_ultima_compra' => 'date',
         'ultimo_costo_compra' => 'decimal:2',
         'costo_promedio'      => 'decimal:2',
+        'regulable'           => 'boolean',
+        'estilos'             => 'array',
+        'tipos_instalacion'   => 'array',
+        'tipos_proyecto'      => 'array',
     ];
 
     /**
@@ -54,6 +62,16 @@ class Producto extends Model
     {
         return $this->belongsTo(Categoria::class);
     }
+    public function tipoProducto()
+    {
+        return $this->belongsTo(\App\Models\Catalogo\TipoProducto::class, 'tipo_producto_id');
+    }
+
+    public function tipoLuminaria()
+    {
+        return $this->belongsTo(\App\Models\Catalogo\TipoLuminaria::class, 'tipo_luminaria_id');
+    }
+
     public function proveedores()
     {
         return $this->belongsToMany(Proveedor::class, 'productos_proveedor')
@@ -156,7 +174,14 @@ class Producto extends Model
         return $query->where(function($q) use ($termino) {
             $q->where('codigo', 'like', "%{$termino}%")
                 ->orWhere('nombre', 'like', "%{$termino}%")
-                ->orWhere('codigo_barras', 'like', "%{$termino}%");
+                ->orWhere('nombre_fabrica', 'like', "%{$termino}%")
+                ->orWhere('nombre_kyrios', 'like', "%{$termino}%")
+                ->orWhere('codigo_barras', 'like', "%{$termino}%")
+                ->orWhereHas('variantes', function ($v) use ($termino) {
+                    $v->where('codigo_kyrios', 'like', "%{$termino}%")
+                        ->orWhere('codigo_fabricante', 'like', "%{$termino}%")
+                        ->orWhere('codigo_excel', 'like', "%{$termino}%");
+                });
         });
     }
     protected $appends = ['imagen_url'];

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $producto->nombre }} - CORPORACIÓN ADIVON SAC</title>
+    <title>{{ $producto->nombre }} - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -208,6 +208,10 @@
                         @foreach($producto->variantesActivas as $variante)
                         <div class="px-6 py-3 flex items-center justify-between">
                             <div class="flex items-center gap-3">
+                                @php $miniatura = $variante->imagenPrincipal; @endphp
+                                @if($miniatura)
+                                    <img src="{{ $miniatura->url }}" alt="" class="h-10 w-10 rounded-lg object-cover border border-gray-200 shrink-0">
+                                @endif
                                 @if($variante->color?->codigo_hex)
                                     <span class="w-4 h-4 rounded-full border border-gray-300 shrink-0"
                                           style="background-color: {{ $variante->color->codigo_hex }}"></span>
@@ -216,7 +220,25 @@
                                 @endif
                                 <div>
                                     <span class="text-sm font-medium text-gray-800">{{ $variante->nombre_completo }}</span>
-                                    <span class="ml-2 text-xs text-gray-400 font-mono">{{ $variante->sku }}</span>
+                                    <span class="ml-2 text-xs {{ $variante->codigo_kyrios ? 'text-gray-700 font-semibold' : 'text-gray-400' }} font-mono">{{ $variante->codigo_kyrios ?? $variante->sku }}</span>
+                                    @if($variante->codigo_excel)
+                                        <span class="ml-1 text-xs text-gray-400 font-mono" title="2° código (Excel anterior)">2°: {{ $variante->codigo_excel }}</span>
+                                    @endif
+                                    @if($variante->estado_dano && $variante->estado_dano !== 'ninguno')
+                                        @php $claseDano = ['leve' => 'bg-yellow-100 text-yellow-800', 'moderado' => 'bg-cyan-100 text-cyan-800', 'grave' => 'bg-gray-700 text-white'][$variante->estado_dano]; @endphp
+                                        <span class="ml-1 text-xs px-2 py-0.5 rounded-full font-medium {{ $claseDano }}" title="{{ $variante->observacion_dano }}">
+                                            Daño {{ $variante->estado_dano }}
+                                        </span>
+                                    @endif
+                                    @if($variante->codigo_fabricante || $variante->socket || $variante->potencia_w)
+                                        <p class="text-xs text-gray-500 mt-0.5">
+                                            @if($variante->codigo_fabricante)Fab.: <span class="font-mono">{{ $variante->codigo_fabricante }}</span>@endif
+                                            @if($variante->socket) · Socket {{ $variante->socket }}@if($variante->num_lamparas) {{ $variante->num_lamparas }}@endif @endif
+                                            @if($variante->potencia_w) · {{ rtrim(rtrim($variante->potencia_w, '0'), '.') }} W @endif
+                                            @if($variante->diametro) · Ø {{ rtrim(rtrim($variante->diametro, '0'), '.') }} mm @endif
+                                            @if($variante->alto) · Alto {{ rtrim(rtrim($variante->alto, '0'), '.') }} mm @endif
+                                        </p>
+                                    @endif
                                 </div>
                             </div>
                             @php

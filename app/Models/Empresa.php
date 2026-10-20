@@ -37,14 +37,14 @@ class Empresa extends Model
         return $this->nombre_comercial ?: $this->razon_social;
     }
 
-    public function getLogoUrlAttribute(): ?string
+    public function getLogoUrlAttribute(): string
     {
-        return $this->logo_path ? asset('storage/' . $this->logo_path) : null;
+        return $this->logo_path ? asset('storage/' . $this->logo_path) : asset('img/logo-kyrios.svg');
     }
 
-    public function getLogoPdfUrlAttribute(): ?string
+    public function getLogoPdfUrlAttribute(): string
     {
-        return $this->logo_pdf_path ? asset('storage/' . $this->logo_pdf_path) : null;
+        return $this->logo_pdf_path ? asset('storage/' . $this->logo_pdf_path) : asset('img/logo-kyrios.svg');
     }
 
     public function getCertificadoPemContentAttribute(): ?string

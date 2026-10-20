@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Producto - CORPORACIÓN ADIVON SAC</title>
+    <title>Editar Producto - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -129,6 +129,50 @@
                         </div>
                     </div>
                     @endif
+
+                    <!-- CODIFICACIÓN KYRIOS -->
+                    <div class="mb-8">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                            <i class="fas fa-barcode mr-2 text-blue-900"></i>
+                            Codificación Kyrios
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Código del producto</label>
+                                <input type="text" value="{{ $producto->codigo }}" disabled
+                                       class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 font-mono text-sm text-gray-700">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de producto</label>
+                                @if($producto->tipo_producto_id)
+                                    <input type="text" value="{{ $producto->tipoProducto?->codigo }} — {{ $producto->tipoProducto?->nombre }}" disabled
+                                           class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700">
+                                @else
+                                    <select name="tipo_producto_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                        <option value="">Sin definir</option>
+                                        @foreach($tiposProducto as $t)
+                                            <option value="{{ $t->id }}">{{ $t->codigo }} — {{ $t->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de luminaria</label>
+                                @if($producto->tipo_luminaria_id || $producto->tipo_producto_id)
+                                    <input type="text" value="{{ $producto->tipoLuminaria ? $producto->tipoLuminaria->codigo . ' — ' . $producto->tipoLuminaria->nombre : '—' }}" disabled
+                                           class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700">
+                                @else
+                                    <select name="tipo_luminaria_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                        <option value="">Sin definir</option>
+                                        @foreach($tiposLuminaria as $l)
+                                            <option value="{{ $l->id }}">{{ $l->codigo }} — {{ $l->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                            </div>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500">Los códigos Kyrios se asignan una sola vez y no cambian al editar el producto. Cada variante tiene el suyo (ver "Variantes").</p>
+                    </div>
 
                     <!-- INFORMACIÓN BÁSICA -->
                     <div class="mb-8">
@@ -340,6 +384,8 @@
                             </div>
                         </div>
                     </div>
+
+                    @include('inventario.productos.partials.campos-producto-kyrios', ['producto' => $producto])
 
                     <!-- CONTROL DE STOCK -->
                     <div class="mb-8">

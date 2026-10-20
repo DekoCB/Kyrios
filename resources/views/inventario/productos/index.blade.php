@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productos - CORPORACIÓN ADIVON SAC</title>
+    <title>Productos - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -109,7 +109,7 @@
                         <input type="text" 
                                name="buscar" 
                                value="{{ request('buscar') }}"
-                               placeholder="Código, nombre o código de barras"
+                               placeholder="Código Kyrios, del fabricante, nombre o código de barras"
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
 
@@ -172,6 +172,69 @@
                     <div class="md:col-span-2"></div>
                 </div>
 
+                @php
+                    $sel = fn ($name) => request($name);
+                    $avanzadosActivos = collect(['tipo_producto_id','tipo_luminaria_id','marca_id','linea','fuente_luz','uso','estilo','instalacion','proyecto','acabado','tamano','socket','estado_dano'])
+                        ->contains(fn ($k) => request()->filled($k));
+                @endphp
+                <details class="group border border-gray-200 rounded-lg" {{ $avanzadosActivos ? 'open' : '' }}>
+                    <summary class="flex items-center justify-between px-4 py-3 cursor-pointer select-none text-sm font-semibold text-gray-700">
+                        <span><i class="fas fa-sliders-h mr-2 text-blue-900"></i>Filtros de producto y variante
+                            @if($avanzadosActivos)<span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">activos</span>@endif
+                        </span>
+                        <i class="fas fa-chevron-down text-gray-400 group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border-t border-gray-200">
+                        @foreach([
+                            ['tipo_producto_id',  'Tipo de producto',   $filtros['tipos'],      'id', 'nombre'],
+                            ['tipo_luminaria_id', 'Tipo de luminaria',  $filtros['luminarias'], 'id', 'nombre'],
+                            ['marca_id',          'Marca',              $filtros['marcas'],     'id', 'nombre'],
+                        ] as [$campo, $etiqueta, $items, $valor, $texto])
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ $etiqueta }}</label>
+                                <select name="{{ $campo }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Todos</option>
+                                    @foreach($items as $it)
+                                        <option value="{{ $it->$valor }}" {{ $sel($campo) == $it->$valor ? 'selected' : '' }}>{{ $it->$texto }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+
+                        @foreach([
+                            ['linea',       'Línea',                 $filtros['lineas']],
+                            ['fuente_luz',  'Fuente de luz',         $filtros['fuentes_luz']],
+                            ['uso',         'Uso',                   $filtros['usos']],
+                            ['estilo',      'Estilo',                $filtros['estilos']],
+                            ['instalacion', 'Tipo de instalación',   $filtros['instalaciones']],
+                            ['proyecto',    'Tipo de proyecto',      $filtros['proyectos']],
+                            ['acabado',     'Color / Acabado',       $filtros['acabados']],
+                            ['tamano',      'Tamaño',                $filtros['tamanos']],
+                            ['socket',      'Socket',                $filtros['sockets']],
+                        ] as [$campo, $etiqueta, $items])
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">{{ $etiqueta }}</label>
+                                <select name="{{ $campo }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Todos</option>
+                                    @foreach($items as $valor => $etiquetaOpcion)
+                                        <option value="{{ $valor }}" {{ $sel($campo) === (string) $valor ? 'selected' : '' }}>{{ $etiquetaOpcion }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Estado de daño</label>
+                            <select name="estado_dano" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">Todos</option>
+                                @foreach($filtros['danos'] as $k => $etiqueta)
+                                    <option value="{{ $k }}" {{ $sel('estado_dano') === $k ? 'selected' : '' }}>{{ $etiqueta }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
                 <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                     <a href="{{ route('inventario.productos.index') }}" class="text-gray-600 hover:text-gray-900">
                         <i class="fas fa-redo mr-2"></i>Limpiar filtros
@@ -228,8 +291,14 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
+                                    @php
+                                        $imgVariante = $producto->variantesActivas->map->imagenPrincipal->filter()->first();
+                                        $danos = $producto->variantesActivas->pluck('estado_dano')->filter(fn ($d) => $d && $d !== 'ninguno')->countBy();
+                                    @endphp
                                     @if($producto->imagen)
                                         <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}" class="h-12 w-12 rounded-lg object-cover mr-3">
+                                    @elseif($imgVariante)
+                                        <img src="{{ $imgVariante->url }}" alt="{{ $producto->nombre }}" class="h-12 w-12 rounded-lg object-cover mr-3">
                                     @else
                                         <div class="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center mr-3">
                                             <i class="fas fa-box text-gray-400"></i>
@@ -237,9 +306,19 @@
                                     @endif
                                     <div>
                                         <p class="text-sm font-medium text-gray-900">{{ $producto->nombre }}</p>
+                                        @if($producto->tipoProducto)
+                                            <p class="text-xs text-gray-500">{{ $producto->tipoProducto->nombre }}@if($producto->tipoLuminaria) · {{ $producto->tipoLuminaria->nombre }}@endif</p>
+                                        @endif
                                         @if($producto->codigo_barras)
                                             <p class="text-xs text-gray-500">CB: {{ $producto->codigo_barras }}</p>
                                         @endif
+                                        @foreach(['grave' => 'bg-gray-700 text-white', 'moderado' => 'bg-cyan-100 text-cyan-800', 'leve' => 'bg-yellow-100 text-yellow-800'] as $nivel => $clase)
+                                            @if(($danos[$nivel] ?? 0) > 0)
+                                                <span class="inline-flex items-center gap-1 mt-0.5 mr-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $clase }}">
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ $danos[$nivel] }} daño {{ $nivel }}
+                                                </span>
+                                            @endif
+                                        @endforeach
                                         @if($producto->variantesActivas->count() > 0)
                                             <span class="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
                                                 <i class="fas fa-layer-group text-indigo-500"></i>

@@ -281,7 +281,7 @@ table.items th:last-child, table.items td:last-child { padding-right: 0; }
     @if($venta->vendedor)VENDEDOR: {{ $venta->vendedor->name }}<br>@endif
     @if($venta->sucursal)Sucursal: {{ $venta->sucursal->nombre }}<br>@endif
     <br>
-    <em>Generado en sistema Adivon ERP</em>
+    <em>Generado en sistema {{ config('app.name') }}</em>
 </div>
 
 </div> {{-- Cierre de page-content --}}

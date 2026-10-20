@@ -14,6 +14,10 @@ use App\Models\Catalogo\UnidadMedida;
 use App\Models\Catalogo\ProductoSunat;
 use App\Services\CodigoBarrasService;
 use App\Services\VarianteService;
+use App\Services\CodigoKyriosService;
+use App\Models\ProductoImagen;
+use App\Models\Catalogo\TipoProducto;
+use App\Models\Catalogo\TipoLuminaria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -58,7 +62,7 @@ class ProductoController extends Controller
     {
         $almacenFiltroId = $request->filled('almacen_id') ? (int) $request->almacen_id : null;
 
-        $query = Producto::with(['categoria', 'variantesActivas.color'])
+        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantesActivas.color', 'variantesActivas.imagenPrincipal'])
             ->withCount(['imeisEnStock as imeis_en_stock_count']);
 
         if ($almacenFiltroId) {
@@ -77,6 +81,8 @@ class ProductoController extends Controller
         if ($request->filled('categoria_id')) {
             $query->where('categoria_id', $request->categoria_id);
         }
+
+        $this->aplicarFiltrosKyrios($query, $request);
 
         // Filtro por estado — por defecto solo 'activo' (oculta productos migrados a variantes)
         $estadoFiltro = $request->get('estado', 'activo');
@@ -131,7 +137,108 @@ class ProductoController extends Controller
         $canEdit   = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
         $canDelete = auth()->user()->role->nombre === 'Administrador';
 
-        return view('inventario.productos.index', compact('productos', 'categorias', 'almacenes', 'almacenFiltro', 'canCreate', 'canEdit', 'canDelete', 'productosInactivos'));
+        $filtros = $this->opcionesFiltrosKyrios();
+
+        return view('inventario.productos.index', compact('productos', 'categorias', 'almacenes', 'almacenFiltro', 'canCreate', 'canEdit', 'canDelete', 'productosInactivos', 'filtros'));
+    }
+
+    /**
+     * Filtros de producto (nivel modelo) y de variante (acabado, tamaño, socket, daño).
+     */
+    private function aplicarFiltrosKyrios($query, Request $request): void
+    {
+        foreach (['tipo_producto_id', 'tipo_luminaria_id', 'marca_id', 'fuente_luz', 'uso', 'linea', 'procedencia'] as $col) {
+            if ($request->filled($col)) {
+                $query->where($col, $request->input($col));
+            }
+        }
+        foreach (['estilo' => 'estilos', 'instalacion' => 'tipos_instalacion', 'proyecto' => 'tipos_proyecto'] as $param => $col) {
+            if ($request->filled($param)) {
+                $query->whereJsonContains($col, $request->input($param));
+            }
+        }
+
+        $variante = array_filter([
+            'tamano'      => $request->input('tamano'),
+            'socket'      => $request->input('socket'),
+            'estado_dano' => $request->input('estado_dano'),
+        ], fn ($v) => filled($v));
+        $acabado = $request->input('acabado');
+
+        if ($variante || filled($acabado)) {
+            $query->whereHas('variantes', function ($q) use ($variante, $acabado) {
+                foreach ($variante as $col => $val) {
+                    $q->where($col, $val);
+                }
+                if (filled($acabado)) {
+                    $q->where(fn ($w) => $w->where('acabado_1', $acabado)->orWhere('acabado_2', $acabado));
+                }
+            });
+        }
+    }
+
+    private function opcionesFiltrosKyrios(): array
+    {
+        $distinto = fn (string $tabla, string $col) => \DB::table($tabla)->whereNotNull($col)->where($col, '!=', '')
+            ->distinct()->orderBy($col)->pluck($col);
+        // Texto plano: valor = etiqueta (primera letra en mayúscula al mostrar)
+        $plano = fn ($lista) => $lista->mapWithKeys(fn ($v) => [$v => ucfirst($v)])->all();
+        // JSON (estilos, instalación, proyecto): se guarda el slug y se muestra el nombre de config/kyrios.php
+        $json = fn (string $col, string $cfg) => Producto::whereNotNull($col)->pluck($col)->flatten()->unique()
+            ->mapWithKeys(fn ($slug) => [$slug => config("kyrios.{$cfg}.{$slug}", ucfirst($slug))])->sort()->all();
+
+        return [
+            'tipos'         => TipoProducto::activos()->orderBy('nombre')->get(['id', 'nombre']),
+            'luminarias'    => TipoLuminaria::activos()->orderBy('nombre')->get(['id', 'nombre']),
+            'marcas'        => Marca::where('estado', 'activo')->orderBy('nombre')->get(['id', 'nombre']),
+            'fuentes_luz'   => $plano($distinto('productos', 'fuente_luz')),
+            'usos'          => $plano($distinto('productos', 'uso')),
+            'lineas'        => $plano($distinto('productos', 'linea')),
+            'estilos'       => $json('estilos', 'estilos'),
+            'instalaciones' => $json('tipos_instalacion', 'tipos_instalacion'),
+            'proyectos'     => $json('tipos_proyecto', 'tipos_proyecto'),
+            'acabados'      => $plano($distinto('producto_variantes', 'acabado_1')),
+            'tamanos'       => $plano($distinto('producto_variantes', 'tamano')),
+            'sockets'       => $plano($distinto('producto_variantes', 'socket')),
+            'danos'         => ['leve' => 'Daño leve', 'moderado' => 'Daño moderado', 'grave' => 'Daño grave', 'ninguno' => 'Sin daño'],
+        ];
+    }
+
+    private function reglasKyrios(): array
+    {
+        $txt = fn (int $max) => "nullable|string|max:{$max}";
+
+        return [
+            'tipo_producto_id'  => 'nullable|exists:tipos_producto,id',
+            'tipo_luminaria_id' => 'nullable|exists:tipos_luminaria,id',
+            'nombre_fabrica' => $txt(150), 'nombre_kyrios' => $txt(150),
+            'linea' => $txt(60), 'procedencia' => $txt(40), 'fuente_luz' => $txt(40), 'uso' => $txt(40),
+            'aplicacion_2' => $txt(60), 'material_1' => $txt(60), 'material_2' => $txt(60),
+            'nivel_potencia' => $txt(40), 'voltaje' => $txt(40), 'ip' => $txt(10), 'ik' => $txt(10), 'cri' => $txt(10),
+            'angulo_apertura' => $txt(60), 'driver' => $txt(30), 'regulable' => 'nullable|boolean',
+            'protocolo_regulacion' => $txt(80), 'ficha_tecnica' => $txt(255), 'observaciones' => 'nullable|string',
+            'estilos' => 'nullable|array', 'estilos.*' => 'string|max:60|in:' . implode(',', array_keys(config('kyrios.estilos'))),
+            'tipos_instalacion' => 'nullable|array', 'tipos_instalacion.*' => 'string|max:60|in:' . implode(',', array_keys(config('kyrios.tipos_instalacion'))),
+            'tipos_proyecto' => 'nullable|array', 'tipos_proyecto.*' => 'string|max:60|in:' . implode(',', array_keys(config('kyrios.tipos_proyecto'))),
+        ];
+    }
+
+    /** Reglas de los atributos de variante (prefijo vacío al editar, 'variante_inicial.' al crear producto). */
+    private function reglasVarianteKyrios(string $prefijo = ''): array
+    {
+        $reglas = [
+            'codigo_fabricante' => 'nullable|string|max:60', 'codigo_excel' => 'nullable|string|max:40',
+            'acabado_1' => 'nullable|string|max:60', 'acabado_2' => 'nullable|string|max:60',
+            'tamano' => 'nullable|string|max:20', 'socket' => 'nullable|string|max:30', 'num_lamparas' => 'nullable|string|max:10',
+            'tonalidad_luz' => 'nullable|string|max:40',
+            'diametro' => 'nullable|numeric|min:0', 'alto' => 'nullable|numeric|min:0', 'ancho' => 'nullable|numeric|min:0',
+            'profundidad' => 'nullable|numeric|min:0', 'alto_suspendido' => 'nullable|numeric|min:0',
+            'diametro_agujero' => 'nullable|numeric|min:0', 'potencia_w' => 'nullable|numeric|min:0', 'lumenes' => 'nullable|numeric|min:0',
+            'temperatura_color' => 'nullable|integer|min:0',
+            'estado_dano' => 'nullable|in:ninguno,leve,moderado,grave', 'observacion_dano' => 'nullable|string',
+        ];
+
+        return collect($reglas)->mapWithKeys(fn ($r, $k) => [$prefijo . $k => $r])->all();
     }
 
     /**
@@ -157,7 +264,12 @@ public function create()
     $colores = Color::where('estado', 'activo')->orderBy('nombre')->get(); // ✅ YA LO TIENES
     $unidades = UnidadMedida::where('estado', 'activo')->orderBy('nombre')->get(); // ✅ YA LO TIENES
     
+    $tiposProducto = TipoProducto::activos()->orderBy('nombre')->get();
+    $tiposLuminaria = TipoLuminaria::activos()->orderBy('nombre')->get();
+
     return view('inventario.productos.create', compact(
+        'tiposProducto',
+        'tiposLuminaria',
         'categorias',
         'almacenes',
         'marcas',
@@ -207,10 +319,24 @@ public function create()
         // Stock inicial (solo para accesorios)
         'stock_inicial' => 'nullable|integer|min:0',
         'almacen_id' => 'nullable|required_with:stock_inicial|exists:almacenes,id',
-    ]);
+    ] + $this->reglasKyrios() + $this->reglasVarianteKyrios('variante_inicial.'));
+
+    // Codificación KYRIOS: el producto toma el código de su primera variante
+    $correlativoPrimera = null;
+    $codigoPrimeraVariante = null;
+    $varianteInicial = (array) ($validated['variante_inicial'] ?? []);
+    unset($validated['variante_inicial']);
+    if (!empty($validated['tipo_producto_id'])) {
+        [$codigoPrimeraVariante, $correlativoPrimera] = app(CodigoKyriosService::class)->generar(
+            TipoProducto::findOrFail($validated['tipo_producto_id']),
+            !empty($validated['tipo_luminaria_id']) ? TipoLuminaria::find($validated['tipo_luminaria_id']) : null,
+            !empty($validated['marca_id']) ? Marca::find($validated['marca_id']) : null
+        );
+        $validated['codigo'] = $codigoPrimeraVariante;
+    }
 
     // Generar código automático si no existe
-    if (empty($request->codigo)) {
+    if (empty($validated['codigo'])) {
         $validated['codigo'] = Producto::generarCodigo();
     }
 
@@ -225,9 +351,23 @@ public function create()
         $validated['imagen'] = $request->file('imagen')->store('productos', 'public');
     }
 
-    \DB::transaction(function () use ($validated, $request) {
+    \DB::transaction(function () use ($validated, $request, $varianteInicial, $codigoPrimeraVariante, $correlativoPrimera) {
         // Crear producto
         $producto = Producto::create($validated);
+
+        if ($codigoPrimeraVariante) {
+            ProductoVariante::create(array_merge($varianteInicial, [
+                'producto_id'   => $producto->id,
+                'sku'           => $codigoPrimeraVariante,
+                'codigo_kyrios' => $codigoPrimeraVariante,
+                'correlativo'   => $correlativoPrimera,
+                'estado_dano'   => $varianteInicial['estado_dano'] ?? 'ninguno',
+                'stock_actual'  => 0,
+                'stock_minimo'  => $producto->stock_minimo ?? 0,
+                'estado'        => 'activo',
+                'creado_por'    => auth()->id(),
+            ]));
+        }
 
         \Log::info('Producto creado:', [
             'id' => $producto->id,
@@ -293,6 +433,9 @@ public function create()
             'color',
             'unidadMedida',
             'variantesActivas.color',
+            'variantesActivas.imagenPrincipal',
+            'tipoProducto',
+            'tipoLuminaria',
             'movimientos' => fn($q) => $q->latest()->limit(10),
         ]);
 
@@ -347,6 +490,9 @@ public function create()
         // Cargar relaciones necesarias
         $producto->load(['marca', 'modelo', 'color', 'categoria', 'unidadMedida']);
         
+        $tiposProducto = TipoProducto::activos()->orderBy('nombre')->get();
+        $tiposLuminaria = TipoLuminaria::activos()->orderBy('nombre')->get();
+
         // Obtener datos para los selects
         $categorias = Categoria::where('estado', 'activo')->orderBy('nombre')->get();
         $marcas = \App\Models\Catalogo\Marca::where('estado', 'activo')->orderBy('nombre')->get();
@@ -374,6 +520,8 @@ public function create()
 
         return view('inventario.productos.edit', compact(
             'producto',
+            'tiposProducto',
+            'tiposLuminaria',
             'categorias',
             'marcas',
             'modelos',
@@ -419,7 +567,11 @@ public function create()
         'stock_maximo' => 'required|integer|min:1',
         'ubicacion' => 'nullable|string|max:50',
         'estado' => 'required|in:activo,inactivo,descontinuado',
-    ]);
+    ] + $this->reglasKyrios());
+
+    // El código se genera una sola vez; cambiar tipo/marca no lo altera
+    if ($producto->tipo_producto_id) { unset($validated['tipo_producto_id']); }
+    if ($producto->tipo_luminaria_id) { unset($validated['tipo_luminaria_id']); }
 
     // Subir nueva imagen si existe
     if ($request->hasFile('imagen')) {
@@ -669,7 +821,7 @@ public function validarCodigoBarras(Request $request)
  */
 public function variantes(Producto $producto)
 {
-    $producto->load(['variantes.color', 'marca', 'modelo', 'categoria']);
+    $producto->load(['variantes.color', 'variantes.imagenes', 'marca', 'modelo', 'categoria', 'tipoProducto', 'tipoLuminaria']);
     $colores = Color::where('estado', 'activo')->orderBy('nombre')->get();
 
     $stockRealPorVariante = collect();
@@ -695,7 +847,25 @@ public function storeVariante(Request $request, Producto $producto, VarianteServ
         'capacidad'    => 'nullable|string|max:50',
         'sobreprecio'  => 'nullable|numeric|min:0',
         'stock_inicial'=> 'nullable|integer|min:0',
-    ]);
+    ] + $this->reglasVarianteKyrios());
+
+    // Productos con codificación Kyrios: la variante recibe su código KY-... automáticamente
+    if ($producto->tipo_producto_id) {
+        try {
+            $attrs = array_intersect_key($validated, $this->reglasVarianteKyrios());
+            $variante = $varianteService->crearVarianteKyrios($producto, $attrs);
+
+            if (!empty($validated['stock_inicial']) && $validated['stock_inicial'] > 0) {
+                $variante->incrementarStock($validated['stock_inicial']);
+            }
+
+            return redirect()
+                ->route('inventario.productos.variantes', $producto)
+                ->with('success', 'Variante agregada: ' . $variante->codigo_kyrios);
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+    }
 
     try {
         $colorId   = $validated['color_id'] ?? null;
@@ -740,7 +910,17 @@ public function updateVariante(Request $request, ProductoVariante $variante)
         'color_id'    => 'nullable|exists:colores,id',
         'capacidad'   => 'nullable|string|max:50',
         'stock_minimo'=> 'nullable|integer|min:0',
-    ]);
+    ] + $this->reglasVarianteKyrios());
+
+    // Variante con código Kyrios: se editan los atributos; el código no cambia
+    if ($variante->codigo_kyrios) {
+        $attrs = array_intersect_key($validated, $this->reglasVarianteKyrios());
+        $variante->update($attrs + ['stock_minimo' => $validated['stock_minimo'] ?? $variante->stock_minimo]);
+
+        return redirect()
+            ->route('inventario.productos.variantes', $variante->producto_id)
+            ->with('success', 'Variante actualizada: ' . $variante->codigo_kyrios);
+    }
 
     // Regenerar SKU si cambió color o capacidad
     $colorCambio = ($validated['color_id']  ?? null) != $variante->color_id;
@@ -761,6 +941,68 @@ public function updateVariante(Request $request, ProductoVariante $variante)
     return redirect()
         ->route('inventario.productos.variantes', $variante->producto_id)
         ->with('success', 'Variante actualizada: ' . $variante->fresh()->sku);
+}
+
+/**
+ * POST /inventario/productos/variantes/{variante}/imagenes
+ * Sube imágenes de la variante (máximo 6 en total).
+ */
+public function storeImagenes(Request $request, ProductoVariante $variante)
+{
+    $request->validate([
+        'imagenes'   => 'required|array|min:1',
+        'imagenes.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+    ]);
+
+    $archivos = $request->file('imagenes');
+    $existentes = $variante->imagenes()->count();
+    $libres = ProductoImagen::MAX_POR_VARIANTE - $existentes;
+
+    if (count($archivos) > $libres) {
+        return back()->with('error', sprintf(
+            'Cada variante admite máximo %d imágenes. Tiene %d y intentó agregar %d.',
+            ProductoImagen::MAX_POR_VARIANTE, $existentes, count($archivos)
+        ));
+    }
+
+    $ocupados = $variante->imagenes()->pluck('orden')->all();
+    foreach ($archivos as $archivo) {
+        $orden = collect(range(1, ProductoImagen::MAX_POR_VARIANTE))->first(fn ($n) => !in_array($n, $ocupados, true));
+        $ocupados[] = $orden;
+
+        $variante->imagenes()->create([
+            'producto_id'  => $variante->producto_id,
+            'ruta'         => $archivo->store("productos/{$variante->id}", 'public'),
+            'orden'        => $orden,
+            'es_principal' => $existentes === 0 && count($ocupados) === 1,
+        ]);
+    }
+
+    return back()->with('success', 'Imágenes agregadas a ' . ($variante->codigo_kyrios ?? $variante->sku));
+}
+
+/** DELETE /inventario/productos/imagenes/{imagen} */
+public function destroyImagen(ProductoImagen $imagen)
+{
+    $variante = $imagen->variante;
+    $eraPrincipal = $imagen->es_principal;
+    Storage::disk('public')->delete($imagen->ruta);
+    $imagen->delete();
+
+    if ($eraPrincipal && ($siguiente = $variante->imagenes()->first())) {
+        $siguiente->update(['es_principal' => true]);
+    }
+
+    return back()->with('success', 'Imagen eliminada');
+}
+
+/** POST /inventario/productos/imagenes/{imagen}/principal */
+public function principalImagen(ProductoImagen $imagen)
+{
+    ProductoImagen::where('variante_id', $imagen->variante_id)->update(['es_principal' => false]);
+    $imagen->update(['es_principal' => true]);
+
+    return back()->with('success', 'Imagen principal actualizada');
 }
 
 /**

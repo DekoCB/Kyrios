@@ -60,6 +60,45 @@ class VarianteService
     }
 
     /**
+     * Crea una variante con código KYRIOS (KY-{tipo}{luminaria}{marca}-{correlativo}).
+     * Rechaza duplicados exactos de atributos dentro del mismo producto.
+     */
+    public function crearVarianteKyrios(Producto $producto, array $atributos): ProductoVariante
+    {
+        $claves = ['acabado_1', 'acabado_2', 'tamano', 'socket', 'num_lamparas', 'potencia_w', 'diametro', 'alto'];
+        $existe = ProductoVariante::where('producto_id', $producto->id)->get()->contains(function ($v) use ($claves, $atributos) {
+            foreach ($claves as $c) {
+                if ((string) ($v->{$c} ?? '') !== (string) ($atributos[$c] ?? '')
+                    && !(is_numeric($v->{$c}) && is_numeric($atributos[$c] ?? null) && (float) $v->{$c} === (float) $atributos[$c])) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        if ($existe) {
+            throw new \RuntimeException('Ya existe una variante con esos mismos atributos para este producto.');
+        }
+
+        $producto->loadMissing(['tipoProducto', 'tipoLuminaria', 'marca']);
+        [$codigo, $correlativo] = app(CodigoKyriosService::class)->generar(
+            $producto->tipoProducto, $producto->tipoLuminaria, $producto->marca
+        );
+
+        return ProductoVariante::create($atributos + [
+            'producto_id'   => $producto->id,
+            'sku'           => $codigo,
+            'codigo_kyrios' => $codigo,
+            'correlativo'   => $correlativo,
+            'estado_dano'   => 'ninguno',
+            'stock_actual'  => 0,
+            'stock_minimo'  => $producto->stock_minimo ?? 0,
+            'estado'        => 'activo',
+            'creado_por'    => auth()->id(),
+        ]);
+    }
+
+    /**
      * Dataset de productos activos + sus variantes, listo para @json() en el
      * selector con búsqueda usado por Compras (compras/create.blade.php) y
      * por Pedidos a Proveedor (pedidos/create.blade.php).

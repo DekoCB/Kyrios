@@ -42,11 +42,9 @@
                     <i class="fas fa-home text-2xl text-blue-300 shrink-0"></i>
                 @endif
                 <div class="min-w-0">
-                    <h1 class="text-sm font-bold leading-tight truncate">{{ $empresa?->nombre_display ?? 'CORPORACIÓN' }}</h1>
+                    <h1 class="text-sm font-bold leading-tight truncate">{{ $empresa?->nombre_display ?? config('app.name') }}</h1>
                     @if($empresa && $empresa->nombre_comercial && $empresa->nombre_comercial !== $empresa->razon_social)
                         <p class="text-[11px] text-blue-300 truncate">{{ $empresa->razon_social }}</p>
-                    @elseif(!$empresa)
-                        <p class="text-[11px] text-blue-300 truncate">ADIVON SAC</p>
                     @endif
                 </div>
             </div>

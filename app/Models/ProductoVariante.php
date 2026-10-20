@@ -25,6 +25,11 @@ class ProductoVariante extends Model
         'estado',
         'imagen',
         'creado_por',
+        'codigo_kyrios', 'correlativo', 'codigo_fabricante', 'codigo_excel',
+        'acabado_1', 'acabado_2', 'tamano', 'diametro', 'alto', 'ancho', 'profundidad',
+        'alto_suspendido', 'diametro_agujero', 'socket', 'num_lamparas', 'potencia_w', 'lumenes',
+        'temperatura_color', 'tonalidad_luz', 'estado_dano', 'observacion_dano',
+        'precio_fabrica', 'peso', 'volumen', 'embalado', 'medida_embalaje', 'cantidad_por_caja', 'codigos_relacionados',
     ];
 
     protected $casts = [
@@ -41,6 +46,16 @@ class ProductoVariante extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class);
+    }
+
+    public function imagenes()
+    {
+        return $this->hasMany(ProductoImagen::class, 'variante_id')->orderBy('orden');
+    }
+
+    public function imagenPrincipal()
+    {
+        return $this->hasOne(ProductoImagen::class, 'variante_id')->orderByDesc('es_principal')->orderBy('orden');
     }
 
     public function color()
@@ -90,6 +105,11 @@ class ProductoVariante extends Model
     public function getNombreCompletoAttribute(): string
     {
         $partes = [];
+        foreach ([$this->acabado_1, $this->acabado_2 && $this->acabado_2 !== '-' ? $this->acabado_2 : null, $this->tamano] as $p) {
+            if ($p && $p !== '-') {
+                $partes[] = $p;
+            }
+        }
         if ($this->color) {
             $partes[] = $this->color->nombre;
         }

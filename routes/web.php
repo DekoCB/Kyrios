@@ -260,6 +260,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/productos/{producto}/variantes', [ProductoController::class, 'storeVariante'])->name('productos.variantes.store');
             Route::put('/productos/variantes/{variante}', [ProductoController::class, 'updateVariante'])->name('productos.variantes.update');
             Route::delete('/productos/variantes/{variante}', [ProductoController::class, 'destroyVariante'])->name('productos.variantes.destroy');
+            Route::post('/productos/variantes/{variante}/imagenes', [ProductoController::class, 'storeImagenes'])->name('productos.variantes.imagenes.store');
+            Route::delete('/productos/imagenes/{imagen}', [ProductoController::class, 'destroyImagen'])->name('productos.imagenes.destroy');
+            Route::post('/productos/imagenes/{imagen}/principal', [ProductoController::class, 'principalImagen'])->name('productos.imagenes.principal');
         });
 
         // REPORTES DE INVENTARIO (HU-INVENTARIO-06/07/08)

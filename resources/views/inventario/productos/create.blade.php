@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Nuevo Producto - CORPORACIÓN ADIVON SAC</title>
+    <title>Nuevo Producto - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -113,6 +113,48 @@
                                     <option value="fabricante">Fabricante</option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN KYRIOS: CODIFICACIÓN -->
+                    <div class="mb-8" x-data="{
+                            tipos: {{ \Illuminate\Support\Js::from($tiposProducto->mapWithKeys(fn ($t) => [$t->id => ['codigo' => $t->codigo, 'caso' => $t->caso_codigo]])) }},
+                            tipo: '{{ old('tipo_producto_id') }}',
+                            get usaLuminaria() { return this.tipo && this.tipos[this.tipo]?.caso === 'con_luminaria'; }
+                         }">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                            <i class="fas fa-barcode mr-2 text-blue-900"></i>
+                            Codificación Kyrios
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="tipo_producto_id" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Tipo de producto <span class="text-red-500">*</span>
+                                </label>
+                                <select name="tipo_producto_id" id="tipo_producto_id" x-model="tipo" required
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Seleccione…</option>
+                                    @foreach($tiposProducto as $t)
+                                        <option value="{{ $t->id }}">{{ $t->codigo }} — {{ $t->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                @error('tipo_producto_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div x-show="usaLuminaria" x-cloak>
+                                <label for="tipo_luminaria_id" class="block text-sm font-medium text-gray-700 mb-2">Tipo de luminaria</label>
+                                <select name="tipo_luminaria_id" id="tipo_luminaria_id" :disabled="!usaLuminaria"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Sin definir (00)</option>
+                                    @foreach($tiposLuminaria as $l)
+                                        <option value="{{ $l->id }}" @selected(old('tipo_luminaria_id') == $l->id)>{{ $l->codigo }} — {{ $l->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                @error('tipo_luminaria_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <p class="md:col-span-2 text-xs text-gray-500">
+                                El código se genera al guardar: <span class="font-mono">KY-</span>tipo + luminaria + marca<span class="font-mono">-0001</span>.
+                                Seleccione también la <strong>marca</strong> en la información básica. El código no cambia después.
+                            </p>
                         </div>
                     </div>
 
@@ -474,99 +516,25 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN 4: VARIANTES DEL PRODUCTO -->
-                    <div class="mb-8" x-data="variantesManager()" x-init="init()">
+                    @include('inventario.productos.partials.campos-producto-kyrios', ['producto' => null])
+
+                    <!-- SECCIÓN 4: PRIMERA VARIANTE (SKU) -->
+                    <div class="mb-8">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                             <i class="fas fa-layer-group mr-2 text-indigo-600"></i>
-                            Variantes del Producto
-                            <span class="ml-2 text-sm font-normal text-gray-400">(opcional — agrega colores y capacidades)</span>
+                            Primera variante
+                            <span class="ml-2 text-sm font-normal text-gray-400">(acabado, tamaño, dimensiones, socket…)</span>
                         </h3>
-
                         <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
                             <p class="text-sm text-indigo-700">
                                 <i class="fas fa-info-circle mr-2"></i>
-                                Puedes guardar el producto primero y luego agregar variantes desde la página del producto.
-                                O define variantes iniciales aquí para crearlas automáticamente.
+                                Cada variante tiene su propio código Kyrios, stock e imágenes (hasta 6).
+                                Podrá agregar más variantes desde la página del producto.
                             </p>
                         </div>
-
-                        <!-- Variantes agregadas -->
-                        <template x-if="variantes.length > 0">
-                            <div class="mb-4 space-y-2">
-                                <template x-for="(v, idx) in variantes" :key="idx">
-                                    <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
-                                        <div class="w-6 h-6 rounded-full border-2 border-white shadow flex-shrink-0"
-                                             :style="v.color_hex ? `background-color:${v.color_hex}` : 'background:#e5e7eb'"
-                                             :title="v.color_nombre || 'Sin color'"></div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-semibold text-gray-900">
-                                                <span x-text="v.color_nombre || 'Sin color'"></span>
-                                                <template x-if="v.capacidad">
-                                                    <span x-text="' / ' + v.capacidad" class="text-gray-500 font-normal"></span>
-                                                </template>
-                                            </p>
-                                        </div>
-                                        <button type="button" @click="quitarVariante(idx)"
-                                                class="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition">
-                                            <i class="fas fa-times text-sm"></i>
-                                        </button>
-                                        <!-- Campos hidden para envío -->
-                                        <input type="hidden" :name="`variantes_iniciales[${idx}][color_id]`"  :value="v.color_id || ''">
-                                        <input type="hidden" :name="`variantes_iniciales[${idx}][capacidad]`" :value="v.capacidad || ''">
-                                    </div>
-                                </template>
-                            </div>
-                        </template>
-
-                        <!-- Formulario de nueva variante -->
-                        <div class="bg-white border-2 border-dashed border-indigo-200 rounded-xl p-4" x-show="agregarAbierto">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                                <!-- Color -->
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-600 mb-1">Color</label>
-                                    <div class="flex gap-2 items-center">
-                                        <select id="variante_color_select" x-model="nueva.color_id" @change="actualizarColorHex($event)"
-                                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
-                                            <option value="">Sin color</option>
-                                            @foreach($colores as $color)
-                                                <option value="{{ $color->id }}"
-                                                        data-hex="{{ $color->codigo_hex }}"
-                                                        data-nombre="{{ $color->nombre }}">
-                                                    {{ $color->nombre }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <button type="button" onclick="abrirModalColorCreate()"
-                                                class="shrink-0 px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg text-sm font-medium transition"
-                                                title="Agregar nuevo color">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <!-- Capacidad -->
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-600 mb-1">Capacidad <span class="text-gray-400">(opcional)</span></label>
-                                    <input type="text" x-model="nueva.capacidad"
-                                           placeholder="Ej: 128GB, 256GB"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button type="button" @click="agregarVariante()"
-                                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">
-                                    <i class="fas fa-plus mr-2"></i>Agregar
-                                </button>
-                                <button type="button" @click="agregarAbierto = false"
-                                        class="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
-                                    Cancelar
-                                </button>
-                            </div>
+                        <div class="space-y-4">
+                            @include('inventario.productos.partials.campos-variante-kyrios', ['modo' => 'nuevo', 'prefijo' => 'variante_inicial'])
                         </div>
-
-                        <button type="button" @click="agregarAbierto = true" x-show="!agregarAbierto"
-                                class="mt-3 w-full py-2.5 border-2 border-dashed border-indigo-300 rounded-xl text-indigo-600 hover:border-indigo-500 hover:bg-indigo-50 text-sm font-medium transition flex items-center justify-center gap-2">
-                            <i class="fas fa-plus"></i> Agregar variante
-                        </button>
                     </div>
 
                     <!-- SECCIÓN 5: IMAGEN Y ESTADO -->

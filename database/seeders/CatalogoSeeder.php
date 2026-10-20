@@ -6,7 +6,6 @@ use Illuminate\Database\Seeder;
 use App\Models\Catalogo\MotivoMovimiento;
 use App\Models\Catalogo\Color;
 use App\Models\Catalogo\UnidadMedida;
-use App\Models\Catalogo\Marca;
 
 class CatalogoSeeder extends Seeder
 {
@@ -96,22 +95,7 @@ class CatalogoSeeder extends Seeder
 
     private function seedMarcas(): void
     {
-        $marcas = [
-            ['nombre' => 'Apple',    'sitio_web'   => 'https://www.apple.com'],
-            ['nombre' => 'Samsung',  'sitio_web'   => 'https://www.samsung.com'],
-            ['nombre' => 'Xiaomi',   'sitio_web'   => 'https://www.mi.com'],
-            ['nombre' => 'Huawei',   'sitio_web'   => 'https://www.huawei.com'],
-            ['nombre' => 'Motorola', 'sitio_web'   => 'https://www.motorola.com'],
-            ['nombre' => 'Sony',     'sitio_web'   => 'https://www.sony.com'],
-            ['nombre' => 'LG',       'sitio_web'   => 'https://www.lg.com'],
-            ['nombre' => 'Genérico', 'descripcion' => 'Productos sin marca específica'],
-        ];
-
-        foreach ($marcas as $marca) {
-            Marca::firstOrCreate(
-                ['nombre' => $marca['nombre']],
-                array_diff_key($marca, ['nombre' => ''])
-            );
-        }
+        // Marcas y códigos de la codificación KYRIOS (tipos de producto y de luminaria incluidos)
+        $this->call(KyriosCatalogoSeeder::class);
     }
 }
