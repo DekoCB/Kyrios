@@ -27,6 +27,9 @@ class SerieComprobante extends Model
         '08' => ['nombre' => 'Nota de Débito',                 'prefijo' => 'FD'],
         '09' => ['nombre' => 'Guía de Remisión Remitente',     'prefijo' => 'T'],
         'NE' => ['nombre' => 'Nota de Entrega / Cotización',   'prefijo' => 'CO'],
+        // Documentos internos (sin SUNAT): su serie se crea sola, ver NumeracionService
+        'NV' => ['nombre' => 'Nota de Venta',                  'prefijo' => 'NV'],
+        'CT' => ['nombre' => 'Cotización',                     'prefijo' => 'CT'],
     ];
 
     /**
@@ -43,7 +46,8 @@ class SerieComprobante extends Model
         ['tipo_comprobante' => '08', 'tipo_nombre' => 'Nota de Débito (Factura)',       'serie_template' => 'FD{N}', 'formato_impresion' => 'A4'],
         ['tipo_comprobante' => '08', 'tipo_nombre' => 'Nota de Débito (Boleta)',        'serie_template' => 'BD{N}', 'formato_impresion' => 'ticket'],
         ['tipo_comprobante' => '09', 'tipo_nombre' => 'Guía de Remisión Remitente',     'serie_template' => 'T{N}01', 'formato_impresion' => 'A4'],
-        ['tipo_comprobante' => 'NE', 'tipo_nombre' => 'Nota de Entrega/Cotización',     'serie_template' => 'CO{N}', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => 'NV', 'tipo_nombre' => 'Nota de Venta',                  'serie_template' => 'NV{N}', 'formato_impresion' => 'A4'],
+        ['tipo_comprobante' => 'CT', 'tipo_nombre' => 'Cotización',                     'serie_template' => 'CT{N}', 'formato_impresion' => 'A4'],
     ];
 
     // ── Relaciones ─────────────────────────────────────────────

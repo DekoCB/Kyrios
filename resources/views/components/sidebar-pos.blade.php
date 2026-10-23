@@ -51,28 +51,15 @@
          :class="collapsed ? 'justify-center px-2' : 'justify-between px-3'">
 
         <div class="flex items-center gap-2 min-w-0 flex-1" x-show="!collapsed">
-            @if($empresa?->logo_url)
-                <img src="{{ $empresa->logo_url }}" alt="Logo"
-                     class="h-8 w-8 rounded-lg object-contain bg-white/10 p-0.5 shrink-0">
-            @else
-                <div class="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-                    <i class="fas fa-store text-white text-xs"></i>
-                </div>
-            @endif
-            <div class="min-w-0">
-                <p class="text-xs font-bold truncate leading-tight">{{ $empresa?->nombre_display ?? 'Mi Tienda' }}</p>
-                <p class="text-[10px] text-gray-400">POS Sistema</p>
-            </div>
+            <img src="{{ \App\Models\Empresa::logoUrlPara('oscuro') }}" alt="{{ $empresa?->nombre_display ?? config('app.name') }}"
+                 style="height: 34px; width: auto; max-width: 8.5rem; object-fit: contain; display: block;">
+            <span class="text-[10px] text-gray-400 shrink-0">POS</span>
         </div>
 
         <div x-show="collapsed" class="flex items-center justify-center">
-            @if($empresa?->logo_url)
-                <img src="{{ $empresa->logo_url }}" alt="Logo" class="h-8 w-8 rounded-lg object-contain bg-white/10 p-0.5">
-            @else
-                <div class="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                    <i class="fas fa-store text-xs"></i>
-                </div>
-            @endif
+            {{-- Barra contraída: el logo completo no cabe, se usa la inicial de la marca --}}
+            <div class="h-8 w-8 rounded-lg flex items-center justify-center font-bold text-base"
+                 style="background:#f2c80f; color:#3f3d37;" title="{{ $empresa?->nombre_display ?? config('app.name') }}">K</div>
         </div>
 
         <button @click="toggleCollapse()"

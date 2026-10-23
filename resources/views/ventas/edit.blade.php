@@ -83,7 +83,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1.5">Tipo de comprobante</label>
                     <div class="grid grid-cols-2 gap-2">
-                        @foreach(['boleta' => ['icon'=>'fa-receipt','label'=>'Boleta','color'=>'blue'], 'factura' => ['icon'=>'fa-file-invoice-dollar','label'=>'Factura','color'=>'indigo'], 'ticket' => ['icon'=>'fa-ticket-alt','label'=>'Ticket','color'=>'purple'], 'cotizacion' => ['icon'=>'fa-file-alt','label'=>'Cotización','color'=>'gray']] as $tipo => $cfg)
+                        @foreach(['boleta' => ['icon'=>'fa-receipt','label'=>'Boleta','color'=>'blue'], 'factura' => ['icon'=>'fa-file-invoice-dollar','label'=>'Factura','color'=>'indigo'], 'nota_venta' => ['icon'=>'fa-file-alt','label'=>'Nota de venta','color'=>'gray'], 'ticket' => ['icon'=>'fa-ticket-alt','label'=>'Ticket','color'=>'purple']] as $tipo => $cfg)
                         <label class="flex items-center gap-2 border border-gray-200 rounded-xl p-3 cursor-pointer hover:border-{{ $cfg['color'] }}-400 hover:bg-{{ $cfg['color'] }}-50 transition-all has-[:checked]:border-{{ $cfg['color'] }}-500 has-[:checked]:bg-{{ $cfg['color'] }}-50">
                             <input type="radio" name="tipo_comprobante" value="{{ $tipo }}"
                                    {{ old('tipo_comprobante', $venta->tipo_comprobante) === $tipo ? 'checked' : '' }}

@@ -116,6 +116,8 @@ class VarianteService
                     'color_nombre'        => $v->color?->nombre,
                     'color_hex'           => $v->color?->codigo_hex,
                     'capacidad'           => $v->capacidad,
+                    // Variantes con código Kyrios: «KY-… · acabado / tamaño» (no tienen color ni capacidad)
+                    'etiqueta'            => $v->codigo_kyrios ? ($v->codigo_kyrios . ' · ' . $v->nombre_completo) : null,
                     'stock_actual'        => (int) $v->stock_actual,
                     'ultimo_costo_compra' => $v->ultimo_costo_compra ? (float) $v->ultimo_costo_compra : null,
                 ]);

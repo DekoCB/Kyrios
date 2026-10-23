@@ -58,8 +58,8 @@ class SunatComprobanteService
         if ($venta->estado_sunat === 'aceptado') {
             return ['success' => false, 'message' => 'Este comprobante ya fue aceptado por SUNAT.'];
         }
-        if ($venta->tipo_comprobante === 'cotizacion') {
-            return ['success' => false, 'message' => 'Las cotizaciones no se envían a SUNAT.'];
+        if (in_array($venta->tipo_comprobante, ['nota_venta', 'cotizacion'], true)) {
+            return ['success' => false, 'message' => 'Las notas de venta y las cotizaciones no se envían a SUNAT.'];
         }
 
         $venta->load(['cliente', 'serieComprobante', 'detalles.producto.unidadMedida', 'detalles.variante']);

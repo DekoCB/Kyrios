@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\ProductoCodigoBarras;
 use App\Models\ProductoImagen;
 use App\Models\ProductoVariante;
 use Illuminate\Console\Command;
@@ -14,7 +15,8 @@ use Symfony\Component\Finder\Finder;
  * Carga masiva de imágenes desde una carpeta (máximo 6 por variante).
  *
  * Cada imagen se asocia a una variante por su código — Kyrios (KY-LU2501-0001), del fabricante
- * (25-0573-N3-B8) o del Excel anterior (KLU01-00003) — y puede indicar el orden con un sufijo:
+ * (25-0573-N3-B8), del Excel anterior (KLU01-00003) o de barras de la caja — y puede indicar el orden
+ * con un sufijo. Repetir la importación no duplica las fotos que ya están cargadas (se comparan por contenido):
  *
  *   KY-LU2501-0001.jpg        → imagen 1
  *   KY-LU2501-0001_2.jpg      → imagen 2        (también "-2" o " (2)")
@@ -64,7 +66,7 @@ class ImportarImagenesProductos extends Command
             $grupos[$varianteIds[0]][] = [$orden, $archivo->getRealPath()];
         }
 
-        $nuevas = $descartadas = 0;
+        $nuevas = $descartadas = $repetidas = 0;
         foreach ($grupos as $varianteId => $archivos) {
             $variante = ProductoVariante::find($varianteId);
             if ($this->option('reemplazar') && !$this->option('dry-run')) {
@@ -78,7 +80,24 @@ class ImportarImagenesProductos extends Command
             usort($archivos, fn ($a, $b) => [$a[0] ?? 99, $a[1]] <=> [$b[0] ?? 99, $b[1]]);
             $ocupados = $this->option('reemplazar') ? [] : $variante->imagenes()->pluck('orden')->all();
 
+            // Contenido de las fotos que la variante ya tiene: una foto igual no se vuelve a cargar
+            $existentes = [];
+            if (!$this->option('reemplazar')) {
+                foreach ($variante->imagenes as $img) {
+                    if (Storage::disk('public')->exists($img->ruta)) {
+                        $existentes[md5(Storage::disk('public')->get($img->ruta))] = true;
+                    }
+                }
+            }
+
             foreach ($archivos as [$ordenPedido, $ruta]) {
+                $hash = md5_file($ruta);
+                if (isset($existentes[$hash])) {
+                    $repetidas++;
+                    continue;
+                }
+                $existentes[$hash] = true;
+
                 $orden = ($ordenPedido && !in_array($ordenPedido, $ocupados, true))
                     ? $ordenPedido
                     : collect(range(1, ProductoImagen::MAX_POR_VARIANTE))->first(fn ($n) => !in_array($n, $ocupados, true));
@@ -109,6 +128,7 @@ class ImportarImagenesProductos extends Command
         $this->table(['Concepto', 'Cantidad'], [
             ['Variantes con imágenes', count($grupos)],
             ['Imágenes ' . ($this->option('dry-run') ? 'por cargar' : 'cargadas'), $nuevas],
+            ['Ya cargadas (misma foto)', $repetidas],
             ['Descartadas (la variante ya tiene 6)', $descartadas],
             ['Sin código reconocible', count($sinCodigo)],
             ['Código ambiguo (varias variantes)', count($ambiguos)],
@@ -137,6 +157,12 @@ class ImportarImagenesProductos extends Command
                         }
                     }
                 }
+            });
+
+        // Códigos de barras asociados a una variante
+        ProductoCodigoBarras::whereNotNull('variante_id')->get(['variante_id', 'codigo_barras'])
+            ->each(function ($c) use (&$indice) {
+                $indice[$this->clave($c->codigo_barras)][$c->variante_id] = $c->variante_id;
             });
 
         return array_map('array_values', $indice);

@@ -74,12 +74,15 @@ class MovimientoInventarioController extends Controller
      */
     public function create()
     {
-        $productos        = Producto::activos()->orderBy('nombre')->get();
+        $productos        = Producto::activos()->with('variantesActivas')->orderBy('nombre')->get();
+        // Stock por variante y almacén: [variante_id => [almacen_id => cantidad]]
+        $stockVariantes   = \App\Models\StockAlmacen::whereNotNull('variante_id')->get()
+            ->groupBy('variante_id')->map(fn ($f) => $f->pluck('cantidad', 'almacen_id'));
         $almacenesCentral = Almacen::activos()->whereIn('tipo', ['principal','deposito','temporal'])->orderBy('nombre')->get();
         $almacenesTienda  = Almacen::activos()->where('tipo', 'tienda')->orderBy('nombre')->get();
         $motivos          = MotivoMovimiento::activos()->orderBy('nombre')->get()->groupBy('tipo');
 
-        return view('inventario.movimientos.create', compact('productos', 'almacenesCentral', 'almacenesTienda', 'motivos'));
+        return view('inventario.movimientos.create', compact('productos', 'stockVariantes', 'almacenesCentral', 'almacenesTienda', 'motivos'));
     }
 
     /**
@@ -103,6 +106,7 @@ class MovimientoInventarioController extends Controller
             'observaciones'        => 'nullable|string',
             'almacen_destino_id' => 'nullable|exists:almacenes,id',
             'numero_guia' => 'nullable|string|max:50',
+            'variante_id' => 'nullable|exists:producto_variantes,id',
         ];
         
         // FIX 2: Si es celular, IMEI es obligatorio y cantidad no se valida como required
@@ -129,6 +133,7 @@ class MovimientoInventarioController extends Controller
             'motivo_movimiento_id.required' => 'Debes seleccionar un motivo.',
             'motivo_movimiento_id.exists'   => 'El motivo seleccionado no es válido.',
             'imei_id.required' => 'Debe seleccionar un IMEI para productos tipo celular.',
+            'variante_id.exists' => 'La variante seleccionada no es válida.',
             'almacen_destino_id.required' => 'Debe seleccionar un almacén destino para transferencias.',
             'almacen_destino_id.different' => 'El almacén destino debe ser diferente al almacén origen.',
             'numero_guia.required' => 'El número de guía es obligatorio para transferencias.',
@@ -140,6 +145,7 @@ class MovimientoInventarioController extends Controller
             // Preparar datos para el modelo
             $datos = [
                 'producto_id' => $request->producto_id,
+                'variante_id' => $esCelular ? null : $request->variante_id,
                 'almacen_id' => $request->almacen_id,
                 'tipo_movimiento'      => $request->tipo_movimiento,
                 'imei_id'             => $request->imei_id,

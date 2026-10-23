@@ -478,10 +478,16 @@ public static function registrarMovimiento($datos)
         // producto — antes este método escribía stock_actual directo sin tocar
         // stock_almacen, así que cualquier reconciliación posterior (o cualquier otra
         // pantalla que sí lea stock_almacen) deshacía silenciosamente el ajuste manual.
-        $stockAlmacen = \App\Models\StockAlmacen::firstOrCreate(
-            ['producto_id' => $datos['producto_id'], 'almacen_id' => $datos['almacen_id']],
-            ['cantidad' => 0]
-        );
+        // Stock por variante y almacén: si el producto tiene variantes, el movimiento debe indicar cuál.
+        $varianteId = !empty($datos['variante_id']) ? (int) $datos['variante_id'] : null;
+        if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
+            throw new \Exception('Seleccione la variante del producto (acabado, tamaño…).');
+        }
+        if ($varianteId && !$producto->variantes()->where('id', $varianteId)->exists()) {
+            throw new \Exception('La variante no pertenece al producto seleccionado.');
+        }
+
+        $stockAlmacen = \App\Models\StockAlmacen::fila($datos['producto_id'], $datos['almacen_id'], $varianteId);
 
         $stockAnterior = $stockAlmacen->cantidad;
         $cantidad = $datos['cantidad'];
@@ -511,15 +517,13 @@ public static function registrarMovimiento($datos)
         // En transferencia directa, acreditar de inmediato el almacén destino
         // (antes el stock solo se descontaba de origen y desaparecía del sistema).
         if ($datos['tipo_movimiento'] === 'transferencia' && !empty($datos['almacen_destino_id'])) {
-            $stockDestino = \App\Models\StockAlmacen::firstOrCreate(
-                ['producto_id' => $datos['producto_id'], 'almacen_id' => $datos['almacen_destino_id']],
-                ['cantidad' => 0]
-            );
+            $stockDestino = \App\Models\StockAlmacen::fila($datos['producto_id'], $datos['almacen_destino_id'], $varianteId);
             $stockDestino->increment('cantidad', $cantidad);
         }
 
         $movimiento = self::create([
             'producto_id' => $datos['producto_id'],
+            'variante_id' => $varianteId,
             'almacen_id' => $datos['almacen_id'],
             'user_id' => $userId,
             'tipo_movimiento' => $datos['tipo_movimiento'],
@@ -527,6 +531,7 @@ public static function registrarMovimiento($datos)
             'stock_anterior' => $stockAnterior,
             'stock_nuevo' => $stockNuevo,
             'motivo' => $datos['motivo'] ?? null,
+            'motivo_movimiento_id' => $datos['motivo_movimiento_id'] ?? null,
             'observaciones' => $datos['observaciones'] ?? null,
             'documento_referencia' => $datos['documento_referencia'] ?? null,
             'almacen_destino_id' => $datos['almacen_destino_id'] ?? null,
@@ -535,6 +540,12 @@ public static function registrarMovimiento($datos)
 
         $totalStock = \App\Models\StockAlmacen::where('producto_id', $datos['producto_id'])->sum('cantidad');
         $producto->update(['stock_actual' => $totalStock]);
+
+        // El stock total de la variante es la suma de sus filas por almacén
+        if ($varianteId) {
+            \App\Models\ProductoVariante::where('id', $varianteId)
+                ->update(['stock_actual' => \App\Models\StockAlmacen::where('variante_id', $varianteId)->sum('cantidad')]);
+        }
 
         \Log::info('✅ Movimiento de accesorio creado', [
             'id' => $movimiento->id

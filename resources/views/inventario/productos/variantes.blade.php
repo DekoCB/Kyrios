@@ -9,6 +9,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+<style>
+    /* Utilidades que el CSS precompilado no incluye (se compilan solas con "npm run build") */
+    .-right-1{right:-.25rem}.-top-1{top:-.25rem}.pb-4{padding-bottom:1rem}
+    .bg-black\/55{background-color:rgb(0 0 0 / .55)}
+    .max-h-\[92vh\]{max-height:92vh}
+    .hover\:text-indigo-500:hover{color:#6366f1}.hover\:text-red-300:hover{color:#fca5a5}.hover\:text-yellow-300:hover{color:#fde047}
+    .gap-x-4{column-gap:1rem}.gap-y-1\.5{row-gap:.375rem}
+</style>
 </head>
 <body class="bg-gray-50" x-data="editModal()">
     <x-sidebar :role="auth()->user()->role->nombre" />

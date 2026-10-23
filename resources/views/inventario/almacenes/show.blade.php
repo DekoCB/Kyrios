@@ -205,6 +205,14 @@
                                                     <span class="text-[9px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded font-bold">IMEI</span>
                                                 @endif
                                             </div>
+                                            @foreach(($item['variantes'] ?? collect()) as $v)
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    <span class="font-mono">{{ $v['codigo'] }}</span>
+                                                    @if($v['detalle'] && $v['detalle'] !== 'Variante base') · {{ $v['detalle'] }} @endif
+                                                    · <strong class="text-gray-700">{{ $v['cantidad'] }}</strong>
+                                                    @if($v['dano'] && $v['dano'] !== 'ninguno') <span class="text-yellow-700">(daño {{ $v['dano'] }})</span> @endif
+                                                </p>
+                                            @endforeach
                                         </div>
                                     </div>
                                 </td>

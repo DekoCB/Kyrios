@@ -172,7 +172,7 @@ class DevolucionController extends Controller
 
                     $cantidad = min((int) $cantidadSolicitada, $disponible);
 
-                    $stockAnterior = StockAlmacen::obtenerOCrear($detalle->producto_id, $almacenId)->cantidad;
+                    $stockAnterior = StockAlmacen::obtenerOCrear($detalle->producto_id, $almacenId, $detalle->variante_id)->cantidad;
 
                     MovimientoInventario::create([
                         'producto_id'          => $detalle->producto_id,
@@ -232,7 +232,7 @@ class DevolucionController extends Controller
                         }
                     } else {
                         // Para productos por cantidad
-                        StockAlmacen::obtenerOCrear($detalle->producto_id, $almacenId)
+                        StockAlmacen::obtenerOCrear($detalle->producto_id, $almacenId, $detalle->variante_id)
                             ->incrementar($cantidad);
 
                         if ($detalle->variante) {
@@ -429,6 +429,7 @@ class DevolucionController extends Controller
                     } else {
                         $stockAlm = StockAlmacen::where('producto_id', $mov->producto_id)
                             ->where('almacen_id', $mov->almacen_id)
+                            ->deVariante($mov->variante_id)
                             ->first();
 
                         if (!$stockAlm || $stockAlm->cantidad < $mov->cantidad) {

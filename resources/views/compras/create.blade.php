@@ -1386,7 +1386,7 @@
             const partes = [];
             if (v.color_nombre) partes.push(v.color_nombre);
             if (v.capacidad)    partes.push(v.capacidad);
-            const label = partes.join(' / ') || 'Base';
+            const label = v.etiqueta || partes.join(' / ') || 'Base';
             return `<option value="${v.id}"
                              data-color="${v.color_id || ''}"
                              data-color-nombre="${v.color_nombre || ''}"
@@ -1923,7 +1923,7 @@
                     variantesModal[key] = v;  // registrar variante
                     const sel  = !!variantesSeleccionadas[key];
                     const cant = sel ? variantesSeleccionadas[key].cantidad : 1;
-                    const label = [v.color_nombre, v.capacidad].filter(Boolean).join(' / ') || 'Base';
+                    const label = v.etiqueta || [v.color_nombre, v.capacidad].filter(Boolean).join(' / ') || 'Base';
                     const dot = v.color_hex
                         ? `<span class="w-3 h-3 rounded-full border border-white shadow shrink-0 inline-block" style="background-color:${v.color_hex}"></span>`
                         : '<i class="fas fa-circle text-gray-300 text-xs shrink-0"></i>';

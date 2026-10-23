@@ -117,11 +117,16 @@ class VentaService
             // Sin esto, Venta::numero_documento queda null y SunatComprobanteService
             // cae en un fallback fijo ("B001"/correlativo 1) en vez de la numeración
             // configurada — el comprobante nunca "jala" su serie real.
-            if (in_array($datosVenta['tipo_comprobante'] ?? null, ['boleta', 'factura'], true)) {
+            if (in_array($datosVenta['tipo_comprobante'] ?? null, ['boleta', 'factura', 'nota_venta'], true)) {
                 $datosVenta = array_merge(
                     $datosVenta,
                     $this->asignarSerieYCorrelativo($datosVenta['sucursal_id'] ?? null, $datosVenta['tipo_comprobante'])
                 );
+            }
+
+            // La nota de venta es un documento interno: no se envía a SUNAT
+            if (($datosVenta['tipo_comprobante'] ?? null) === 'nota_venta') {
+                $datosVenta['estado_sunat'] = 'no_aplica';
             }
 
             // Crear la venta
@@ -245,6 +250,13 @@ class VentaService
      */
     private function asignarSerieYCorrelativo(?int $sucursalId, string $tipoComprobante): array
     {
+        // Nota de venta: serie interna que se crea sola (no depende de lo registrado en SUNAT)
+        if ($tipoComprobante === 'nota_venta') {
+            $n = app(NumeracionService::class)->siguiente('NV', $sucursalId);
+
+            return $n ? ['serie_comprobante_id' => $n['serie_id'], 'correlativo' => $n['correlativo']] : [];
+        }
+
         $codigoSunat = match ($tipoComprobante) {
             'factura' => '01',
             'boleta'  => '03',
@@ -814,10 +826,7 @@ class VentaService
                         ->update(['stock_actual' => $totalVariante]);
                 }
             } else {
-                $stock = StockAlmacen::firstOrCreate(
-                    ['producto_id' => $detalle->producto_id, 'almacen_id' => $venta->almacen_id],
-                    ['cantidad' => 0]
-                );
+                $stock = StockAlmacen::fila($detalle->producto_id, $venta->almacen_id, $detalle->variante_id);
 
                 $stockAnterior = $stock->cantidad;
                 $stock->increment('cantidad', $detalle->cantidad);
@@ -837,6 +846,7 @@ class VentaService
 
             MovimientoInventario::create([
                 'producto_id'     => $detalle->producto_id,
+                'variante_id'     => $detalle->variante_id,
                 'almacen_id'      => $venta->almacen_id,
                 'user_id'         => auth()->id(),
                 'tipo_movimiento' => 'ingreso',
@@ -907,13 +917,17 @@ class VentaService
                 continue;
             }
 
+            $varianteId = !empty($detalle['variante_id']) ? (int) $detalle['variante_id'] : null;
             $stock = StockAlmacen::where('producto_id', $detalle['producto_id'])
                 ->where('almacen_id', $almacenId)
+                ->deVariante($varianteId)
                 ->first();
 
             if (!$stock || $stock->cantidad < $detalle['cantidad']) {
                 $producto = \App\Models\Producto::find($detalle['producto_id']);
-                throw new \Exception("Stock insuficiente para {$producto->nombre}. Disponible: " . ($stock->cantidad ?? 0));
+                $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
+                $nombre = $producto->nombre . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
+                throw new \Exception("Stock insuficiente para {$nombre} en este almacén. Disponible: " . ($stock->cantidad ?? 0));
             }
         }
     }
@@ -983,6 +997,7 @@ class VentaService
         } else {
             $stock = StockAlmacen::where('producto_id', $productoId)
                 ->where('almacen_id', $almacenId)
+                ->deVariante($varianteId)
                 ->first();
 
             if ($stock) {
@@ -1004,6 +1019,7 @@ class VentaService
 
         MovimientoInventario::create([
             'producto_id'     => $productoId,
+            'variante_id'     => $varianteId,
             'almacen_id'      => $almacenId,
             'user_id'         => auth()->id(),
             'tipo_movimiento' => 'salida',
@@ -1126,125 +1142,6 @@ class VentaService
         }
 
         return true;
-    }
-
-    /**
-     * Crear una cotización (no descuenta stock, no registra pago)
-     */
-    public function crearCotizacion(array $datosVenta, array $detalles)
-    {
-        return DB::transaction(function () use ($datosVenta, $detalles) {
-            $datosVenta['tipo_comprobante'] = 'cotizacion';
-            $datosVenta['estado_pago']      = 'cotizacion';
-
-            $venta      = Venta::create($datosVenta);
-            $subtotal   = 0;
-            $totalExact = 0;
-
-            foreach ($detalles as $detalle) {
-                $precioRecibido  = (float) $detalle['precio_unitario'];
-                $incluyeIgv      = (bool)  ($detalle['incluye_igv'] ?? false);
-                $qty             = (int)   $detalle['cantidad'];
-
-                $precioSinIgv    = $incluyeIgv ? round($precioRecibido / 1.18, 4) : $precioRecibido;
-                $precioConIgv    = $incluyeIgv ? $precioRecibido : round($precioRecibido * 1.18, 4);
-                $subtotalDetalle = round($precioSinIgv * $qty, 4);
-                $subtotal       += $subtotalDetalle;
-                $totalExact     += round($precioConIgv * $qty, 4);
-
-                DetalleVenta::create([
-                    'venta_id'        => $venta->id,
-                    'producto_id'     => $detalle['producto_id'],
-                    'variante_id'     => $detalle['variante_id'] ?? null,
-                    'cantidad'        => $qty,
-                    'precio_unitario' => $precioSinIgv,
-                    'precio_con_igv'  => $precioConIgv,
-                    'subtotal'        => $subtotalDetalle,
-                    'subtotal_con_igv'=> round($precioConIgv * $qty, 4),
-                ]);
-            }
-
-            $total    = round($totalExact, 4);
-            $subtotal = round($subtotal, 4);
-            $igv      = round($total - $subtotal, 4);
-
-            $venta->update(['subtotal' => $subtotal, 'igv' => $igv, 'total' => $total]);
-
-            Log::info('Cotización creada', ['venta_id' => $venta->id, 'user_id' => $venta->user_id]);
-
-            return $venta->fresh(['detalles.producto', 'cliente']);
-        });
-    }
-
-    /**
-     * Convertir una cotización a boleta o factura (descuenta stock y registra pago)
-     *
-     * $imeisPorDetalle: [detalle_venta_id => [codigo_imei, ...]] — obligatorio para
-     * cada línea de producto tipo "serie"; sin esto nunca se elegía qué unidad física
-     * se vendía y ni el comprobante ni la guía podían mostrar la serie/IMEI.
-     */
-    public function convertirAVenta(Venta $venta, string $tipoComprobante, string $metodoPago, array $imeisPorDetalle = [])
-    {
-        if ($venta->tipo_comprobante !== 'cotizacion') {
-            throw new \Exception('Solo se pueden convertir cotizaciones');
-        }
-
-        return DB::transaction(function () use ($venta, $tipoComprobante, $metodoPago, $imeisPorDetalle) {
-            $venta->load('detalles.producto');
-            $detallesVenta = $venta->detalles->values();
-
-            $detalles = $detallesVenta->map(function ($d) use ($imeisPorDetalle) {
-                $esSerie = $d->producto?->tipo_inventario === 'serie';
-                $codigos = $esSerie ? array_values($imeisPorDetalle[$d->id] ?? []) : [];
-
-                if ($esSerie && count($codigos) !== $d->cantidad) {
-                    throw new \Exception(
-                        "Debe seleccionar exactamente {$d->cantidad} IMEI(s) para «{$d->producto->nombre}»."
-                    );
-                }
-
-                return [
-                    'producto_id'     => $d->producto_id,
-                    'variante_id'     => $d->variante_id,
-                    'cantidad'        => $d->cantidad,
-                    'precio_unitario' => (float) $d->precio_unitario,
-                    'imeis'           => array_map(fn($codigo) => ['codigo_imei' => $codigo], $codigos),
-                ];
-            })->toArray();
-
-            $this->validarStockDisponible($detalles, $venta->almacen_id);
-
-            foreach ($detalles as $i => $detalle) {
-                if (!empty($detalle['imeis'])) {
-                    $this->marcarImeisVendidos($detalle['imeis'], $venta->id, $detallesVenta[$i]->id);
-                }
-
-                $this->descontarStock(
-                    $detalle['producto_id'],
-                    $venta->almacen_id,
-                    $detalle['cantidad'],
-                    $detalle['imeis'],
-                    $detalle['variante_id'] ?? null
-                );
-            }
-
-            $venta->update(array_merge([
-                'tipo_comprobante'    => $tipoComprobante,
-                'estado_pago'         => 'pagado',
-                'metodo_pago'         => $metodoPago,
-                'fecha_confirmacion'  => now(),
-                'usuario_confirma_id' => auth()->id(),
-            ], $this->asignarSerieYCorrelativo($venta->sucursal_id, $tipoComprobante)));
-
-            $this->registrarEnCaja($venta, 'venta');
-
-            Log::info('Cotización convertida a venta', [
-                'venta_id'         => $venta->id,
-                'tipo_comprobante' => $tipoComprobante,
-            ]);
-
-            return $venta->fresh();
-        });
     }
 
     /**

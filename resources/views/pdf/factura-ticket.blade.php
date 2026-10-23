@@ -99,17 +99,12 @@ table.items th:last-child, table.items td:last-child { padding-right: 0; }
 
 {{-- ─── EMPRESA ─── --}}
 @php
-    $logoFile = $empresa->logo_pdf_path ?: $empresa->logo_path;
-    $logoPath = $logoFile ? storage_path('app/public/' . $logoFile) : null;
-    $logoSrc  = null;
-    if ($logoPath && file_exists($logoPath)) {
-        $ext     = strtolower(pathinfo($logoPath, PATHINFO_EXTENSION));
-        $mime    = in_array($ext, ['jpg','jpeg']) ? 'image/jpeg' : "image/$ext";
-        $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
-    }
+    $logoSrc = \App\Models\Empresa::logoDocumentoDataUri($empresa ?? null);
 @endphp
 @if($logoSrc)
-    <img src="{{ $logoSrc }}" class="empresa-logo" alt="Logo">
+    <div style="text-align:center; margin-bottom:4px;">
+        <img src="{{ $logoSrc }}" style="height:46px; width:auto;" alt="Logo">
+    </div>
 @endif
 <div class="empresa-nombre">{{ $empresa->razon_social }}</div>
 <div class="empresa-info">
@@ -126,6 +121,7 @@ table.items th:last-child, table.items td:last-child { padding-right: 0; }
     $tiposNombre = [
         'factura'   => 'Factura de Venta Electrónica',
         'boleta'    => 'Boleta de Venta Electrónica',
+        'nota_venta' => 'Nota de Venta',
         'cotizacion'=> 'Nota de Entrega / Cotización',
     ];
 @endphp

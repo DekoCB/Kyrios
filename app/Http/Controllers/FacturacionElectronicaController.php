@@ -19,7 +19,7 @@ class FacturacionElectronicaController extends Controller
     public function index(Request $request)
     {
         $query = Venta::with(['cliente', 'serieComprobante', 'sucursal', 'guiaRemision'])
-            ->whereNotIn('tipo_comprobante', ['cotizacion'])
+            ->whereNotIn('tipo_comprobante', ['cotizacion', 'nota_venta'])
             ->orderByDesc('fecha');
 
         if ($request->filled('estado_sunat')) {
@@ -68,11 +68,11 @@ class FacturacionElectronicaController extends Controller
         $sucursales = Sucursal::orderBy('nombre')->get(['id', 'nombre']);
 
         $stats = [
-            'total_emitidos'    => Venta::whereNotIn('tipo_comprobante', ['cotizacion'])->count(),
+            'total_emitidos'    => Venta::whereNotIn('tipo_comprobante', ['cotizacion', 'nota_venta'])->count(),
             'pendiente_envio'   => Venta::where('estado_sunat', 'pendiente_envio')->count(),
             'aceptados'         => Venta::where('estado_sunat', 'aceptado')->count(),
             'rechazados'        => Venta::where('estado_sunat', 'rechazado')->count(),
-            'hoy'               => Venta::whereNotIn('tipo_comprobante', ['cotizacion'])
+            'hoy'               => Venta::whereNotIn('tipo_comprobante', ['cotizacion', 'nota_venta'])
                                        ->whereDate('fecha', today())->count(),
         ];
 
@@ -187,7 +187,7 @@ class FacturacionElectronicaController extends Controller
 
     public function enviarSunat(Venta $venta)
     {
-        if (!in_array($venta->estado_sunat, ['pendiente_envio', 'rechazado']) && $venta->tipo_comprobante !== 'cotizacion') {
+        if (!in_array($venta->estado_sunat, ['pendiente_envio', 'rechazado']) && !in_array($venta->tipo_comprobante, ['cotizacion', 'nota_venta'], true)) {
             if ($venta->estado_sunat === 'aceptado') {
                 return back()->with('error', 'Este comprobante ya fue aceptado por SUNAT.');
             }

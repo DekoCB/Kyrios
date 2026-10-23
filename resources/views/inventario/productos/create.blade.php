@@ -381,7 +381,8 @@
                                         <input type="text" 
                                                name="codigo_barras" 
                                                id="codigo_barras" 
-                                               value="{{ old('codigo_barras') }}"
+                                               value="{{ old('codigo_barras', request('codigo_barras')) }}"
+                                               autocomplete="off"
                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                                placeholder="Código único del producto">
                                     </div>
@@ -1101,6 +1102,30 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') cerrarPrevProducto();
         });
+
+        // Lector de códigos: el Enter que envía el lector no envía el formulario; se valida que el código sea único
+        (function () {
+            var campo = document.getElementById('codigo_barras');
+            if (!campo) return;
+            var aviso = document.createElement('p');
+            aviso.className = 'text-xs mt-1';
+            campo.parentElement.appendChild(aviso);
+            function validar() {
+                var c = campo.value.replace(/[\x00-\x1F\x7F]+/g, '').trim();
+                campo.value = c;
+                if (!c) { aviso.textContent = ''; return; }
+                fetch('{{ route("inventario.productos.validar-codigo-barras") }}?codigo=' + encodeURIComponent(c), { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        aviso.className = 'text-xs mt-1 ' + (d.existe ? 'text-red-600' : 'text-green-600');
+                        aviso.textContent = d.existe ? 'Este código ya está registrado en otro producto.' : 'Código disponible.';
+                    })
+                    .catch(function () { aviso.textContent = ''; });
+            }
+            campo.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); validar(); } });
+            campo.addEventListener('change', validar);
+            if (campo.value) validar();
+        })();
 
         // Botón Generar código de barras
         document.getElementById('btnGenerarCodigo')?.addEventListener('click', function() {

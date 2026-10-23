@@ -195,7 +195,7 @@
                                         <option value="">Seleccione variante</option>
                                         <template x-for="v in (detalle.producto?.variantes || [])" :key="v.id">
                                             <option :value="v.id"
-                                                    x-text="[v.color_nombre, v.capacidad].filter(Boolean).join(' - ') + ' (stock: ' + v.stock_actual + ')'"></option>
+                                                    x-text="(v.etiqueta || [v.color_nombre, v.capacidad].filter(Boolean).join(' - ')) + ' (stock: ' + v.stock_actual + ')'"></option>
                                         </template>
                                     </select>
                                 </div>

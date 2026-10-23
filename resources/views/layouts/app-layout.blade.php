@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Sistema de Importaciones') }} - @yield('title', 'Dashboard')</title>
+    <title>{{ config('app.name') }} - @yield('title', 'Dashboard')</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -30,7 +30,7 @@
                     <div class="flex items-center">
                         <a href="{{ route('dashboard') }}" class="flex items-center">
                             <i class="fas fa-box text-indigo-600 text-2xl mr-3"></i>
-                            <span class="text-xl font-bold text-gray-800">Sistema de Importaciones</span>
+                            <span class="text-xl font-bold text-gray-800">{{ config('app.name') }}</span>
                         </a>
                     </div>
 

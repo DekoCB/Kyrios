@@ -36,8 +36,18 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        // Redirigir según el rol del usuario
-        $role = auth()->user()->role->nombre;
+        // Un usuario sin rol no puede entrar: no hay dashboard al que enviarlo
+        $role = auth()->user()->role?->nombre;
+
+        if (!$role) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'Tu usuario no tiene un rol asignado. Contacta al administrador.',
+            ]);
+        }
 
         return match($role) {
             'Administrador' => redirect()->route('admin.dashboard'),
@@ -45,6 +55,7 @@ class AuthenticatedSessionController extends Controller
             'Almacenero'    => redirect()->route('almacenero.dashboard'),
             'Tienda'        => redirect()->route('tienda.dashboard'),
             'Proveedor'     => redirect()->route('proveedor.dashboard'),
+            'Técnico'       => redirect()->route('caja-chica.index'),
             default         => redirect()->route('dashboard'),
         };
     }

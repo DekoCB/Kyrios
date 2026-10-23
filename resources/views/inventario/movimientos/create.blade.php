@@ -22,6 +22,12 @@ $catalogoJson = $productos->map(fn($p) => [
     'tipo_inventario' => $p->tipo_inventario,
     'stock_actual'    => (int)($p->stock_actual ?? 0),
     'unidad'          => $p->unidadMedida?->abreviatura ?? 'UND',
+    'variantes'       => $p->tipo_inventario === 'serie' ? [] : $p->variantesActivas->map(fn ($v) => [
+        'id'      => $v->id,
+        'codigo'  => $v->codigo_kyrios ?? $v->sku,
+        'detalle' => $v->nombre_completo,
+        'stock'   => $stockVariantes[$v->id] ?? [],
+    ])->values(),
 ])->values();
 @endphp
 
@@ -38,6 +44,8 @@ $catalogoJson = $productos->map(fn($p) => [
          productoNombre: '',
          productoTipo: '',
          productoStock: 0,
+         variantes: [],
+         varianteId: '{{ old('variante_id') }}',
          productoUnidad: '',
          catalogo: {{ Js::from($catalogoJson) }},
 
@@ -86,7 +94,8 @@ $catalogoJson = $productos->map(fn($p) => [
              }
              const q = this.query.toLowerCase();
              this.resultados = this.catalogo
-                 .filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q))
+                 .filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
+                     || (p.variantes || []).some(v => v.codigo.toLowerCase().includes(q)))
                  .slice(0, 10);
              this.abierto = this.resultados.length > 0;
          },
@@ -96,6 +105,8 @@ $catalogoJson = $productos->map(fn($p) => [
              this.productoNombre= p.nombre;
              this.productoTipo  = p.tipo_inventario;
              this.productoStock = p.stock_actual;
+             this.variantes     = p.variantes || [];
+             this.varianteId    = this.variantes.length === 1 ? this.variantes[0].id : '';
              this.productoUnidad= p.unidad;
              this.query         = p.nombre + ' [' + p.codigo + ']';
              this.abierto       = false;
@@ -113,6 +124,8 @@ $catalogoJson = $productos->map(fn($p) => [
              this.productoNombre= '';
              this.productoTipo  = '';
              this.productoStock = 0;
+             this.variantes     = [];
+             this.varianteId    = '';
              this.query         = '';
              this.resultados    = [];
              this.abierto       = false;
@@ -405,6 +418,24 @@ $catalogoJson = $productos->map(fn($p) => [
                                 </div>
                             </div>
                             @error('producto_id')
+                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        {{-- Variante (acabado, tamaño…): el stock se maneja por variante y almacén --}}
+                        <div x-show="variantes.length > 0" x-cloak>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+                                Variante <span class="text-red-500">*</span>
+                            </label>
+                            <select name="variante_id" x-model="varianteId" :disabled="variantes.length === 0"
+                                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">— Selecciona la variante —</option>
+                                <template x-for="v in variantes" :key="v.id">
+                                    <option :value="v.id" :selected="v.id == varianteId"
+                                            x-text="v.codigo + ' · ' + v.detalle + (almacenId ? ' · stock aquí: ' + ((v.stock || {})[almacenId] || 0) : '')"></option>
+                                </template>
+                            </select>
+                            @error('variante_id')
                                 <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                             @enderror
                         </div>

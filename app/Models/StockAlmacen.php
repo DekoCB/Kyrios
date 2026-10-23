@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Stock de un producto en un almacén, por variante.
+ *
+ * Una fila por (producto, variante, almacén). Los productos sin variantes usan variante_id = NULL.
+ * El total de un producto en un almacén es la suma de sus filas (por eso las consultas que suman
+ * `where producto_id ... sum('cantidad')` siguen siendo correctas).
+ */
 class StockAlmacen extends Model
 {
     use HasFactory;
@@ -13,6 +20,7 @@ class StockAlmacen extends Model
 
     protected $fillable = [
         'producto_id',
+        'variante_id',
         'almacen_id',
         'cantidad',
     ];
@@ -23,6 +31,11 @@ class StockAlmacen extends Model
     public function producto()
     {
         return $this->belongsTo(Producto::class);
+    }
+
+    public function variante()
+    {
+        return $this->belongsTo(ProductoVariante::class, 'variante_id');
     }
 
     /**
@@ -58,19 +71,54 @@ class StockAlmacen extends Model
     }
 
     /**
-     * Método estático para obtener o crear stock
+     * Scope por variante. Con null filtra las filas SIN variante (productos sin variantes).
      */
-    public static function obtenerOCrear($productoId, $almacenId)
+    public function scopeDeVariante($query, $varianteId)
+    {
+        return $varianteId ? $query->where('variante_id', $varianteId) : $query->whereNull('variante_id');
+    }
+
+    /**
+     * Fila de stock de (producto, variante, almacén); la crea en 0 si no existe.
+     * Sin variante (null) es la fila "a nivel producto".
+     */
+    public static function fila($productoId, $almacenId, $varianteId = null): self
     {
         return self::firstOrCreate(
             [
                 'producto_id' => $productoId,
-                'almacen_id' => $almacenId,
+                'variante_id' => $varianteId ?: null,
+                'almacen_id'  => $almacenId,
             ],
-            [
-                'cantidad' => 0,
-            ]
+            ['cantidad' => 0]
         );
+    }
+
+    /**
+     * Cantidad de (producto, variante, almacén) sin crear filas. Sin variante lee la fila a nivel producto.
+     */
+    public static function cantidadEn($productoId, $almacenId, $varianteId = null): int
+    {
+        return (int) (self::where('producto_id', $productoId)
+            ->where('almacen_id', $almacenId)
+            ->deVariante($varianteId)
+            ->value('cantidad') ?? 0);
+    }
+
+    /**
+     * Total de un producto en un almacén (suma de todas sus variantes).
+     */
+    public static function totalEn($productoId, $almacenId): int
+    {
+        return (int) self::where('producto_id', $productoId)->where('almacen_id', $almacenId)->sum('cantidad');
+    }
+
+    /**
+     * Método estático para obtener o crear stock (compatibilidad: variante opcional)
+     */
+    public static function obtenerOCrear($productoId, $almacenId, $varianteId = null)
+    {
+        return self::fila($productoId, $almacenId, $varianteId);
     }
 
     /**
@@ -91,7 +139,7 @@ class StockAlmacen extends Model
             $this->decrement('cantidad', $cantidad);
             return $this;
         }
-        
+
         throw new \Exception('Stock insuficiente en almacén');
     }
 }

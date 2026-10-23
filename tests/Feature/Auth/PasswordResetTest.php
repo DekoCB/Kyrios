@@ -3,71 +3,66 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
+/**
+ * El cambio de contraseña olvidada es directo (sin correo) y exige la contraseña maestra.
+ */
 class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_reset_password_link_screen_can_be_rendered(): void
+    public function test_sin_clave_maestra_se_redirige_a_pedirla(): void
     {
-        $response = $this->get('/forgot-password');
-
-        $response->assertStatus(200);
+        $this->get('/forgot-password')->assertRedirect();
     }
 
-    public function test_reset_password_link_can_be_requested(): void
+    public function test_con_clave_maestra_se_muestra_el_formulario(): void
     {
-        Notification::fake();
-
-        $user = User::factory()->create();
-
-        $this->post('/forgot-password', ['email' => $user->email]);
-
-        Notification::assertSentTo($user, ResetPassword::class);
+        $this->withSession(['master_password_verified' => true])->get('/forgot-password')->assertOk();
     }
 
-    public function test_reset_password_screen_can_be_rendered(): void
+    public function test_la_contrasena_se_cambia_y_se_olvida_la_verificacion_maestra(): void
     {
-        Notification::fake();
-
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', ['email' => $user->email]);
+        $this->withSession(['master_password_verified' => true])
+            ->post('/forgot-password', [
+                'email'                 => $user->email,
+                'password'              => 'NuevaClave#2026',
+                'password_confirmation' => 'NuevaClave#2026',
+            ])
+            ->assertRedirect(route('login'))
+            ->assertSessionMissing('master_password_verified');
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-            $response = $this->get('/reset-password/'.$notification->token);
-
-            $response->assertStatus(200);
-
-            return true;
-        });
+        $this->assertTrue(Hash::check('NuevaClave#2026', $user->fresh()->password));
     }
 
-    public function test_password_can_be_reset_with_valid_token(): void
+    public function test_un_correo_inexistente_se_rechaza(): void
     {
-        Notification::fake();
+        $this->withSession(['master_password_verified' => true])
+            ->post('/forgot-password', [
+                'email'                 => 'nadie@kyrios.test',
+                'password'              => 'NuevaClave#2026',
+                'password_confirmation' => 'NuevaClave#2026',
+            ])
+            ->assertSessionHasErrors('email');
+    }
 
+    public function test_las_contrasenas_deben_coincidir(): void
+    {
         $user = User::factory()->create();
 
-        $this->post('/forgot-password', ['email' => $user->email]);
+        $this->withSession(['master_password_verified' => true])
+            ->post('/forgot-password', [
+                'email'                 => $user->email,
+                'password'              => 'NuevaClave#2026',
+                'password_confirmation' => 'otra-distinta',
+            ])
+            ->assertSessionHasErrors('password');
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-            $response = $this->post('/reset-password', [
-                'token' => $notification->token,
-                'email' => $user->email,
-                'password' => 'password',
-                'password_confirmation' => 'password',
-            ]);
-
-            $response
-                ->assertSessionHasNoErrors()
-                ->assertRedirect(route('login'));
-
-            return true;
-        });
+        $this->assertFalse(Hash::check('NuevaClave#2026', $user->fresh()->password));
     }
 }

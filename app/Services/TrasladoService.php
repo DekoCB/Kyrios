@@ -146,13 +146,21 @@ class TrasladoService
             throw new \Exception("Producto «{$producto->nombre}»: la cantidad debe ser al menos 1.");
         }
 
+        $varianteId = !empty($linea['variante_id']) ? (int) $linea['variante_id'] : null;
+        if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
+            throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante que va a trasladar.");
+        }
+
         $stockOrigen = StockAlmacen::where('producto_id', $producto->id)
             ->where('almacen_id', $origenId)
+            ->deVariante($varianteId)
             ->first();
 
         if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
+            $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
+            $nombre = $producto->nombre . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
             throw new \Exception(
-                "Producto «{$producto->nombre}»: stock insuficiente en almacén origen (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
+                "Producto «{$nombre}»: stock insuficiente en almacén origen (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
             );
         }
 
@@ -236,13 +244,7 @@ class TrasladoService
 
                 } else {
                     // Acreditar stock en destino (ya fue descontado en origen al crear)
-                    $stockDestino = StockAlmacen::firstOrCreate(
-                        [
-                            'producto_id' => $movimiento->producto_id,
-                            'almacen_id'  => $movimiento->almacen_destino_id,
-                        ],
-                        ['cantidad' => 0]
-                    );
+                    $stockDestino = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_destino_id, $movimiento->variante_id);
                     $stockDestino->increment('cantidad', $movimiento->cantidad);
 
                     // Sincronizar stock_actual con la suma real de todos los almacenes
@@ -302,10 +304,7 @@ class TrasladoService
                         ->count();
                     $movimiento->producto->update(['stock_actual' => $totalStock]);
                 } else {
-                    $stockOrigen = StockAlmacen::firstOrCreate(
-                        ['producto_id' => $movimiento->producto_id, 'almacen_id' => $movimiento->almacen_id],
-                        ['cantidad' => 0]
-                    );
+                    $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
                     $stockOrigen->increment('cantidad', $movimiento->cantidad);
 
                     $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
@@ -387,6 +386,7 @@ class TrasladoService
                 } else {
                     $stockDestino = StockAlmacen::where('producto_id', $movimiento->producto_id)
                         ->where('almacen_id', $movimiento->almacen_destino_id)
+                        ->deVariante($movimiento->variante_id)
                         ->first();
 
                     if (!$stockDestino || $stockDestino->cantidad < $movimiento->cantidad) {
@@ -414,10 +414,7 @@ class TrasladoService
                                 ->update(['estado_imei' => Imei::ESTADO_EN_STOCK]);
                         }
                     } else {
-                        $stockOrigen = StockAlmacen::firstOrCreate(
-                            ['producto_id' => $movimiento->producto_id, 'almacen_id' => $movimiento->almacen_id],
-                            ['cantidad' => 0]
-                        );
+                        $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
                         $stockOrigen->increment('cantidad', $movimiento->cantidad);
                     }
                 } elseif ($movimiento->estado === 'confirmado') {
@@ -432,12 +429,10 @@ class TrasladoService
                     } else {
                         StockAlmacen::where('producto_id', $movimiento->producto_id)
                             ->where('almacen_id', $movimiento->almacen_destino_id)
+                            ->deVariante($movimiento->variante_id)
                             ->decrement('cantidad', $movimiento->cantidad);
 
-                        $stockOrigen = StockAlmacen::firstOrCreate(
-                            ['producto_id' => $movimiento->producto_id, 'almacen_id' => $movimiento->almacen_id],
-                            ['cantidad' => 0]
-                        );
+                        $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
                         $stockOrigen->increment('cantidad', $movimiento->cantidad);
                     }
                 }

@@ -122,9 +122,11 @@ class InventarioReportesController extends Controller
                                 ? $stockDesdeImeis
                                 : max($stockDesdeImeis, $v->stock_actual);
                         } else {
-                            // Para productos de cantidad: stock_actual de la variante
-                            // (no hay desglose por almacén en stock_almacen para variantes)
-                            $stock = $v->stock_actual;
+                            // Productos por cantidad: con almacén elegido, el stock de la variante en ese
+                            // almacén (stock_almacen guarda una fila por variante); sin filtro, el total.
+                            $stock = $almacenId
+                                ? \App\Models\StockAlmacen::cantidadEn($p->id, $almacenId, $v->id)
+                                : $v->stock_actual;
                         }
 
                         // CPP: fuente primaria = historial de compras por variante
@@ -270,16 +272,8 @@ class InventarioReportesController extends Controller
                 ->count();
         }
 
-        $neto = MovimientoInventario::where('producto_id', $p->id)
-            ->where('almacen_id', $almacenId)
-            ->where('estado', '!=', 'anulado')
-            ->selectRaw("
-                SUM(CASE WHEN tipo_movimiento IN ('ingreso','devolucion') THEN cantidad ELSE 0 END) -
-                SUM(CASE WHEN tipo_movimiento IN ('salida','merma') THEN cantidad ELSE 0 END) AS neto
-            ")
-            ->value('neto');
-
-        return max(0, (int) $neto);
+        // stock_almacen es la fuente de verdad (una fila por variante): se suman todas las del producto.
+        return \App\Models\StockAlmacen::totalEn($p->id, $almacenId);
     }
 
     private function exportarCsv($productos, array $totales)

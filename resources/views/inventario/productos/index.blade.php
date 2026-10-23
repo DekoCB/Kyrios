@@ -352,7 +352,7 @@
                                         if ($esSerie) {
                                             $stockTotal = $producto->imeis_sede_count ?? 0;
                                         } else {
-                                            $stockTotal = $producto->stockAlmacenes->first()?->cantidad ?? 0;
+                                            $stockTotal = (int) $producto->stockAlmacenes->sum('cantidad');
                                         }
                                     } else {
                                         // Stock global: si tiene variantes, sumar su stock (siempre al día,

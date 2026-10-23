@@ -37,14 +37,56 @@ class Empresa extends Model
         return $this->nombre_comercial ?: $this->razon_social;
     }
 
+    /**
+     * Logos oficiales de Kyrios (public/img). Si la empresa sube los suyos en Admin > Empresa, tienen prioridad.
+     *  - fondo oscuro: letras blancas → barra lateral y pantalla de acceso.
+     *  - fondo claro:  letras oscuras → boletas, facturas, notas de venta, cotizaciones y guías.
+     */
+    public const LOGO_FONDO_OSCURO = 'img/logo-kyrios-fondo-oscuro.png';
+    public const LOGO_FONDO_CLARO  = 'img/logo-kyrios-fondo-claro.png';
+
+    /** Logo para pantallas con fondo oscuro. */
     public function getLogoUrlAttribute(): string
     {
-        return $this->logo_path ? asset('storage/' . $this->logo_path) : asset('img/logo-kyrios.svg');
+        return $this->logo_path ? asset('storage/' . $this->logo_path) : asset(self::LOGO_FONDO_OSCURO);
     }
 
+    /** Logo para documentos y pantallas con fondo claro. */
     public function getLogoPdfUrlAttribute(): string
     {
-        return $this->logo_pdf_path ? asset('storage/' . $this->logo_pdf_path) : asset('img/logo-kyrios.svg');
+        return $this->logo_pdf_path ? asset('storage/' . $this->logo_pdf_path) : asset(self::LOGO_FONDO_CLARO);
+    }
+
+    /** URL del logo según el fondo ('oscuro' | 'claro'); funciona aunque todavía no exista la fila de empresa. */
+    public static function logoUrlPara(string $fondo): string
+    {
+        $empresa = self::instancia();
+
+        return $fondo === 'oscuro'
+            ? ($empresa?->logo_url ?? asset(self::LOGO_FONDO_OSCURO))
+            : ($empresa?->logo_pdf_url ?? asset(self::LOGO_FONDO_CLARO));
+    }
+
+    /**
+     * Logo para documentos PDF (fondo blanco) como data URI, listo para <img src>.
+     * Usa el logo de comprobantes subido por la empresa o, si no hay, el oficial de fondo claro.
+     */
+    public static function logoDocumentoDataUri(?self $empresa = null): ?string
+    {
+        $empresa ??= self::instancia();
+
+        $ruta = $empresa?->logo_pdf_path ? storage_path('app/public/' . $empresa->logo_pdf_path) : null;
+        if (!$ruta || !is_file($ruta)) {
+            $ruta = public_path(self::LOGO_FONDO_CLARO);
+        }
+        if (!is_file($ruta)) {
+            return null;
+        }
+
+        $ext  = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
+        $mime = in_array($ext, ['jpg', 'jpeg'], true) ? 'image/jpeg' : "image/{$ext}";
+
+        return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($ruta));
     }
 
     public function getCertificadoPemContentAttribute(): ?string

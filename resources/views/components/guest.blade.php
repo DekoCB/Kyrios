@@ -102,6 +102,9 @@
             }
             .brand-logo-wrap:hover { transform: translateY(-4px) scale(1.03); }
             .brand-logo-wrap img { width: 80px; height: 80px; object-fit: contain; }
+            /* Logo oficial: es apaisado, así que la caja se adapta a su forma */
+            .brand-logo-wrap.con-logo { width: auto; height: auto; padding: 22px 32px; }
+            .brand-logo-wrap.con-logo img { width: 240px; height: auto; max-width: 100%; }
             .brand-logo-wrap i { font-size: 3rem; }
             .brand-title {
                 font-size: 1.75rem;
@@ -273,6 +276,8 @@
                 }
                 .mobile-brand .brand-logo-wrap { width: 80px; height: 80px; margin-bottom: 1rem; }
                 .mobile-brand .brand-logo-wrap img { width: 60px; height: 60px; }
+                .mobile-brand .brand-logo-wrap.con-logo { width: auto; height: auto; padding: 14px 22px; }
+                .mobile-brand .brand-logo-wrap.con-logo img { width: 170px; height: auto; }
                 .mobile-brand h1 { font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0 0 .25rem; }
                 .mobile-brand p { font-size: .8rem; color: rgba(255,255,255,.6); margin: 0; }
             }
@@ -294,15 +299,11 @@
                 <div class="geo-shape geo-5"></div>
 
                 <div class="brand-content">
-                    <a href="/" class="brand-logo-wrap">
-                        @if($empresa?->logo_url)
-                            <img src="{{ $empresa->logo_url }}" alt="Logo">
-                        @else
-                            <i class="fas fa-building text-white/80"></i>
-                        @endif
+                    <a href="/" class="brand-logo-wrap con-logo">
+                        <img src="{{ \App\Models\Empresa::logoUrlPara('oscuro') }}" alt="{{ $empresa?->nombre_display ?? config('app.name') }}">
                     </a>
                     <h1 class="brand-title">{{ $empresa?->nombre_display ?? config('app.name') }}</h1>
-                    <p class="brand-subtitle">Sistema de Gestión de Importaciones</p>
+                    <p class="brand-subtitle">Sistema de gestión de ventas e inventario</p>
 
                     <div class="feature-list">
                         <div class="feature-item">
@@ -321,7 +322,7 @@
                             <span class="feature-icon" style="background:rgba(168,85,247,.2); color:#c084fc;">
                                 <i class="fas fa-boxes-stacked"></i>
                             </span>
-                            Gestión multi-almacén con trazabilidad IMEI
+                            Gestión multi-almacén con stock por variante
                         </div>
                         <div class="feature-item">
                             <span class="feature-icon" style="background:rgba(251,191,36,.2); color:#fbbf24;">
@@ -338,15 +339,11 @@
                 <div class="form-wrapper">
                     {{-- Mobile brand (visible < 900px) --}}
                     <div class="mobile-brand">
-                        <div class="brand-logo-wrap">
-                            @if($empresa?->logo_url)
-                                <img src="{{ $empresa->logo_url }}" alt="Logo">
-                            @else
-                                <i class="fas fa-building text-white/80 text-2xl"></i>
-                            @endif
+                        <div class="brand-logo-wrap con-logo">
+                            <img src="{{ \App\Models\Empresa::logoUrlPara('oscuro') }}" alt="{{ $empresa?->nombre_display ?? config('app.name') }}">
                         </div>
                         <h1>{{ $empresa?->nombre_display ?? config('app.name') }}</h1>
-                        <p>Sistema de Gestión de Importaciones</p>
+                        <p>Sistema de gestión de ventas e inventario</p>
                     </div>
 
                     <div class="form-card">

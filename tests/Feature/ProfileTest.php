@@ -10,15 +10,13 @@ class ProfileTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_profile_page_is_displayed(): void
+    public function test_la_pagina_de_perfil_no_da_error_y_vuelve_al_inicio(): void
     {
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->get('/profile');
-
-        $response->assertOk();
+        $this->actingAs($user)
+            ->get('/profile')
+            ->assertRedirect(route('dashboard'));
     }
 
     public function test_profile_information_can_be_updated(): void

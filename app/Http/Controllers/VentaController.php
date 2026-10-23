@@ -115,10 +115,16 @@ class VentaController extends Controller
             ->orderBy('nombre')
             ->get();
 
-        // Stock por almacén para productos de cantidad
-        $stockPorAlmacen = StockAlmacen::whereIn('producto_id', $productos->pluck('id'))
-            ->get()
+        // Stock por almacén para productos de cantidad. stock_almacen tiene una fila por
+        // (producto, variante, almacén): total por producto y desglose por variante.
+        $filasStock = StockAlmacen::whereIn('producto_id', $productos->pluck('id'))->get();
+
+        $stockPorAlmacen = $filasStock
             ->groupBy('producto_id')
+            ->map(fn($rows) => $rows->groupBy('almacen_id')->map(fn($r) => (int) $r->sum('cantidad')));
+
+        $stockVariantePorAlmacen = $filasStock->whereNotNull('variante_id')
+            ->groupBy('variante_id')
             ->map(fn($rows) => $rows->pluck('cantidad', 'almacen_id'));
 
         // Stock por almacén para productos de serie (contar IMEIs en_stock) — nivel producto
@@ -150,7 +156,7 @@ class VentaController extends Controller
             ->groupBy(fn($row) => $row->producto_id . '_' . $row->color_id)
             ->map(fn($rows) => $rows->pluck('total', 'almacen_id'));
 
-        $productos = $productos->map(function($p) use ($stockPorAlmacen, $imeisPorAlmacen, $imeisPorVarianteId, $imeisPorColor) {
+        $productos = $productos->map(function($p) use ($stockPorAlmacen, $stockVariantePorAlmacen, $imeisPorAlmacen, $imeisPorVarianteId, $imeisPorColor) {
             $esSerie = $p->tipo_inventario === 'serie';
 
             // Separar precios por tipo
@@ -165,7 +171,7 @@ class VentaController extends Controller
             // Para incluye_igv usamos el primer precio activo (configuración global del producto)
             $precioActivo = $preciosRegulares->first();
 
-            $variantes = $p->variantesActivas->map(function($v) use ($esSerie, $imeisPorVarianteId, $imeisPorColor, $p, $preciosPorVariante, $preciosMayoristaPorVariante, $precioMayoristaBase) {
+            $variantes = $p->variantesActivas->map(function($v) use ($esSerie, $imeisPorVarianteId, $imeisPorColor, $stockVariantePorAlmacen, $p, $preciosPorVariante, $preciosMayoristaPorVariante, $precioMayoristaBase) {
                 // 1) precio manual en el campo nuevo del variante (override), 2) Gestión de Precios, 3) null
                 $precioGestion   = $preciosPorVariante->get($v->id);
                 $precioMayorista = $preciosMayoristaPorVariante->get($v->id) ?? $precioMayoristaBase;
@@ -199,7 +205,8 @@ class VentaController extends Controller
                             ? $byVariante->toArray()
                             : ($imeisPorColor[$p->id . '_' . $v->color_id] ?? collect())->toArray();
                     })()
-                    : [],
+                    // Por cantidad: stock de la variante en cada almacén (la pantalla de venta lo usa por tienda)
+                    : ($stockVariantePorAlmacen[$v->id] ?? collect())->toArray(),
                 'nombre_completo'   => $v->nombre_completo,
                 'tiene_stock'       => $v->tieneStock(),
                 ];
@@ -322,10 +329,7 @@ class VentaController extends Controller
         try {
             $service = app(VentaService::class);
 
-            if ($tipoComprobante === 'cotizacion') {
-                $venta = $service->crearCotizacion($datosVenta, $validated['detalles']);
-                $msg   = 'Cotización guardada exitosamente.';
-            } elseif ($esCredito) {
+            if ($esCredito) {
                 $venta = $service->crearVenta($datosVenta, $validated['detalles'], null, $creditoData);
                 $msg   = 'Venta a crédito registrada exitosamente. Se han generado las cuotas de pago.';
             } elseif ($esPendienteCobro) {
@@ -348,7 +352,6 @@ class VentaController extends Controller
                     'codigo' => $venta->codigo,
                     'total'  => number_format($venta->total, 2),
                     'id'     => $venta->id,
-                    'es_cotizacion' => $tipoComprobante === 'cotizacion',
                 ]);
             }
 
@@ -358,71 +361,6 @@ class VentaController extends Controller
                 return response()->json(['error' => $e->getMessage()], 422);
             }
             return back()->withInput()->with('error', $e->getMessage());
-        }
-    }
-
-    public function cotizaciones()
-    {
-        $user = auth()->user();
-
-        $cotizaciones = Venta::with('vendedor', 'cliente', 'almacen')
-            ->where('tipo_comprobante', 'cotizacion')
-            ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        $stats = [
-            'total'   => Venta::where('tipo_comprobante', 'cotizacion')
-                ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
-                ->count(),
-            'hoy'     => Venta::where('tipo_comprobante', 'cotizacion')
-                ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
-                ->whereDate('fecha', today())->count(),
-            'monto'   => Venta::where('tipo_comprobante', 'cotizacion')
-                ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
-                ->sum('total'),
-        ];
-
-        return view('ventas.cotizaciones', compact('cotizaciones', 'stats'));
-    }
-
-    public function convertir(Request $request, Venta $venta)
-    {
-        $validated = $request->validate([
-            'tipo_comprobante' => 'required|in:boleta,factura',
-            'metodo_pago'      => 'required|in:efectivo,transferencia,yape,plin,mixto',
-            'imeis'            => 'nullable|array',
-            'imeis.*'          => 'array',
-            'imeis.*.*'        => 'string',
-        ]);
-
-        // Validar RUC si se emite factura
-        if ($validated['tipo_comprobante'] === 'factura') {
-            $cliente = $venta->cliente;
-            if (!$cliente) {
-                return back()->withErrors(['tipo_comprobante' => 'Para emitir factura, la cotización debe tener un cliente con RUC.']);
-            }
-            if ($cliente->tipo_documento !== 'RUC') {
-                return back()->withErrors(['tipo_comprobante' => 'Para emitir factura, el cliente debe tener RUC (actualmente tiene ' . $cliente->tipo_documento . ').']);
-            }
-            if (strlen($cliente->numero_documento) !== 11) {
-                return back()->withErrors(['tipo_comprobante' => 'Para emitir factura, el RUC debe tener exactamente 11 dígitos.']);
-            }
-        }
-
-        try {
-            app(VentaService::class)->convertirAVenta(
-                $venta,
-                $validated['tipo_comprobante'],
-                $validated['metodo_pago'],
-                $validated['imeis'] ?? []
-            );
-
-            return redirect()
-                ->route('ventas.show', $venta)
-                ->with('success', 'Cotización convertida a ' . $validated['tipo_comprobante'] . ' exitosamente.');
-        } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
         }
     }
 

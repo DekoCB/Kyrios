@@ -68,14 +68,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
 <body>
 
 @php
-    $logoFile = $empresa?->logo_pdf_path ?: $empresa?->logo_path;
-    $logoPath = $logoFile ? storage_path('app/public/'.$logoFile) : null;
-    $logoSrc  = null;
-    if ($logoPath && file_exists($logoPath)) {
-        $ext     = strtolower(pathinfo($logoPath, PATHINFO_EXTENSION));
-        $mime    = in_array($ext,['jpg','jpeg']) ? 'image/jpeg' : "image/$ext";
-        $logoSrc = 'data:'.$mime.';base64,'.base64_encode(file_get_contents($logoPath));
-    }
+    $logoSrc = \App\Models\Empresa::logoDocumentoDataUri($empresa ?? null);
 
     $motivoActual   = $guia->motivo_traslado ?? 'TRASLADO_ENTRE_ALMACENES';
     $totalUnidades  = $guia->detalles->sum('cantidad');

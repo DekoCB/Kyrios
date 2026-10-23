@@ -14,14 +14,12 @@ use Inertia\Response;
 class ProfileController extends Controller
 {
     /**
-     * Display the user's profile form.
+     * El perfil era una pantalla de Inertia/Vue (Profile/Edit) que este proyecto no tiene
+     * (la interfaz es Blade y el menú no enlaza el perfil): en vez de un error 500 se vuelve al inicio.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): RedirectResponse
     {
-        return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => session('status'),
-        ]);
+        return Redirect::route('dashboard');
     }
 
     /**

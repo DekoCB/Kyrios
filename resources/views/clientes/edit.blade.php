@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Cliente - Sistema de Importaciones</title>
+    <title>Editar Cliente - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -78,6 +78,10 @@
                                    class="w-full rounded-lg border-gray-300 shadow-sm font-mono" value="{{ old('ubigeo', $cliente->ubigeo) }}" placeholder="Ej: 150101">
                             <p class="text-[11px] text-gray-400 mt-1">Necesario para que las guías de remisión a este cliente lleguen correctamente a SUNAT.</p>
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Persona de contacto</label>
+                            <input type="text" name="contacto" maxlength="120" class="w-full rounded-lg border-gray-300 shadow-sm" value="{{ old('contacto', $cliente->contacto) }}" placeholder="Con quién se coordina (útil para empresas)">
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                             <input type="text" name="telefono" maxlength="20" class="w-full rounded-lg border-gray-300 shadow-sm" value="{{ old('telefono', $cliente->telefono) }}">
@@ -92,6 +96,10 @@
                                 <option value="activo" {{ old('estado', $cliente->estado) === 'activo' ? 'selected' : '' }}>Activo</option>
                                 <option value="inactivo" {{ old('estado', $cliente->estado) === 'inactivo' ? 'selected' : '' }}>Inactivo</option>
                             </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                            <textarea name="notas" rows="3" maxlength="2000" class="w-full rounded-lg border-gray-300 shadow-sm" placeholder="Preferencias, condiciones acordadas, horarios de entrega…">{{ old('notas', $cliente->notas) }}</textarea>
                         </div>
                     </div>
                     <div class="flex justify-end gap-3 mt-6">

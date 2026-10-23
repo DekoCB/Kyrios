@@ -5,20 +5,48 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Services\SunatService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Clientes a los que se vende: registro, ficha con su historial y exportación.
+ */
 class ClienteController extends Controller
 {
-    public function index()
+    private function rol(): string
     {
-        $clientes = Cliente::withCount('ventas')
+        return auth()->user()->role->nombre ?? '';
+    }
+
+    private function consulta(Request $request)
+    {
+        return Cliente::query()
+            ->buscar($request->q)
+            ->when($request->filled('tipo_documento'), fn ($q) => $q->where('tipo_documento', $request->tipo_documento))
+            ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->estado));
+    }
+
+    public function index(Request $request)
+    {
+        $clientes = $this->consulta($request)
+            ->withCount(['ventas', 'cotizaciones'])
+            ->conTotalComprado()
             ->orderBy('nombre')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
-        $canCreate = in_array(auth()->user()->role->nombre, ['Administrador', 'Vendedor', 'Tienda']);
-        $canEdit = in_array(auth()->user()->role->nombre, ['Administrador', 'Vendedor', 'Tienda']);
-        $canDelete = auth()->user()->role->nombre === 'Administrador';
+        $stats = [
+            'total'    => Cliente::count(),
+            'activos'  => Cliente::where('estado', 'activo')->count(),
+            'empresas' => Cliente::where('tipo_documento', 'RUC')->count(),
+            'personas' => Cliente::where('tipo_documento', '!=', 'RUC')->count(),
+        ];
 
-        return view('clientes.index', compact('clientes', 'canCreate', 'canEdit', 'canDelete'));
+        $canCreate = in_array($this->rol(), ['Administrador', 'Vendedor', 'Tienda', 'Cajero'], true);
+        $canEdit   = $canCreate;
+        $canDelete = $this->rol() === 'Administrador';
+
+        return view('clientes.index', compact('clientes', 'stats', 'canCreate', 'canEdit', 'canDelete'));
     }
 
     public function create()
@@ -26,24 +54,50 @@ class ClienteController extends Controller
         return view('clientes.create');
     }
 
+    /** Reglas comunes de alta y edición; el formato del documento depende de su tipo. */
+    private function reglas(?Cliente $cliente = null): array
+    {
+        return [
+            'tipo_documento'   => 'required|in:DNI,RUC,CE',
+            'numero_documento' => [
+                'required', 'string', 'max:11',
+                Rule::unique('clientes', 'numero_documento')->ignore($cliente?->id),
+                function (string $atributo, $valor, \Closure $fallar) {
+                    $tipo = request('tipo_documento');
+                    if ($tipo === 'DNI' && !preg_match('/^\d{8}$/', (string) $valor)) {
+                        $fallar('El DNI debe tener 8 dígitos.');
+                    } elseif ($tipo === 'RUC' && !preg_match('/^(10|15|16|17|20)\d{9}$/', (string) $valor)) {
+                        $fallar('El RUC debe tener 11 dígitos y empezar con 10, 15, 16, 17 o 20.');
+                    } elseif ($tipo === 'CE' && !preg_match('/^[A-Za-z0-9]{6,11}$/', (string) $valor)) {
+                        $fallar('El carné de extranjería debe tener entre 6 y 11 caracteres.');
+                    }
+                },
+            ],
+            'nombre'       => 'required|string|max:255',
+            'contacto'     => 'nullable|string|max:120',
+            'direccion'    => 'nullable|string|max:255',
+            'distrito'     => 'nullable|string|max:100',
+            'provincia'    => 'nullable|string|max:100',
+            'departamento' => 'nullable|string|max:100',
+            'ubigeo'       => 'nullable|string|max:6',
+            'telefono'     => 'nullable|string|max:20',
+            'email'        => 'nullable|email|max:255',
+            'notas'        => 'nullable|string|max:2000',
+            'estado'       => 'required|in:activo,inactivo',
+        ];
+    }
+
+    private function mensajes(): array
+    {
+        return [
+            'numero_documento.unique' => 'Este documento ya está registrado',
+            'nombre.required'         => 'El nombre es obligatorio',
+        ];
+    }
+
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'tipo_documento' => 'required|in:DNI,RUC,CE',
-            'numero_documento' => 'required|string|max:11|unique:clientes,numero_documento',
-            'nombre' => 'required|string|max:255',
-            'direccion' => 'nullable|string|max:255',
-            'distrito' => 'nullable|string|max:100',
-            'provincia' => 'nullable|string|max:100',
-            'departamento' => 'nullable|string|max:100',
-            'ubigeo' => 'nullable|string|max:6',
-            'telefono' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'estado' => 'required|in:activo,inactivo',
-        ], [
-            'numero_documento.unique' => 'Este documento ya está registrado',
-            'nombre.required' => 'El nombre es obligatorio',
-        ]);
+        $validated = $request->validate($this->reglas(), $this->mensajes());
 
         $cliente = Cliente::create($validated);
 
@@ -55,8 +109,29 @@ class ClienteController extends Controller
         }
 
         return redirect()
-            ->route('clientes.index')
+            ->route('clientes.show', $cliente)
             ->with('success', 'Cliente registrado exitosamente');
+    }
+
+    public function show(Cliente $cliente)
+    {
+        $ventas = $cliente->ventas()->with('serieComprobante')->latest('fecha')->latest('id')->limit(15)->get();
+        $cotizaciones = $cliente->cotizaciones()->latest('fecha')->latest('id')->limit(15)->get();
+
+        $comprasValidas = $cliente->ventas()->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion']);
+        $resumen = [
+            'ventas'          => (clone $comprasValidas)->count(),
+            'total_comprado'  => (float) (clone $comprasValidas)->sum('total'),
+            'ultima_compra'   => (clone $comprasValidas)->max('fecha'),
+            'cotizaciones_vigentes' => $cliente->cotizaciones()->vigentes()->count(),
+            'monto_cotizado'  => (float) $cliente->cotizaciones()->vigentes()->sum('total'),
+        ];
+        $resumen['ticket_promedio'] = $resumen['ventas'] > 0 ? $resumen['total_comprado'] / $resumen['ventas'] : 0.0;
+
+        $canEdit = in_array($this->rol(), ['Administrador', 'Vendedor', 'Tienda', 'Cajero'], true);
+        $canDelete = $this->rol() === 'Administrador';
+
+        return view('clientes.show', compact('cliente', 'ventas', 'cotizaciones', 'resumen', 'canEdit', 'canDelete'));
     }
 
     public function edit(Cliente $cliente)
@@ -66,19 +141,7 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente)
     {
-        $validated = $request->validate([
-            'tipo_documento' => 'required|in:DNI,RUC,CE',
-            'numero_documento' => 'required|string|max:11|unique:clientes,numero_documento,' . $cliente->id,
-            'nombre' => 'required|string|max:255',
-            'direccion' => 'nullable|string|max:255',
-            'distrito' => 'nullable|string|max:100',
-            'provincia' => 'nullable|string|max:100',
-            'departamento' => 'nullable|string|max:100',
-            'ubigeo' => 'nullable|string|max:6',
-            'telefono' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'estado' => 'required|in:activo,inactivo',
-        ]);
+        $validated = $request->validate($this->reglas($cliente), $this->mensajes());
 
         $cliente->update($validated);
 
@@ -90,22 +153,44 @@ class ClienteController extends Controller
         }
 
         return redirect()
-            ->route('clientes.index')
+            ->route('clientes.show', $cliente)
             ->with('success', 'Cliente actualizado exitosamente');
     }
 
+    /** Solo se elimina un cliente sin historial; con ventas o cotizaciones se recomienda inactivarlo. */
     public function destroy(Cliente $cliente)
     {
-        try {
-            $cliente->delete();
+        if ($cliente->ventas()->withTrashed()->exists() || $cliente->cotizaciones()->exists()) {
             return redirect()
-                ->route('clientes.index')
-                ->with('success', 'Cliente eliminado exitosamente');
-        } catch (\Exception $e) {
-            return redirect()
-                ->route('clientes.index')
-                ->with('error', 'No se puede eliminar el cliente porque tiene ventas asociadas');
+                ->route('clientes.show', $cliente)
+                ->with('error', 'No se puede eliminar: tiene ventas o cotizaciones. Puede marcarlo como inactivo desde «Editar».');
         }
+
+        $cliente->delete();
+
+        return redirect()->route('clientes.index')->with('success', 'Cliente eliminado exitosamente');
+    }
+
+    /** Descarga la lista filtrada en CSV (abre directo en Excel). */
+    public function exportar(Request $request): StreamedResponse
+    {
+        $clientes = $this->consulta($request)->conTotalComprado()->withCount('ventas')->orderBy('nombre');
+
+        return response()->streamDownload(function () use ($clientes) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM: Excel respeta las tildes
+            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Contacto', 'Teléfono', 'Correo', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Estado', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
+            $clientes->chunk(500, function ($lote) use ($out) {
+                foreach ($lote as $c) {
+                    fputcsv($out, [
+                        $c->tipo_documento, $c->numero_documento, $c->nombre, $c->contacto, $c->telefono, $c->email,
+                        $c->direccion, $c->distrito, $c->provincia, $c->departamento, $c->estado,
+                        $c->ventas_count, number_format((float) $c->total_comprado, 2, '.', ''), $c->notas,
+                    ], ';');
+                }
+            });
+            fclose($out);
+        }, 'clientes-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function consultarDocumento(Request $request)

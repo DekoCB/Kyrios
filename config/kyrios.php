@@ -30,6 +30,16 @@ return [
         'condominios' => 'Condominios', 'urbano' => 'Urbano', 'galerias-y-museos' => 'Galerías y museos',
     ],
 
+    /*
+     * Cotizaciones: valores por defecto del formulario (se pueden cambiar en cada cotización).
+     */
+    'cotizacion' => [
+        'validez_dias' => 7,
+        'condiciones'  => "Precios en soles (PEN) e incluyen IGV.
+La disponibilidad está sujeta a stock al momento de confirmar la compra.
+Forma de pago: contado o transferencia.",
+    ],
+
     'alias' => [
         'estilos' => ['contenporaneo' => 'contemporaneo'],
         'tipos_instalacion' => ['empotrados sumergibles' => 'empotrado-sumergible'],

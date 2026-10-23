@@ -154,26 +154,24 @@
             <div x-show="tab === 'graficos'" class="p-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">Logo Principal</label>
-                        @if($empresa->logo_path)
-                            <div class="mb-3 p-3 bg-gray-50 rounded-lg border inline-flex">
-                                <img src="{{ $empresa->logo_url }}" alt="Logo" class="h-20 object-contain">
-                            </div>
-                        @endif
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Logo para fondo oscuro</label>
+                        <div class="mb-3 p-3 rounded-lg border inline-flex" style="background:#1e3a8a;">
+                            <img src="{{ $empresa->logo_url }}" alt="Logo fondo oscuro" class="h-20 object-contain">
+                        </div>
+                        <p class="text-xs text-gray-500 mb-2">{{ $empresa->logo_path ? 'Logo subido por la empresa.' : 'Logo oficial de Kyrios (letras blancas). Se usa hasta que suba otro.' }}</p>
                         <input type="file" name="logo" accept="image/*"
                             class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <p class="text-xs text-gray-400 mt-1">PNG, JPG — máx. 2MB. Aparece en el encabezado del sistema.</p>
+                        <p class="text-xs text-gray-400 mt-1">PNG con fondo transparente y letras claras — máx. 2MB. Aparece en la barra lateral y en la pantalla de acceso.</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">Logo para PDF / Comprobantes</label>
-                        @if($empresa->logo_pdf_path)
-                            <div class="mb-3 p-3 bg-gray-50 rounded-lg border inline-flex">
-                                <img src="{{ $empresa->logo_pdf_url }}" alt="Logo PDF" class="h-20 object-contain">
-                            </div>
-                        @endif
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Logo para fondo claro / Comprobantes</label>
+                        <div class="mb-3 p-3 bg-white rounded-lg border inline-flex">
+                            <img src="{{ $empresa->logo_pdf_url }}" alt="Logo comprobantes" class="h-20 object-contain">
+                        </div>
+                        <p class="text-xs text-gray-500 mb-2">{{ $empresa->logo_pdf_path ? 'Logo subido por la empresa.' : 'Logo oficial de Kyrios (letras oscuras). Se usa hasta que suba otro.' }}</p>
                         <input type="file" name="logo_pdf" accept="image/*"
                             class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <p class="text-xs text-gray-400 mt-1">PNG, JPG — máx. 2MB. Aparece en boletas, facturas y guías.</p>
+                        <p class="text-xs text-gray-400 mt-1">PNG con fondo transparente y letras oscuras — máx. 2MB. Aparece en boletas, facturas, notas de venta, cotizaciones y guías.</p>
                     </div>
                 </div>
             </div>

@@ -494,14 +494,17 @@
                                 class="border rounded-xl py-2 text-xs font-semibold transition flex flex-col items-center gap-1">
                             <i class="fas fa-file-invoice"></i> Factura
                         </button>
-                        <button @click="seleccionarTipoComprobante('cotizacion')"
-                                :class="orden.tipoComprobante === 'cotizacion' ? 'bg-amber-500 border-amber-500 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                        <button @click="seleccionarTipoComprobante('nota_venta')"
+                                :class="orden.tipoComprobante === 'nota_venta' ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                                 class="border rounded-xl py-2 text-xs font-semibold transition flex flex-col items-center gap-1">
-                            <i class="fas fa-file-alt"></i> Cotización
+                            <i class="fas fa-file-alt"></i> Nota de venta
                         </button>
                     </div>
-                    <p x-show="orden.tipoComprobante === 'cotizacion'" x-cloak class="text-xs text-amber-500 mt-1.5 flex items-center gap-1">
-                        <i class="fas fa-info-circle"></i> No descuenta stock
+                    <p x-show="orden.tipoComprobante === 'nota_venta'" x-cloak class="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                        <i class="fas fa-info-circle"></i> Documento interno: no se envía a SUNAT
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1.5">
+                        ¿Es una cotización? <a href="{{ route('cotizaciones.create') }}" class="text-blue-500 hover:underline">Créela en Cotizaciones</a>
                     </p>
                     <p x-show="orden.tipoComprobante === 'factura' && (!orden.clienteId || orden.clienteTipoDoc !== 'RUC')" x-cloak
                        class="text-xs text-red-500 mt-1.5 flex items-center gap-1">
@@ -1035,7 +1038,7 @@
             </div>
             <div x-show="orden.tipoComprobante === 'cotizacion'" class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-sm text-amber-700 dark:text-amber-300 flex items-start gap-2">
                 <i class="fas fa-info-circle mt-0.5 shrink-0"></i>
-                <span>Esta cotización quedará guardada. Podrás convertirla a boleta o factura cuando el cliente confirme.</span>
+                <span>Esta cotización quedará guardada.</span>
             </div>
             <div x-show="esVendedor && orden.condicionPago === 'pendiente_cobro'" class="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700 rounded-xl px-4 py-3 text-sm text-teal-700 dark:text-teal-300 flex items-start gap-2">
                 <i class="fas fa-handshake mt-0.5 shrink-0"></i>

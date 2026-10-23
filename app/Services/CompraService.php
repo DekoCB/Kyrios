@@ -285,13 +285,8 @@ class CompraService
      */
     private function actualizarStock(Producto $producto, Compra $compra, array $detalle, ?ProductoVariante $variante = null): void
     {
-        $stock = StockAlmacen::firstOrCreate(
-            [
-                'producto_id' => $producto->id,
-                'almacen_id'  => $compra->almacen_id,
-            ],
-            ['cantidad' => 0]
-        );
+        // Stock por variante y almacén (sin variante: fila a nivel producto)
+        $stock = StockAlmacen::fila($producto->id, $compra->almacen_id, $variante?->id);
 
         $stockAnterior = $stock->cantidad;
         $stock->increment('cantidad', $detalle['cantidad']);
@@ -445,10 +440,7 @@ class CompraService
             // ── Guardia 2: productos por cantidad ya consumidos parcialmente ─
             foreach ($compra->detalles as $detalle) {
                 if ($detalle->producto->tipo_inventario !== 'serie') {
-                    $stockDisponible = StockAlmacen::where([
-                        'producto_id' => $detalle->producto_id,
-                        'almacen_id'  => $compra->almacen_id,
-                    ])->value('cantidad') ?? 0;
+                    $stockDisponible = StockAlmacen::cantidadEn($detalle->producto_id, $compra->almacen_id, $detalle->variante_id);
 
                     if ($stockDisponible < $detalle->cantidad) {
                         throw new \Exception(
@@ -469,7 +461,7 @@ class CompraService
                     $stock = StockAlmacen::where([
                         'producto_id' => $detalle->producto_id,
                         'almacen_id'  => $compra->almacen_id,
-                    ])->first();
+                    ])->deVariante($detalle->variante_id)->first();
 
                     if ($stock) {
                         $stockAnterior = $stock->cantidad;
@@ -477,6 +469,7 @@ class CompraService
 
                         MovimientoInventario::create([
                             'producto_id'          => $detalle->producto_id,
+                            'variante_id'          => $detalle->variante_id,
                             'almacen_id'           => $compra->almacen_id,
                             'user_id'              => auth()->id(),
                             'tipo_movimiento'      => 'salida',
@@ -577,10 +570,7 @@ class CompraService
 
                 // Ajustar stock si la cantidad cambió
                 if ($diff !== 0) {
-                    $stock = StockAlmacen::firstOrCreate(
-                        ['producto_id' => $detalle->producto_id, 'almacen_id' => $compra->almacen_id],
-                        ['cantidad' => 0]
-                    );
+                    $stock = StockAlmacen::fila($detalle->producto_id, $compra->almacen_id, $detalle->variante_id);
 
                     $stockAnterior = $stock->cantidad;
 
@@ -605,6 +595,7 @@ class CompraService
 
                     MovimientoInventario::create([
                         'producto_id'          => $detalle->producto_id,
+                        'variante_id'          => $detalle->variante_id,
                         'almacen_id'           => $compra->almacen_id,
                         'user_id'              => auth()->id(),
                         'tipo_movimiento'      => $tipoMov,
@@ -711,6 +702,7 @@ class CompraService
             // Revertir stock en almacén
             $stock = StockAlmacen::where('producto_id', $detalle->producto_id)
                 ->where('almacen_id', $compra->almacen_id)
+                ->deVariante($detalle->variante_id)
                 ->first();
             if ($stock) {
                 $stockAnterior = $stock->cantidad;
@@ -725,6 +717,7 @@ class CompraService
 
                 MovimientoInventario::create([
                     'producto_id'          => $detalle->producto_id,
+                    'variante_id'          => $detalle->variante_id,
                     'almacen_id'           => $compra->almacen_id,
                     'user_id'              => auth()->id(),
                     'tipo_movimiento'      => 'salida',
@@ -772,6 +765,7 @@ class CompraService
             // Revertir stock
             $stock = StockAlmacen::where('producto_id', $imei->producto_id)
                 ->where('almacen_id', $compra->almacen_id)
+                ->deVariante($imei->variante_id)
                 ->first();
             if ($stock && $stock->cantidad > 0) {
                 $stockAnterior = $stock->cantidad;

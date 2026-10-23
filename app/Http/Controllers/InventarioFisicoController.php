@@ -336,38 +336,25 @@ class InventarioFisicoController extends Controller
         $almacenId = $conteo->almacen_id;
         $rows = [];
 
-        // Accesorios / cantidad: from StockAlmacen, one row per product (no variant breakdown at StockAlmacen level)
-        $stocksAccesorio = StockAlmacen::where('almacen_id', $almacenId)
-            ->with('producto.variantesActivas')
+        // Productos por cantidad: una fila de conteo por cada fila de stock_almacen,
+        // es decir, por (producto, variante, almacén). Cada variante se cuenta por separado.
+        $stocksCantidad = StockAlmacen::where('almacen_id', $almacenId)
+            ->with('producto:id,tipo_inventario')
             ->get();
 
-        foreach ($stocksAccesorio as $sa) {
-            $prod = $sa->producto;
-            if (!$prod || $prod->tipo_inventario === 'serie') {
+        foreach ($stocksCantidad as $sa) {
+            if (!$sa->producto || $sa->producto->tipo_inventario === 'serie') {
                 continue;
             }
 
-            if ($prod->variantesActivas->isNotEmpty()) {
-                foreach ($prod->variantesActivas as $variante) {
-                    $rows[] = [
-                        'conteo_id'     => $conteo->id,
-                        'producto_id'   => $prod->id,
-                        'variante_id'   => $variante->id,
-                        'stock_sistema' => max(0, (int) $variante->stock_actual),
-                        'created_at'    => now(),
-                        'updated_at'    => now(),
-                    ];
-                }
-            } else {
-                $rows[] = [
-                    'conteo_id'     => $conteo->id,
-                    'producto_id'   => $prod->id,
-                    'variante_id'   => null,
-                    'stock_sistema' => max(0, (int) $sa->cantidad),
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ];
-            }
+            $rows[] = [
+                'conteo_id'     => $conteo->id,
+                'producto_id'   => $sa->producto_id,
+                'variante_id'   => $sa->variante_id,
+                'stock_sistema' => max(0, (int) $sa->cantidad),
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ];
         }
 
         // Serie products: count IMEIs en_stock per product (per variant if variants exist)

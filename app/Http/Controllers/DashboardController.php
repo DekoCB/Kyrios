@@ -37,6 +37,7 @@ class DashboardController extends Controller
         'Cajero' => redirect()->route('cajero.dashboard'),
         'Vendedor' => redirect()->route('vendedor.dashboard'),
         'Proveedor' => redirect()->route('proveedor.dashboard'),
+        'Técnico' => redirect()->route('caja-chica.index'),
         default => abort(403, 'Rol no autorizado'),
     };
 }
@@ -266,7 +267,7 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         $baseQuery = fn() => Venta::where('user_id', $user->id)
-            ->whereNotIn('tipo_comprobante', ['cotizacion']);
+            ->whereNotIn('tipo_comprobante', ['cotizacion', 'nota_venta']);
 
         // Ventas del día (todas del usuario)
         $ventas_dia = $baseQuery()->whereDate('fecha', today())->sum('total');

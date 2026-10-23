@@ -32,6 +32,7 @@ class CompraVentaFlowTest extends TestCase
     private Proveedor $proveedor;
     private Cliente   $cliente;
     private Categoria $categoria;
+    private \App\Models\Caja $caja;
 
     // IDs creados en cada test para limpiar en tearDown
     private array $createdImeis    = [];
@@ -85,6 +86,16 @@ class CompraVentaFlowTest extends TestCase
             ['nombre' => 'Celulares Test', 'estado' => 'activo']
         );
 
+        // Las ventas al contado exigen caja abierta del usuario (regla de VentaService)
+        $this->caja = \App\Models\Caja::create([
+            'user_id'        => $this->admin->id,
+            'almacen_id'     => $this->almacen->id,
+            'fecha'          => now()->toDateString(),
+            'fecha_apertura' => now(),
+            'monto_inicial'  => 0,
+            'estado'         => 'abierta',
+        ]);
+
         $this->actingAs($this->admin);
     }
 
@@ -114,6 +125,9 @@ class CompraVentaFlowTest extends TestCase
         \App\Models\MovimientoInventario::where('almacen_id', $this->almacen->id)
             ->orWhere('almacen_destino_id', $this->almacen->id)
             ->delete();
+
+        \App\Models\MovimientoCaja::where('caja_id', $this->caja->id)->delete();
+        $this->caja->delete();
 
         // Limpiar almacen, proveedor, cliente, user del test
         \App\Models\CuentaPorPagar::where('proveedor_id', $this->proveedor->id)->delete();

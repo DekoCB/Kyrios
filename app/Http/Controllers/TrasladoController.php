@@ -179,10 +179,12 @@ class TrasladoController extends Controller
         $productos    = $query->orderBy('nombre')->paginate(25)->withQueryString();
         $productoIds  = $productos->pluck('id');
 
+        // Una fila por (producto, variante, almacén): aquí se muestra el total del producto por almacén
         $stocksPorProducto = StockAlmacen::whereIn('producto_id', $productoIds)
             ->get()
             ->groupBy('producto_id')
-            ->map(fn($rows) => $rows->keyBy('almacen_id'));
+            ->map(fn($rows) => $rows->groupBy('almacen_id')
+                ->map(fn($r) => (object) ['cantidad' => (int) $r->sum('cantidad')]));
 
         $imeisPorProducto = Imei::whereIn('producto_id', $productoIds)
             ->where('estado_imei', Imei::ESTADO_EN_STOCK)
@@ -316,10 +318,17 @@ class TrasladoController extends Controller
 
         $productoIds = $productos->pluck('id');
 
-        $stocksMap = StockAlmacen::whereIn('producto_id', $productoIds)
+        $filasStock = StockAlmacen::whereIn('producto_id', $productoIds)
             ->when($almacenId, fn($q) => $q->where('almacen_id', $almacenId))
-            ->get()
-            ->groupBy('producto_id')
+            ->get();
+
+        // Total por producto y almacén (suma de sus variantes)
+        $stocksMap = $filasStock->groupBy('producto_id')
+            ->map(fn($rows) => $rows->groupBy('almacen_id')->map(fn($r) => (int) $r->sum('cantidad')));
+
+        // Stock por variante y almacén (productos por cantidad)
+        $stocksVariante = $filasStock->whereNotNull('variante_id')
+            ->groupBy('variante_id')
             ->map(fn($rows) => $rows->pluck('cantidad', 'almacen_id'));
 
         $imeisMap = Imei::whereIn('producto_id', $productoIds)
@@ -342,7 +351,7 @@ class TrasladoController extends Controller
                 ->pluck('total', 'variante_id');
         }
 
-        $result = $productos->map(function ($p) use ($stocksMap, $imeisMap, $imeisPorVariante, $almacenId) {
+        $result = $productos->map(function ($p) use ($stocksMap, $stocksVariante, $imeisMap, $imeisPorVariante, $almacenId) {
             $esSerie = $p->tipo_inventario === 'serie';
             $stock   = null;
 
@@ -369,7 +378,9 @@ class TrasladoController extends Controller
                     'capacidad'    => $v->capacidad ?? null,
                     'stock'        => $esSerie
                         ? (int) ($imeisPorVariante[$v->id] ?? 0)
-                        : (int) ($v->stock_actual ?? 0),
+                        : ($almacenId
+                            ? (int) ($stocksVariante[$v->id][$almacenId] ?? 0)   // stock de la variante en el almacén de origen
+                            : (int) ($v->stock_actual ?? 0)),
                 ])->values(),
             ];
         });

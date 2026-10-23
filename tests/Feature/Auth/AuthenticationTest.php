@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,45 +11,76 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_login_screen_can_be_rendered(): void
+    private function usuario(?string $rol, array $extra = []): User
     {
-        $response = $this->get('/login');
-
-        $response->assertStatus(200);
+        return User::factory()->create(array_merge([
+            'role_id' => $rol ? Role::firstOrCreate(['nombre' => $rol])->id : null,
+            'estado'  => 'activo',
+        ], $extra));
     }
 
-    public function test_users_can_authenticate_using_the_login_screen(): void
+    public function test_la_pantalla_de_login_se_muestra(): void
     {
-        $user = User::factory()->create();
-
-        $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
-        ]);
-
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $this->get('/login')->assertOk();
     }
 
-    public function test_users_can_not_authenticate_with_invalid_password(): void
+    public function test_cada_rol_entra_a_su_dashboard(): void
     {
-        $user = User::factory()->create();
+        $destinos = [
+            'Administrador' => 'admin.dashboard',
+            'Vendedor'      => 'vendedor.dashboard',
+            'Almacenero'    => 'almacenero.dashboard',
+            'Tienda'        => 'tienda.dashboard',
+            'Proveedor'     => 'proveedor.dashboard',
+        ];
 
-        $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'wrong-password',
-        ]);
+        foreach ($destinos as $rol => $ruta) {
+            $user = $this->usuario($rol);
+
+            $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+                ->assertRedirect(route($ruta));
+            $this->assertAuthenticatedAs($user);
+
+            $this->post('/logout');
+            $this->assertGuest();
+        }
+    }
+
+    public function test_una_clave_incorrecta_no_inicia_sesion(): void
+    {
+        $user = $this->usuario('Administrador');
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'incorrecta']);
 
         $this->assertGuest();
     }
 
-    public function test_users_can_logout(): void
+    public function test_un_usuario_inactivo_no_puede_entrar(): void
     {
-        $user = User::factory()->create();
+        $user = $this->usuario('Administrador', ['estado' => 'inactivo']);
 
-        $response = $this->actingAs($user)->post('/logout');
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasErrors('email');
 
         $this->assertGuest();
-        $response->assertRedirect('/');
+    }
+
+    public function test_un_usuario_sin_rol_no_puede_entrar_y_no_da_error(): void
+    {
+        $user = $this->usuario(null);
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
+    public function test_el_usuario_puede_cerrar_sesion(): void
+    {
+        $user = $this->usuario('Administrador');
+
+        $this->actingAs($user)->post('/logout')->assertRedirect('/');
+
+        $this->assertGuest();
     }
 }

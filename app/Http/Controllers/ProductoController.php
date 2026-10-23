@@ -355,8 +355,9 @@ public function create()
         // Crear producto
         $producto = Producto::create($validated);
 
+        $primeraVariante = null;
         if ($codigoPrimeraVariante) {
-            ProductoVariante::create(array_merge($varianteInicial, [
+            $primeraVariante = ProductoVariante::create(array_merge($varianteInicial, [
                 'producto_id'   => $producto->id,
                 'sku'           => $codigoPrimeraVariante,
                 'codigo_kyrios' => $codigoPrimeraVariante,
@@ -384,6 +385,7 @@ public function create()
             if ($request->filled('almacen_id')) {
                 \App\Models\MovimientoInventario::registrarMovimiento([
                     'producto_id'     => $producto->id,
+                    'variante_id'     => $primeraVariante?->id,
                     'almacen_id'      => $request->almacen_id,
                     'tipo_movimiento' => 'ingreso',
                     'cantidad'        => $request->stock_inicial,

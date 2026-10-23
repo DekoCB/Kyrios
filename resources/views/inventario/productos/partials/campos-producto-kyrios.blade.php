@@ -1,3 +1,7 @@
+<style>
+    .gap-x-4{column-gap:1rem}.gap-y-1\.5{row-gap:.375rem}
+</style>
+
 {{--
     Atributos a nivel de producto (modelo) de luminarias Kyrios. Compartido por crear y editar.
     $producto = Producto|null

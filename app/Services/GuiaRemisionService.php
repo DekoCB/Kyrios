@@ -206,10 +206,7 @@ class GuiaRemisionService
                             'estado_imei' => Imei::ESTADO_EN_STOCK,
                         ]);
                     } else {
-                        $stockDestino = StockAlmacen::firstOrCreate(
-                            ['producto_id' => $mov->producto_id, 'almacen_id' => $guia->almacen_destino_id],
-                            ['cantidad' => 0]
-                        );
+                        $stockDestino = StockAlmacen::fila($mov->producto_id, $guia->almacen_destino_id, $mov->variante_id);
                         $stockDestino->increment('cantidad', $mov->cantidad);
                     }
 
@@ -264,10 +261,7 @@ class GuiaRemisionService
                     $mov->producto->update(['stock_actual' => $totalStock]);
                 } else {
                     // Revertir descuento en origen
-                    $stockOrigen = StockAlmacen::firstOrCreate(
-                        ['producto_id' => $mov->producto_id, 'almacen_id' => $guia->almacen_id],
-                        ['cantidad' => 0]
-                    );
+                    $stockOrigen = StockAlmacen::fila($mov->producto_id, $guia->almacen_id, $mov->variante_id);
                     $stockOrigen->increment('cantidad', $mov->cantidad);
 
                     $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
@@ -342,12 +336,21 @@ class GuiaRemisionService
                 throw new \Exception("Producto «{$producto->nombre}»: la cantidad debe ser al menos 1.");
             }
 
+            $varianteId = !empty($linea['variante_id']) ? (int) $linea['variante_id'] : null;
+            if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
+                throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante.");
+            }
+
             $stockOrigen = StockAlmacen::where('producto_id', $producto->id)
-                ->where('almacen_id', $almacenId)->first();
+                ->where('almacen_id', $almacenId)
+                ->deVariante($varianteId)
+                ->first();
 
             if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
+                $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
+                $nombre = $producto->nombre . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
                 throw new \Exception(
-                    "Producto «{$producto->nombre}»: stock insuficiente (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
+                    "Producto «{$nombre}»: stock insuficiente (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
                 );
             }
 

@@ -71,6 +71,7 @@ Route::get('/dashboard', function () {
         'Vendedor'      => redirect()->route('vendedor.dashboard'),
         'Tienda'        => redirect()->route('tienda.dashboard'),
         'Cajero'        => redirect()->route('cajero.dashboard'),
+        'Técnico'       => redirect()->route('caja-chica.index'),
         default         => redirect()->route('login'),
     };
 })->name('dashboard')->middleware('auth');
@@ -165,6 +166,15 @@ Route::middleware('auth')->group(function () {
     // ========================================
     Route::prefix('inventario')->name('inventario.')->group(function () {
         
+        // RECEPCIÓN RÁPIDA CON ESCÁNER (PDA)
+        Route::middleware('role:Administrador,Almacenero')->prefix('recepcion')->name('recepcion.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\RecepcionEscanerController::class, 'index'])->name('index');
+            Route::get('/buscar', [\App\Http\Controllers\RecepcionEscanerController::class, 'buscar'])->name('buscar');
+            Route::get('/variantes', [\App\Http\Controllers\RecepcionEscanerController::class, 'variantes'])->name('variantes');
+            Route::post('/asociar', [\App\Http\Controllers\RecepcionEscanerController::class, 'asociar'])->name('asociar');
+            Route::post('/confirmar', [\App\Http\Controllers\RecepcionEscanerController::class, 'confirmar'])->name('confirmar');
+        });
+
         // CATEGORÍAS
         Route::middleware('role:Administrador,Almacenero')->group(function () {
             Route::get('/categorias', [CategoriaController::class, 'index'])->name('categorias.index');
@@ -292,10 +302,12 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // MÓDULO DE CLIENTES
     // ========================================
-    Route::prefix('clientes')->name('clientes.')->middleware('role:Administrador,Vendedor,Tienda')->group(function () {
+    Route::prefix('clientes')->name('clientes.')->middleware('role:Administrador,Vendedor,Tienda,Cajero')->group(function () {
         Route::get('/', [ClienteController::class, 'index'])->name('index');
         Route::get('/create', [ClienteController::class, 'create'])->name('create');
+        Route::get('/exportar', [ClienteController::class, 'exportar'])->name('exportar');
         Route::post('/', [ClienteController::class, 'store'])->name('store');
+        Route::get('/{cliente}', [ClienteController::class, 'show'])->whereNumber('cliente')->name('show');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update');
         Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->middleware('role:Administrador')->name('destroy');
@@ -363,13 +375,54 @@ Route::middleware('auth')->group(function () {
     // También puedes agregar una ruta para el dashboard financiero
     Route::get('/finanzas', [App\Http\Controllers\CuentaPorPagarController::class, 'dashboard'])->middleware('role:Administrador,Almacenero')->name('finanzas.dashboard');
     // ========================================
+    // CAJA CHICA (general y asignadas al personal, con foto o escaneo de comprobantes)
+    // ========================================
+    Route::prefix('caja-chica')->name('caja-chica.')->group(function () {
+        $c = \App\Http\Controllers\CajaChicaController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/nueva', [$c, 'create'])->name('create');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::get('/movimientos/{mov}/editar', [$c, 'editarGasto'])->name('gasto.edit');
+        Route::put('/movimientos/{mov}', [$c, 'actualizarGasto'])->name('gasto.update');
+        Route::delete('/movimientos/{mov}', [$c, 'eliminarMovimiento'])->name('movimiento.destroy');
+        Route::post('/movimientos/{mov}/revisar', [$c, 'revisar'])->name('revisar');
+        Route::get('/adjuntos/{adjunto}', [$c, 'adjunto'])->name('adjunto');
+        Route::delete('/adjuntos/{adjunto}', [$c, 'eliminarAdjunto'])->name('adjunto.destroy');
+        Route::get('/{caja}', [$c, 'show'])->name('show');
+        Route::post('/{caja}/ingreso', [$c, 'ingreso'])->name('ingreso');
+        Route::post('/{caja}/gasto', [$c, 'gasto'])->name('gasto');
+        Route::post('/{caja}/cerrar', [$c, 'cerrar'])->name('cerrar');
+        Route::get('/{caja}/rendicion', [$c, 'rendicion'])->name('rendicion');
+        Route::get('/{caja}/exportar', [$c, 'exportar'])->name('exportar');
+    });
+    // ========================================
+    // MÓDULO DE COTIZACIONES (propio; se convierten a nota de venta, boleta o factura)
+    // ========================================
+    Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administrador,Vendedor,Tienda,Cajero')->group(function () {
+        $c = \App\Http\Controllers\CotizacionController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/create', [$c, 'create'])->name('create');
+        Route::post('/', [$c, 'store'])->name('store');
+        // Búsquedas JSON del formulario: antes del comodín /{cotizacion}
+        Route::get('/api/productos', [$c, 'productos'])->name('productos');
+        Route::get('/api/clientes', [$c, 'clientes'])->name('clientes');
+        Route::get('/{cotizacion}', [$c, 'show'])->name('show');
+        Route::get('/{cotizacion}/edit', [$c, 'edit'])->name('edit');
+        Route::put('/{cotizacion}', [$c, 'update'])->name('update');
+        Route::get('/{cotizacion}/pdf', [$c, 'pdf'])->name('pdf');
+        Route::post('/{cotizacion}/estado', [$c, 'estado'])->name('estado');
+        Route::post('/{cotizacion}/renovar', [$c, 'renovar'])->name('renovar');
+        Route::post('/{cotizacion}/duplicar', [$c, 'duplicar'])->name('duplicar');
+        Route::post('/{cotizacion}/convertir', [$c, 'convertir'])->name('convertir');
+    });
+
+    // ========================================
     // MÓDULO DE VENTAS
     // ========================================
     Route::prefix('ventas')->name('ventas.')->middleware('role:Administrador,Vendedor,Tienda,Cajero')->group(function () {
         Route::get('/', [VentaController::class, 'index'])->name('index');
         Route::get('/create', [VentaController::class, 'create'])->name('create');
         Route::post('/', [VentaController::class, 'store'])->name('store');
-        Route::get('/cotizaciones', [VentaController::class, 'cotizaciones'])->name('cotizaciones');
         Route::get('/api/imeis-disponibles', [VentaController::class, 'imeisDisponibles'])->name('imeis-disponibles');
         Route::get('/api/mis-pendientes', [VentaController::class, 'misPendientes'])->middleware('role:Vendedor')->name('mis-pendientes');
         Route::get('/api/dni/{dni}', [DniLookupController::class, 'buscar'])->name('dni.buscar');
@@ -380,7 +433,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{venta}/pdf', [VentaController::class, 'pdf'])->name('pdf');
         Route::get('/{venta}/guia-pdf', [VentaController::class, 'guiaPdf'])->name('guia-pdf');
         Route::post('/{venta}/confirmar-pago', [VentaController::class, 'confirmarPago'])->middleware('role:Administrador,Tienda,Cajero')->name('confirmar-pago');
-        Route::post('/{venta}/convertir', [VentaController::class, 'convertir'])->middleware('role:Administrador,Tienda')->name('convertir');
         // Crédito
         Route::get('/{venta}/credito', [VentaController::class, 'showCredito'])->name('credito.show');
         Route::post('/{venta}/credito/pago', [VentaController::class, 'registrarPagoCredito'])->middleware('role:Administrador,Tienda')->name('credito.pago');

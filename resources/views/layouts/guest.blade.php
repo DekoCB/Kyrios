@@ -24,7 +24,7 @@
                     <i class="fas fa-box text-white text-6xl drop-shadow-lg"></i>
                 </a>
                 <h1 class="text-center text-3xl font-bold text-white mb-2 drop-shadow-lg">
-                    Sistema de Importaciones
+                    {{ config('app.name') }}
                 </h1>
                 <p class="text-center text-white/80 mb-8">
                     Gestión integral de inventario y ventas
@@ -36,7 +36,7 @@
             </div>
 
             <div class="mt-6 text-center text-white/70 text-sm">
-                <p>&copy; {{ date('Y') }} Sistema de Importaciones. Todos los derechos reservados.</p>
+                <p>&copy; {{ date('Y') }} {{ config('app.name') }}. Todos los derechos reservados.</p>
             </div>
         </div>
     </body>

@@ -71,16 +71,22 @@ class ImportarProductosKyrios extends Command
             return self::FAILURE;
         }
 
-        $this->info('Leyendo hojas del Excel (puede tardar un par de minutos)...');
-        $base = $this->leerHoja($archivo, 'Base de Productos', 5, 45);
-        $proy = $this->leerHoja($archivo, 'Tipo de proyecto', 4, 24);
-        $inst = $this->leerHoja($archivo, 'Tipo de instalación', 4, 24);
-        $esti = $this->leerHoja($archivo, 'Estilo', 4, 14);
-        $obs  = $this->leerHoja($archivo, 'OBSERVACIONES', 3, 9);
-        $danos = $this->leerDanos($archivo);
-        $pack = $this->leerHoja($archivo, 'Packing list', 5, 16);
-        $imagenes = $this->option('sin-imagenes') ? [] : $this->imagenesDeHoja($archivo, 'Base de Productos');
-        $this->info('Imágenes incrustadas en filas de productos: ' . array_sum(array_map('count', $imagenes)));
+        // La lectura va antes de tocar la base de datos: si falta una hoja se informa y no se cambia nada
+        try {
+            $this->info('Leyendo hojas del Excel (puede tardar un par de minutos)...');
+            $base = $this->leerHoja($archivo, 'Base de Productos', 5, 45);
+            $proy = $this->leerHoja($archivo, 'Tipo de proyecto', 4, 24);
+            $inst = $this->leerHoja($archivo, 'Tipo de instalación', 4, 24);
+            $esti = $this->leerHoja($archivo, 'Estilo', 4, 14);
+            $obs  = $this->leerHoja($archivo, 'OBSERVACIONES', 3, 9);
+            $danos = $this->leerDanos($archivo);
+            $pack = $this->leerHoja($archivo, 'Packing list', 5, 16);
+            $imagenes = $this->option('sin-imagenes') ? [] : $this->imagenesDeHoja($archivo, 'Base de Productos');
+            $this->info('Imágenes incrustadas en filas de productos: ' . array_sum(array_map('count', $imagenes)));
+        } catch (\Throwable $e) {
+            $this->error('No se pudo leer el Excel: ' . $e->getMessage());
+            return self::FAILURE;
+        }
 
         $filas = array_filter($base['filas'], fn ($f) => $this->vacio($f[0] ?? null) !== null || $this->vacio($f[1] ?? null) !== null);
         $this->info('Filas con datos: ' . count($filas));

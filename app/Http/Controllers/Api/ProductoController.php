@@ -56,10 +56,7 @@ class ProductoController extends Controller
         // Obtener stock del almacén
         $stock = 0;
         if ($almacenId) {
-            $stockAlmacen = StockAlmacen::where('producto_id', $producto->id)
-                ->where('almacen_id', $almacenId)
-                ->first();
-            $stock = $stockAlmacen ? $stockAlmacen->cantidad : 0;
+            $stock = StockAlmacen::totalEn($producto->id, $almacenId);
         }
 
         // Obtener precio vigente

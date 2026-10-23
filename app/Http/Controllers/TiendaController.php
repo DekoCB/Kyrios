@@ -46,11 +46,20 @@ class TiendaController extends Controller
 
         $productoIds = $productos->pluck('id');
 
-        // Stock por almacén (productos de cantidad; el stock por variante NO está
-        // desglosado por almacén en el esquema actual — producto_variantes.stock_actual
-        // es global, así que aquí solo se puede mostrar a nivel de producto).
-        $stocksPorProducto = StockAlmacen::whereIn('producto_id', $productoIds)
-            ->get()
+        // Stock por almacén de productos por cantidad. stock_almacen tiene una fila por
+        // (producto, variante, almacén): se arma el total por producto y el desglose por variante.
+        $filasStock = StockAlmacen::whereIn('producto_id', $productoIds)->get();
+
+        $stocksPorProducto = $filasStock
+            ->groupBy('producto_id')
+            ->map(fn($rows) => $rows->groupBy('almacen_id')
+                ->map(fn($r) => (object) ['cantidad' => (int) $r->sum('cantidad')]));
+
+        $stocksPorVarianteCantidad = $filasStock->whereNotNull('variante_id')
+            ->groupBy('variante_id')
+            ->map(fn($rows) => $rows->keyBy('almacen_id'));
+
+        $stocksSinVariante = $filasStock->whereNull('variante_id')
             ->groupBy('producto_id')
             ->map(fn($rows) => $rows->keyBy('almacen_id'));
 
@@ -91,6 +100,19 @@ class TiendaController extends Controller
                     $filas->push((object) ['variante' => null, 'stocks' => $sinVariante]);
                 }
 
+                $producto->filas = $filas;
+            } elseif ($producto->variantesActivas->isNotEmpty()) {
+                // Por cantidad CON variantes: una fila por variante con su stock en cada tienda
+                $producto->es_serie = false;
+                $filas = $producto->variantesActivas->map(fn($variante) => (object) [
+                    'variante' => $variante,
+                    'stocks'   => $stocksPorVarianteCantidad[$variante->id] ?? collect(),
+                ]);
+
+                $sinVariante = $stocksSinVariante[$producto->id] ?? collect();
+                if ($sinVariante->isNotEmpty()) {
+                    $filas->push((object) ['variante' => null, 'stocks' => $sinVariante]);
+                }
                 $producto->filas = $filas;
             } else {
                 $producto->es_serie = false;
@@ -242,7 +264,7 @@ class TiendaController extends Controller
         $producto->load(['categoria', 'marca', 'modelo']);
         
         $stocks = StockAlmacen::where('producto_id', $producto->id)
-            ->with('almacen')
+            ->with(['almacen', 'variante'])
             ->get();
 
         return view('tienda.producto', compact('producto', 'stocks'));
@@ -256,13 +278,15 @@ class TiendaController extends Controller
         $productoId = $request->get('producto_id');
         $almacenId = $request->get('almacen_id');
 
-        $stock = StockAlmacen::where('producto_id', $productoId)
-            ->where('almacen_id', $almacenId)
-            ->first();
+        // Con variante: stock de esa variante en el almacén; sin variante: total del producto
+        $varianteId = $request->get('variante_id');
+        $cantidad = $varianteId
+            ? StockAlmacen::cantidadEn($productoId, $almacenId, (int) $varianteId)
+            : StockAlmacen::totalEn($productoId, $almacenId);
 
         return response()->json([
             'success' => true,
-            'stock' => $stock ? $stock->cantidad : 0
+            'stock' => $cantidad
         ]);
     }
 }

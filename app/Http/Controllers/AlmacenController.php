@@ -93,10 +93,13 @@ class AlmacenController extends Controller
         $almacenId = $almacen->id;
 
         // Stock de productos tipo "cantidad" desde stock_almacen
-        $stockCantidad = StockAlmacen::where('almacen_id', $almacenId)
+        // Una fila por variante: se suma por producto y se conserva el desglose por variante
+        $filasStock = StockAlmacen::where('almacen_id', $almacenId)
             ->where('cantidad', '>', 0)
-            ->get()
-            ->keyBy('producto_id');
+            ->with('variante:id,producto_id,codigo_kyrios,sku,acabado_1,acabado_2,tamano,socket,estado_dano')
+            ->get();
+        $stockCantidad = $filasStock->groupBy('producto_id')->map(fn ($f) => (int) $f->sum('cantidad'));
+        $variantesPorProducto = $filasStock->whereNotNull('variante_id')->groupBy('producto_id');
 
         // Stock de productos tipo "serie" contando IMEIs en_stock
         $stockImeis = Imei::where('almacen_id', $almacenId)
@@ -116,19 +119,27 @@ class AlmacenController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            $stockDetalle = $todosIds->map(function ($pid) use ($productos, $stockCantidad, $stockImeis) {
+            $stockDetalle = $todosIds->map(function ($pid) use ($productos, $stockCantidad, $stockImeis, $variantesPorProducto) {
                 $producto = $productos->get($pid);
                 if (!$producto) return null;
 
                 $esSerie = $producto->tipo_inventario === 'serie';
                 $stock = $esSerie
                     ? (int) ($stockImeis[$pid] ?? 0)
-                    : (int) ($stockCantidad[$pid]?->cantidad ?? 0);
+                    : (int) ($stockCantidad[$pid] ?? 0);
 
                 return [
                     'producto' => $producto,
                     'stock'    => $stock,
                     'es_serie' => $esSerie,
+                    'variantes' => $esSerie ? collect() : ($variantesPorProducto[$pid] ?? collect())
+                        ->sortByDesc('cantidad')
+                        ->map(fn ($f) => [
+                            'codigo'   => $f->variante?->codigo_kyrios ?? $f->variante?->sku,
+                            'detalle'  => $f->variante?->nombre_completo,
+                            'cantidad' => (int) $f->cantidad,
+                            'dano'     => $f->variante?->estado_dano,
+                        ])->values(),
                 ];
             })->filter()->sortByDesc('stock')->values();
         }

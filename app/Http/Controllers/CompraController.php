@@ -778,6 +778,7 @@ public function importarIMEI(Request $request)
                     'sobreprecio'     => (float)$v->sobreprecio,
                     'stock_actual'    => $stock,
                     'nombre_completo' => $v->nombre_completo,
+                    'etiqueta'        => $v->codigo_kyrios ? ($v->codigo_kyrios . ' · ' . $v->nombre_completo) : null,
                 ];
             });
 
@@ -954,6 +955,7 @@ public function getProductoDetalle($id)
                 'sobreprecio'     => (float)$v->sobreprecio,
                 'stock_actual'    => $stock,
                 'nombre_completo' => $v->nombre_completo,
+                'etiqueta'        => $v->codigo_kyrios ? ($v->codigo_kyrios . ' · ' . $v->nombre_completo) : null,
                 'tiene_stock'     => $stock > 0,
             ];
         });

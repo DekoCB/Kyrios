@@ -40,7 +40,7 @@ class UpdateVentaRequest extends FormRequest
             'observaciones'     => 'nullable|string|max:500',
             'metodo_pago'       => 'nullable|in:efectivo,transferencia,yape,plin,mixto',
             'fecha'             => 'nullable|date|before_or_equal:today',
-            'tipo_comprobante'  => 'nullable|in:boleta,factura,ticket,cotizacion',
+            'tipo_comprobante'  => 'nullable|in:boleta,factura,nota_venta,ticket',
 
             // Datos de envío (campos en ventas)
             'guia_remision'     => 'nullable|string|max:20',

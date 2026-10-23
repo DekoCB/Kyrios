@@ -15,19 +15,17 @@ class StoreVentaRequest extends FormRequest
 
     public function rules(): array
     {
-        $tipo              = $this->input('tipo_comprobante', 'boleta');
-        $esCotizacion      = $tipo === 'cotizacion';
         $esPendienteCobro  = $this->input('condicion_pago') === 'pendiente_cobro';
 
         return [
-            // Cliente: opcional en cotización y ventas pendientes de cobro
-            'cliente_id'               => ($esCotizacion || $esPendienteCobro)
+            // Cliente: opcional en ventas pendientes de cobro (las cotizaciones tienen su propio módulo)
+            'cliente_id'               => ($esPendienteCobro)
                                             ? 'nullable|exists:clientes,id'
                                             : 'required|exists:clientes,id',
 
             'almacen_id'               => 'required|exists:almacenes,id',
             'observaciones'            => 'nullable|string',
-            'tipo_comprobante'         => 'required|in:boleta,factura,cotizacion',
+            'tipo_comprobante'         => 'required|in:boleta,factura,nota_venta',
 
             // Guía de remisión (nueva estructura SUNAT)
             'guia_data'                              => 'nullable|array',

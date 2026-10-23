@@ -15,7 +15,7 @@ class ReconciliarStock extends Command
                             {--dry-run : Solo muestra divergencias sin corregirlas}
                             {--producto= : ID de un producto específico a verificar}';
 
-    protected $description = 'Detecta y corrige divergencias entre stock_actual y los registros reales (StockAlmacen / IMEIs)';
+    protected $description = 'Detecta y corrige divergencias entre stock_actual (producto y variante) y los registros reales (StockAlmacen por variante / IMEIs)';
 
     private int $divergenciasProductos  = 0;
     private int $divergenciasVariantes  = 0;
@@ -141,25 +141,36 @@ class ReconciliarStock extends Command
             }
         }
 
-        // Variantes: stock_actual debe ser consistente (suma de todas las unidades de esa variante)
-        foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
-            // Para productos cantidad, el stock de variante debería sumar al total del producto
-            // No hay tabla de stock_almacen por variante, así que verificamos que la suma de variantes
-            // sea igual al stock total del producto
-        }
-
-        // Verificar que suma de variantes activas == stock del producto (si hay variantes)
+        // Variantes: stock_actual de cada variante debe ser SUM(StockAlmacen.cantidad) de sus filas
+        // (stock_almacen guarda una fila por producto + variante + almacén).
         $variantes = $producto->variantes()->where('estado', 'activo')->get();
-        if ($variantes->isNotEmpty()) {
-            $sumaVariantes = $variantes->sum('stock_actual');
-            if ($sumaVariantes !== $stockReal) {
+        foreach ($variantes as $variante) {
+            $stockVarianteReal = (int) StockAlmacen::where('variante_id', $variante->id)->sum('cantidad');
+
+            if ((int) $variante->stock_actual !== $stockVarianteReal) {
                 $this->divergenciasVariantes++;
                 $this->reportarDivergencia(
-                    "  Variantes de Producto [{$producto->id}] {$producto->nombre}",
-                    "SUM(variantes.stock_actual)={$sumaVariantes}, SUM(StockAlmacen)={$stockReal}"
+                    "  Variante [{$variante->id}] " . ($variante->codigo_kyrios ?? $variante->sku),
+                    "stock_actual={$variante->stock_actual}, SUM(StockAlmacen)={$stockVarianteReal}"
                 );
-                // No corregimos variantes individuales para cantidad: requiere análisis manual
-                $this->line("  → Revisar distribución manual de variantes de este producto.");
+
+                if (!$dryRun) {
+                    $variante->update(['stock_actual' => $stockVarianteReal]);
+                    $this->correccionesVariantes++;
+                }
+            }
+        }
+
+        // Stock "sin variante" en un producto que ya tiene variantes: no se puede repartir solo,
+        // hay que asignarlo a la variante correcta (por ejemplo con un conteo físico).
+        if ($variantes->isNotEmpty()) {
+            $sinVariante = (int) StockAlmacen::where('producto_id', $producto->id)->whereNull('variante_id')->sum('cantidad');
+            if ($sinVariante > 0) {
+                $this->divergenciasVariantes++;
+                $this->reportarDivergencia(
+                    "  Producto [{$producto->id}] {$producto->nombre}",
+                    "{$sinVariante} unidad(es) en stock_almacen sin variante asignada. Revisar y asignar manualmente."
+                );
             }
         }
     }

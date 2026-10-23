@@ -12,7 +12,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 8.5pt; color: #1a1a1a; b
 .header-left  { display: table-cell; width: 62%; vertical-align: top; padding-right: 12px; }
 .header-right { display: table-cell; width: 38%; vertical-align: top; }
 
-.logo { height: 54px; margin-bottom: 4px; }
+.logo { height: 64px; width: auto; margin-bottom: 6px; }
 .empresa-nombre { font-size: 13pt; font-weight: bold; color: #1e3a5f; margin-bottom: 2px; }
 .empresa-sub { font-size: 7.5pt; color: #555; margin-bottom: 6px; }
 .empresa-dir { font-size: 7.5pt; color: #333; line-height: 1.4; }
@@ -96,14 +96,7 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
 <div class="header">
     <div class="header-left">
         @php
-            $logoFile = $empresa->logo_pdf_path ?: $empresa->logo_path;
-            $logoPath = $logoFile ? storage_path('app/public/' . $logoFile) : null;
-            $logoSrc  = null;
-            if ($logoPath && file_exists($logoPath)) {
-                $ext     = strtolower(pathinfo($logoPath, PATHINFO_EXTENSION));
-                $mime    = in_array($ext, ['jpg','jpeg']) ? 'image/jpeg' : "image/$ext";
-                $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
-            }
+            $logoSrc = \App\Models\Empresa::logoDocumentoDataUri($empresa ?? null);
         @endphp
         @if($logoSrc)
             <img src="{{ $logoSrc }}" class="logo" alt="Logo">
@@ -126,6 +119,7 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
                 $tiposNombre = [
                     'factura'   => 'Factura de Venta Electrónica',
                     'boleta'    => 'Boleta de Venta Electrónica',
+                    'nota_venta' => 'Nota de Venta',
                     'cotizacion'=> 'Nota de Entrega / Cotización',
                 ];
             @endphp

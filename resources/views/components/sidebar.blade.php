@@ -36,17 +36,10 @@
         @php $empresa = \App\Models\Empresa::instancia(); @endphp
         <div class="p-4 border-b border-blue-700 flex items-center justify-between gap-2">
             <div class="flex items-center gap-2 min-w-0">
-                @if($empresa?->logo_url)
-                    <img src="{{ $empresa->logo_url }}" alt="Logo" class="h-10 w-10 object-contain rounded-lg bg-white/10 p-0.5 shrink-0">
-                @else
-                    <i class="fas fa-home text-2xl text-blue-300 shrink-0"></i>
-                @endif
-                <div class="min-w-0">
-                    <h1 class="text-sm font-bold leading-tight truncate">{{ $empresa?->nombre_display ?? config('app.name') }}</h1>
-                    @if($empresa && $empresa->nombre_comercial && $empresa->nombre_comercial !== $empresa->razon_social)
-                        <p class="text-[11px] text-blue-300 truncate">{{ $empresa->razon_social }}</p>
-                    @endif
-                </div>
+                <a href="/" class="block min-w-0" title="{{ $empresa?->nombre_display ?? config('app.name') }}">
+                    <img src="{{ \App\Models\Empresa::logoUrlPara('oscuro') }}" alt="{{ $empresa?->nombre_display ?? config('app.name') }}"
+                         style="height: 42px; width: auto; max-width: 11rem; object-fit: contain; display: block;">
+                </a>
             </div>
             <button @click="sidebarOpen = false" class="md:hidden text-blue-300 hover:text-white shrink-0">
                 <i class="fas fa-times text-xl"></i>
@@ -104,7 +97,7 @@
                     {{-- Ventas y Precios --}}
                     <li>
                         <button @click="ventasOpen = !ventasOpen"
-                                class="w-full flex items-center justify-between px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('ventas.*') || request()->routeIs('clientes.*') || request()->routeIs('precios.*') ? 'bg-blue-700' : '' }}">
+                                class="w-full flex items-center justify-between px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('ventas.*') || request()->routeIs('precios.*') ? 'bg-blue-700' : '' }}">
                             <span class="flex items-center">
                                 <i class="fas fa-cash-register mr-3"></i>Ventas
                             </span>
@@ -112,21 +105,9 @@
                         </button>
                         <ul x-show="ventasOpen" x-transition class="ml-4 mt-2 space-y-1">
                             <li>
-                                <a href="{{ route('clientes.index') }}"
-                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('clientes.*') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-users mr-3 text-sm"></i>Clientes
-                                </a>
-                            </li>
-                            <li>
                                 <a href="{{ route('ventas.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('ventas.index') || request()->routeIs('ventas.show') || request()->routeIs('ventas.create') ? 'bg-blue-600' : '' }}">
                                     <i class="fas fa-receipt mr-3 text-sm"></i>Registrar Ventas
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('ventas.cotizaciones') }}"
-                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('ventas.cotizaciones') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-file-contract mr-3 text-sm"></i>Cotizaciones
                                 </a>
                             </li>
                             <li>
@@ -159,6 +140,22 @@
                                 </a>
                             </li>
                         </ul>
+                    </li>
+
+                    {{-- Cotizaciones --}}
+                    <li>
+                        <a href="{{ route('cotizaciones.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cotizaciones.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-file-contract mr-3"></i>Cotizaciones
+                        </a>
+                    </li>
+
+                    {{-- Clientes --}}
+                    <li>
+                        <a href="{{ route('clientes.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('clientes.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-users mr-3"></i>Clientes
+                        </a>
                     </li>
                       {{-- Facturación Electrónica --}}
                     @php $mostrarNuevo = \Carbon\Carbon::now()->lt(\Carbon\Carbon::parse('2026-05-05')); @endphp
@@ -255,6 +252,14 @@
                                     <i class="fas fa-box mr-3 text-sm"></i>Productos
                                 </a>
                             </li>
+                            @if(in_array(auth()->user()->role->nombre ?? '', ['Administrador', 'Almacenero'], true))
+                            <li>
+                                <a href="{{ route('inventario.recepcion.index') }}"
+                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.recepcion.*') ? 'bg-blue-600' : '' }}">
+                                    <i class="fas fa-barcode mr-3 text-sm"></i>Recepción con escáner
+                                </a>
+                            </li>
+                            @endif
                             <li>
                                 <a href="{{ route('inventario.almacenes.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.almacenes.*') ? 'bg-blue-600' : '' }}">
@@ -487,6 +492,14 @@
                         </a>
                     </li>
 
+                    {{-- Caja chica --}}
+                    <li>
+                        <a href="{{ route('caja-chica.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja-chica.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-wallet mr-3"></i>Caja chica
+                        </a>
+                    </li>
+
                 @elseif($role == 'Almacenero')
                     {{-- Dashboard --}}
                     <li>
@@ -691,8 +704,8 @@
                     </li>
                     
                     <li>
-                        <a href="{{ route('ventas.cotizaciones') }}"
-                            class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors ml-4 {{ request()->routeIs('ventas.cotizaciones') ? 'bg-blue-600' : '' }}">
+                        <a href="{{ route('cotizaciones.index') }}"
+                            class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors ml-4 {{ request()->routeIs('cotizaciones.*') ? 'bg-blue-600' : '' }}">
                             <i class="fas fa-file-contract mr-3 text-sm w-4"></i>Cotizaciones
                         </a>
                     </li>
@@ -832,6 +845,14 @@
                         </a>
                     </li>
 
+                    {{-- Cotizaciones --}}
+                    <li>
+                        <a href="{{ route('cotizaciones.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cotizaciones.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-file-contract mr-3"></i>Cotizaciones
+                        </a>
+                    </li>
+
                     {{-- Clientes --}}
                     <li>
                         <a href="{{ route('clientes.index') }}"
@@ -863,6 +884,20 @@
                         <a href="{{ route('cajero.dashboard') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cajero.dashboard') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-tachometer-alt mr-3"></i>Dashboard
+                        </a>
+                    </li>
+
+                    {{-- Cotizaciones y clientes --}}
+                    <li>
+                        <a href="{{ route('cotizaciones.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cotizaciones.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-file-contract mr-3"></i>Cotizaciones
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('clientes.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('clientes.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-users mr-3"></i>Clientes
                         </a>
                     </li>
 
@@ -930,6 +965,21 @@
                         <a href="{{ route('proveedor.pedidos') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('proveedor.pedidos') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-file-invoice mr-3"></i>Mis Pedidos
+                        </a>
+                    </li>
+                @elseif($role == 'Técnico')
+                    <li>
+                        <a href="{{ route('caja-chica.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja-chica.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-wallet mr-3"></i>Mi caja chica
+                        </a>
+                    </li>
+                @endif
+                            @if($role !== 'Administrador' && $role !== 'Técnico' && \App\Models\CajaChica::where('responsable_id', auth()->id())->exists())
+                    <li>
+                        <a href="{{ route('caja-chica.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja-chica.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-wallet mr-3"></i>Mi caja chica
                         </a>
                     </li>
                 @endif

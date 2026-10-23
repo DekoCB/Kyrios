@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Nuevo Cliente - Sistema de Importaciones</title>
+    <title>Nuevo Cliente - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -162,6 +162,12 @@
                                        placeholder="Ej: 150101">
                                 <p class="text-[11px] text-gray-400 mt-1">Necesario para que las guías de remisión a este cliente lleguen correctamente a SUNAT.</p>
                             </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Persona de contacto</label>
+                                <input type="text" name="contacto" maxlength="120" value="{{ old('contacto') }}"
+                                       class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                       placeholder="Con quién se coordina (útil para empresas)">
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                                 <input type="text" name="telefono" maxlength="20"
@@ -181,6 +187,12 @@
                                     <option value="activo">Activo</option>
                                     <option value="inactivo">Inactivo</option>
                                 </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                                <textarea name="notas" rows="3" maxlength="2000"
+                                          class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                          placeholder="Preferencias, condiciones acordadas, horarios de entrega…">{{ old('notas') }}</textarea>
                             </div>
                         </div>
 
