@@ -10,13 +10,27 @@ class ProfileTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_la_pagina_de_perfil_no_da_error_y_vuelve_al_inicio(): void
+    public function test_la_pagina_de_perfil_carga_con_sus_datos(): void
+    {
+        $user = User::factory()->create(['role_id' => \App\Models\Role::firstOrCreate(['nombre' => 'Administrador'])->id]);
+
+        $this->actingAs($user)->get('/profile')->assertOk()->assertSee($user->email)->assertSee('Cambiar contraseña');
+    }
+
+    public function test_se_cambia_la_contrasena_con_la_actual_correcta(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)
-            ->get('/profile')
-            ->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->put('/profile/password', ['current_password' => 'mala', 'password' => 'NuevaClave123', 'password_confirmation' => 'NuevaClave123'])
+            ->assertSessionHasErrors('current_password');
+
+        $this->actingAs($user)->put('/profile/password', ['current_password' => 'password', 'password' => 'corta', 'password_confirmation' => 'corta'])
+            ->assertSessionHasErrors('password');
+
+        $this->actingAs($user)->put('/profile/password', ['current_password' => 'password', 'password' => 'NuevaClave123', 'password_confirmation' => 'NuevaClave123'])
+            ->assertSessionHasNoErrors()->assertRedirect('/profile');
+
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('NuevaClave123', $user->fresh()->password));
     }
 
     public function test_profile_information_can_be_updated(): void

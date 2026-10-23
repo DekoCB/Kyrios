@@ -27,10 +27,10 @@
                 facturacionOpen: {{ request()->routeIs('facturacion.*') ? 'true' : 'false' }},
                 reportesOpen: {{ request()->routeIs('reportes.*') ? 'true' : 'false' }},
                 trasladosOpen: {{ request()->routeIs('traslados.*') || request()->routeIs('guias-remision.*') ? 'true' : 'false' }},
-                cajaOpen: {{ request()->routeIs('caja.*') ? 'true' : 'false' }},
+                cajaOpen: {{ request()->routeIs('caja.*') || request()->routeIs('caja-chica.*') ? 'true' : 'false' }},
                 catalogoOpen: {{ request()->routeIs('catalogo.*') ? 'true' : 'false' }},
                 tiendaOpen: {{ request()->routeIs('tienda.*') ? 'true' : 'false' }},
-                adminOpen: {{ request()->routeIs('admin.empresa.*') || request()->routeIs('admin.sucursales.*') || request()->routeIs('admin.cajas.*') ? 'true' : 'false' }}
+                adminOpen: {{ request()->routeIs('admin.empresa.*') || request()->routeIs('admin.sucursales.*') || request()->routeIs('admin.cajas.*') || request()->routeIs('profile.*') ? 'true' : 'false' }}
             }">
 
         @php $empresa = \App\Models\Empresa::instancia(); @endphp
@@ -51,10 +51,10 @@
                 <div class="bg-blue-600 rounded-full p-2">
                     <i class="fas fa-user text-white"></i>
                 </div>
-                <div class="flex-1">
+                <a href="{{ route('profile.edit') }}" class="flex-1 hover:opacity-80" title="Mi perfil">
                     <p class="text-sm font-semibold">{{ auth()->user()->name }}</p>
                     <p class="text-xs text-blue-300">{{ $role }}</p>
-                </div>
+                </a>
             </div>
         </div>
 
@@ -375,7 +375,7 @@
                     {{-- Caja --}}
                     <li>
                         <button @click="cajaOpen = !cajaOpen"
-                                class="w-full flex items-center justify-between px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja.*') ? 'bg-blue-700' : '' }}">
+                                class="w-full flex items-center justify-between px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja.*') || request()->routeIs('caja-chica.*') ? 'bg-blue-700' : '' }}">
                             <span class="flex items-center">
                                 <i class="fas fa-cash-register mr-3"></i>Caja
                             </span>
@@ -392,6 +392,12 @@
                                 <a href="{{ route('caja.actual') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja.actual') ? 'bg-blue-600' : '' }}">
                                     <i class="fas fa-door-open mr-3 text-sm"></i>Caja Activa
+                                </a>
+                            </li>
+                            <li>
+                                <a href="{{ route('caja-chica.index') }}"
+                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja-chica.*') ? 'bg-blue-600' : '' }}">
+                                    <i class="fas fa-wallet mr-3 text-sm"></i>Caja Chica
                                 </a>
                             </li>
                         </ul>
@@ -481,6 +487,12 @@
                                     @endif
                                 </a>
                             </li>
+                            <li>
+                                <a href="{{ route('profile.edit') }}"
+                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('profile.*') ? 'bg-blue-600' : '' }}">
+                                    <i class="fas fa-user-circle mr-3 text-sm"></i>Mi Perfil
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
@@ -489,14 +501,6 @@
                         <a href="{{ route('users.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('users.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-users mr-3"></i>Usuarios
-                        </a>
-                    </li>
-
-                    {{-- Caja chica --}}
-                    <li>
-                        <a href="{{ route('caja-chica.index') }}"
-                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('caja-chica.*') ? 'bg-blue-700' : '' }}">
-                            <i class="fas fa-wallet mr-3"></i>Caja chica
                         </a>
                     </li>
 

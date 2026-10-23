@@ -13,13 +13,10 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    /**
-     * El perfil era una pantalla de Inertia/Vue (Profile/Edit) que este proyecto no tiene
-     * (la interfaz es Blade y el menú no enlaza el perfil): en vez de un error 500 se vuelve al inicio.
-     */
-    public function edit(Request $request): RedirectResponse
+    /** Perfil básico: datos de contacto y cambio de contraseña. */
+    public function edit(Request $request)
     {
-        return Redirect::route('dashboard');
+        return view('profile.edit', ['user' => $request->user()->load('role')]);
     }
 
     /**
@@ -35,7 +32,21 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return Redirect::route('profile.edit');
+        return Redirect::route('profile.edit')->with('success', 'Datos actualizados');
+    }
+
+    public function password(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)],
+        ], [
+            'current_password.current_password' => 'La contraseña actual no es correcta',
+        ]);
+
+        $request->user()->update(['password' => \Illuminate\Support\Facades\Hash::make($request->password)]);
+
+        return Redirect::route('profile.edit')->with('success', 'Contraseña actualizada');
     }
 
     /**

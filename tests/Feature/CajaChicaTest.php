@@ -273,4 +273,15 @@ class CajaChicaTest extends TestCase
         $this->get(route('caja-chica.show', $caja))->assertOk()->assertSee('Registrar gasto');
         $this->get('/dashboard')->assertRedirect(route('caja-chica.index'));
     }
+
+    public function test_el_menu_del_admin_tiene_caja_chica_dentro_de_caja_y_mi_perfil_en_administracion(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('caja-chica.index'))->assertOk()->getContent();
+
+        $caja = strpos($html, 'Historial de Cajas');
+        $this->assertNotFalse($caja);
+        $this->assertGreaterThan($caja, strpos($html, 'Caja Chica'), 'Caja Chica aparece después de Historial de Cajas, dentro del grupo Caja');
+        $this->assertStringContainsString('Mi Perfil', $html);
+        $this->assertStringNotContainsString('Mi caja chica', $html);
+    }
 }
