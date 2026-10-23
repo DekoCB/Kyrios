@@ -83,7 +83,7 @@
                                     @csrf @method('PATCH')
                                     <input type="hidden" name="estado" value="aprobado">
                                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
-                                            onclick="return confirm('¿Aprobar este pedido?')">
+                                            data-confirm="¿Aprobar este pedido?">
                                         <i class="fas fa-check mr-2"></i>Aprobar Pedido
                                     </button>
                                 </form>
@@ -103,7 +103,7 @@
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="estado" value="cancelado">
                                 <button type="submit" class="w-full bg-red-50 hover:bg-red-100 text-red-700 font-semibold py-2.5 px-4 rounded-lg transition-colors border border-red-200"
-                                        onclick="return confirm('¿Cancelar este pedido? Esta acción no se puede deshacer.')">
+                                        data-confirm="¿Cancelar este pedido? Esta acción no se puede deshacer.">
                                     <i class="fas fa-times mr-2"></i>Cancelar Pedido
                                 </button>
                             </form>

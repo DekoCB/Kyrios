@@ -124,7 +124,7 @@
                                     </a>
                                 @endif
                                 @if($canDelete)
-                                    <form action="{{ route('proveedores.destroy', $proveedor) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar este proveedor?')">
+                                    <form action="{{ route('proveedores.destroy', $proveedor) }}" method="POST" class="inline" data-confirm="¿Eliminar este proveedor?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-800" title="Eliminar">

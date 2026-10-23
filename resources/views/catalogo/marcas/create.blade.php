@@ -37,7 +37,7 @@
                         </label>
                         <input type="text" name="nombre" id="nombre"
                                value="{{ old('nombre') }}" required
-                               placeholder="Ej: Apple, Samsung, Xiaomi"
+                               placeholder="Ej: Philips, Osram, Ledvance"
                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition @error('nombre') border-red-500 @enderror">
                         @error('nombre')
                             <p class="mt-1 text-xs text-red-600"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p>

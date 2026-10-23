@@ -95,7 +95,7 @@
         <i class="fas fa-lightbulb shrink-0 mt-0.5 text-blue-500"></i>
         <div>
             <p class="font-semibold mb-0.5">¿Cuándo usar Comisión?</p>
-            <p>Para productos de <strong>buen valor unitario, como celulares</strong>: es un pago que se calcula automáticamente en cada venta (ej. "S/ 15 fijos por equipo" o "3% del margen"). Si vendes 1 celular, se genera 1 comisión.</p>
+            <p>Para productos de <strong>buen valor unitario, como luminarias decorativas</strong>: es un pago que se calcula automáticamente en cada venta (ej. "S/ 15 fijos por equipo" o "3% del margen"). Si vendes 1 luminaria, se genera 1 comisión.</p>
         </div>
     </div>
     <div x-show="tab==='bonos'" x-cloak
@@ -124,7 +124,7 @@
                         <i class="fas fa-chart-bar"></i> Reporte
                     </a>
                     <form action="{{ route('comisiones.recalcular') }}" method="POST"
-                          onsubmit="return confirm('Esto revisará todas las ventas ya pagadas y generará la comisión de las que todavía no tengan una (por ejemplo, ventas hechas antes de crear una regla nueva). No duplica ni modifica comisiones ya existentes. ¿Continuar?')">
+                          data-confirm="Esto revisará todas las ventas ya pagadas y generará la comisión de las que todavía no tengan una (por ejemplo, ventas hechas antes de crear una regla nueva). No duplica ni modifica comisiones ya existentes. ¿Continuar?">
                         @csrf
                         <button type="submit" title="Aplica las reglas activas a ventas antiguas que aún no tienen comisión calculada"
                                 class="px-3 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-medium rounded-lg transition flex items-center gap-1.5">
@@ -222,7 +222,7 @@
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <form action="{{ route('comisiones.destroy', $regla) }}" method="POST"
-                                          onsubmit="return confirm('¿Eliminar esta regla?')">
+                                          data-confirm="¿Eliminar esta regla?">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-red-500 hover:text-red-700 text-xs p-1.5 rounded-lg hover:bg-red-50 transition">
                                             <i class="fas fa-trash"></i>
@@ -343,7 +343,7 @@
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <form action="{{ route('comisiones.bonus.destroy', $bonus) }}" method="POST"
-                                          onsubmit="return confirm('¿Eliminar este bono?')">
+                                          data-confirm="¿Eliminar este bono?">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-red-500 hover:text-red-700 text-xs p-1.5 rounded-lg hover:bg-red-50 transition">
                                             <i class="fas fa-trash"></i>
@@ -389,7 +389,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Nombre de la regla *</label>
                     <input type="text" name="nombre" required maxlength="100"
-                           placeholder="Ej: Comisión iPhone 16, Comisión Celulares..."
+                           placeholder="Ej: Comisión Luminarias decorativas, Comisión Tira LED..."
                            class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -580,7 +580,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Nombre del bono *</label>
                     <input type="text" name="nombre" required maxlength="100"
-                           placeholder="Ej: Bono Samsung Galaxy, Bono categoría Celulares..."
+                           placeholder="Ej: Bono Línea Ring, Bono categoría Luminarias..."
                            class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div class="grid grid-cols-2 gap-3">

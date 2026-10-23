@@ -165,7 +165,7 @@
                                 <form action="{{ route('catalogo.motivos.destroy', $motivo) }}" method="POST" class="inline">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 transition" title="Eliminar"
-                                            onclick="return confirm('¿Eliminar el motivo «{{ $motivo->nombre }}»?')">
+                                            data-confirm="¿Eliminar el motivo «{{ $motivo->nombre }}»?">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>

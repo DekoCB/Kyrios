@@ -167,7 +167,7 @@
                                     @endif
                                     
                                     @if($canDelete)
-                                        <form action="{{ route('inventario.categorias.destroy', $categoria) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de eliminar esta categoría?')">
+                                        <form action="{{ route('inventario.categorias.destroy', $categoria) }}" method="POST" class="inline" data-confirm="¿Estás seguro de eliminar esta categoría?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="text-red-600 hover:text-red-900" title="Eliminar">

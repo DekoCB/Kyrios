@@ -33,7 +33,7 @@
                                     @else<i class="fas fa-file-pdf text-3xl text-red-500 my-3"></i>@endif
                                     <span class="block truncate text-blue-700">{{ $a->nombre_original }}</span>
                                 </a>
-                                <form method="POST" action="{{ route('caja-chica.adjunto.destroy', $a) }}" onsubmit="return confirm('¿Quitar este archivo?')">
+                                <form method="POST" action="{{ route('caja-chica.adjunto.destroy', $a) }}" data-confirm="¿Quitar este archivo?">
                                     @csrf @method('DELETE')
                                     <button class="text-red-600 hover:underline mt-1">Quitar</button>
                                 </form>

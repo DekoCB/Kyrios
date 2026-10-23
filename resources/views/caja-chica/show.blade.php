@@ -31,7 +31,7 @@
             <a href="{{ route('caja-chica.rendicion', $caja) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-file-pdf text-red-500"></i> Rendición PDF</a>
             <a href="{{ route('caja-chica.exportar', $caja) }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-file-csv text-green-600"></i> Exportar</a>
             @if($esAdmin && $caja->esta_activa)
-                <form method="POST" action="{{ route('caja-chica.cerrar', $caja) }}" class="ml-auto" onsubmit="return confirm('¿Cerrar esta caja chica? Ya no admitirá movimientos.')">
+                <form method="POST" action="{{ route('caja-chica.cerrar', $caja) }}" class="ml-auto" data-confirm="¿Cerrar esta caja chica? Ya no admitirá movimientos.">
                     @csrf
                     <button class="inline-flex items-center gap-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-lock"></i> Cerrar caja</button>
                 </form>
@@ -154,7 +154,7 @@
                                     <a href="{{ route('caja-chica.gasto.edit', $m) }}" class="text-yellow-600 hover:text-yellow-800 mr-2" title="Editar"><i class="fas fa-edit"></i></a>
                                 @endif
                                 @if($puedeTocar)
-                                    <form method="POST" action="{{ route('caja-chica.movimiento.destroy', $m) }}" class="inline" onsubmit="return confirm('¿Eliminar este movimiento y sus archivos?')">
+                                    <form method="POST" action="{{ route('caja-chica.movimiento.destroy', $m) }}" class="inline" data-confirm="¿Eliminar este movimiento y sus archivos?">
                                         @csrf @method('DELETE')
                                         <button class="text-red-600 hover:text-red-800" title="Eliminar"><i class="fas fa-trash"></i></button>
                                     </form>

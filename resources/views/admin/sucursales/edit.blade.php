@@ -275,7 +275,7 @@
                 <form action="{{ route('admin.sucursales.generar-series', $sucursal) }}" method="POST">
                     @csrf
                     <button type="submit"
-                        onclick="return confirm('¿Generar las series estándar faltantes (FA, BA, FC, FD, T, CO)?')"
+                        data-confirm="¿Generar las series estándar faltantes (FA, BA, FC, FD, T, CO)?"
                         class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-indigo-200">
                         <i class="fas fa-magic"></i> Generar series estándar
                     </button>

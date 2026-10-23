@@ -425,7 +425,7 @@
                                     
                                     @if($canDelete)
                                         <form action="{{ route('inventario.productos.destroy', $producto) }}" method="POST" class="inline"
-                                              onsubmit="return confirm('Si el producto tiene movimientos se desactivará (no se borrará). ¿Continuar?')">
+                                              data-confirm="Si el producto tiene movimientos se desactivará (no se borrará). ¿Continuar?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="text-red-600 hover:text-red-900" title="Desactivar / Eliminar">
@@ -557,7 +557,7 @@
                             @if($canDelete)
                             <td class="px-4 py-3 text-center">
                                 <form action="{{ route('inventario.productos.reactivar', $p) }}" method="POST" class="inline"
-                                      onsubmit="return confirm('¿Reactivar el producto {{ addslashes($p->nombre) }}?')">
+                                      data-confirm="¿Reactivar el producto {{ $p->nombre }}?">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit"

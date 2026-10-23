@@ -136,7 +136,7 @@
                                 <form action="{{ route('catalogo.colores.destroy', $color) }}" method="POST" class="inline">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 transition" title="Eliminar"
-                                            onclick="return confirm('¿Eliminar el color «{{ $color->nombre }}»?')">
+                                            data-confirm="¿Eliminar el color «{{ $color->nombre }}»?">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>

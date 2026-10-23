@@ -226,3 +226,40 @@ body { transition: background-color .2s ease, color .2s ease; }
 .dark .text-violet-800{color:#c4b5fd}
 .dark .text-violet-900{color:#c4b5fd}
 .dark .bg-black\/50{background-color:rgba(0,0,0,.7)}
+
+/* ── Diálogos del sistema (reemplazan alert/confirm del navegador) ───── */
+.kyr-dlg{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(24,23,17,.55);backdrop-filter:blur(2px);animation:kyrDlgIn .14s ease-out}
+.kyr-dlg-saliendo{opacity:0;transition:opacity .12s}
+.kyr-dlg-caja{width:100%;max-width:26rem;background:#fff;color:#26241f;border:1px solid #e5e2d6;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.28);padding:22px 22px 18px;animation:kyrDlgPop .16s ease-out}
+.kyr-dlg-cabeza{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.kyr-dlg-cabeza h3{margin:0;font-size:1.05rem;font-weight:700;color:#26241f}
+.kyr-dlg-icono{flex:none;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;background:#FFF4BF;color:#44413A}
+.kyr-dlg-peligro .kyr-dlg-icono{background:#fee2e2;color:#b91c1c}
+.kyr-dlg-error .kyr-dlg-icono{background:#ffedd5;color:#c2410c}
+.kyr-dlg-texto{margin:0 0 18px;font-size:.93rem;line-height:1.5;color:#4b4a42;white-space:pre-line;overflow-wrap:anywhere}
+.kyr-dlg-pie{display:flex;justify-content:flex-end;gap:10px}
+.kyr-dlg-btn{border:0;border-radius:10px;padding:10px 18px;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .12s,transform .05s}
+.kyr-dlg-btn:active{transform:translateY(1px)}
+.kyr-dlg-btn:focus-visible{outline:3px solid #FAD000;outline-offset:2px}
+.kyr-dlg-cancelar{background:#ece8dc;color:#3a372f}
+.kyr-dlg-cancelar:hover{background:#e0dbc9}
+.kyr-dlg-aceptar{background:#44413A;color:#fff}
+.kyr-dlg-aceptar:hover{background:#2e2c26}
+.kyr-dlg-peligro .kyr-dlg-aceptar{background:#dc2626}
+.kyr-dlg-peligro .kyr-dlg-aceptar:hover{background:#b91c1c}
+.dark .kyr-dlg{background:rgba(0,0,0,.65)}
+.dark .kyr-dlg-caja{background:#1e1c17;color:#ece8dc;border-color:#34312a}
+.dark .kyr-dlg-cabeza h3{color:#f3f0e6}
+.dark .kyr-dlg-texto{color:#bdb8a8}
+.dark .kyr-dlg-icono{background:rgba(250,208,0,.15);color:#FAD000}
+.dark .kyr-dlg-peligro .kyr-dlg-icono{background:rgba(239,68,68,.18);color:#fca5a5}
+.dark .kyr-dlg-error .kyr-dlg-icono{background:rgba(249,115,22,.18);color:#fdba74}
+.dark .kyr-dlg-cancelar{background:#34312a;color:#ece8dc}
+.dark .kyr-dlg-cancelar:hover{background:#44413A}
+.dark .kyr-dlg-aceptar{background:#FAD000;color:#26241f}
+.dark .kyr-dlg-aceptar:hover{background:#E6BC00}
+.dark .kyr-dlg-peligro .kyr-dlg-aceptar{background:#ef4444;color:#fff}
+.dark .kyr-dlg-peligro .kyr-dlg-aceptar:hover{background:#dc2626}
+@keyframes kyrDlgIn{from{opacity:0}to{opacity:1}}
+@keyframes kyrDlgPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.kyr-dlg,.kyr-dlg-caja{animation:none}}

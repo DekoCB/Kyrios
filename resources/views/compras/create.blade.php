@@ -1164,11 +1164,12 @@
     }
 
     function eliminarProducto(rowId) {
-        if (confirm('¿Eliminar este producto?')) {
+        window.kyrConfirm('¿Eliminar este producto de la compra?').then(function (ok) {
+            if (!ok) return;
             document.getElementById(rowId).remove();
             renumerarFilas();
             calcularTotales();
-        }
+        });
     }
 
     function cargarDetallesProducto(select, index) {
@@ -2659,7 +2660,7 @@ function guardarNuevoProducto() {
                 </label>
                 <input type="text" id="np_nombre"
                        class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100 transition"
-                       placeholder="Ej: iPhone 15 Pro Max">
+                       placeholder="Ej: Ring 30 negro">
             </div>
 
             <!-- Categoría + Tipo inventario -->

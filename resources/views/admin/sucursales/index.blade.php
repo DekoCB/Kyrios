@@ -131,7 +131,7 @@
                         </a>
                         @if(!$sucursal->es_principal)
                             <form action="{{ route('admin.sucursales.destroy', $sucursal) }}" method="POST"
-                                onsubmit="return confirm('¿Eliminar la sucursal {{ $sucursal->nombre }}? Esta acción no se puede deshacer.')">
+                                data-confirm="¿Eliminar la sucursal {{ $sucursal->nombre }}? Esta acción no se puede deshacer.">
                                 @csrf @method('DELETE')
                                 <button type="submit"
                                     class="bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors">

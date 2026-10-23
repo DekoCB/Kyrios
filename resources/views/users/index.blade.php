@@ -131,7 +131,7 @@
                                 </button>
                                 @if($user->id !== auth()->id())
                                 <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline"
-                                      onsubmit="return confirm('¿Eliminar a {{ addslashes($user->name) }}? Esta acción no se puede deshacer.')">
+                                      data-confirm="¿Eliminar a {{ $user->name }}? Esta acción no se puede deshacer.">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="p-2 rounded-lg text-red-400 hover:bg-red-100 transition-colors" title="Eliminar">
                                         <i class="fas fa-trash text-sm"></i>

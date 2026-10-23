@@ -363,7 +363,7 @@
                                             {{-- Desactivar --}}
                                             <form action="{{ route('inventario.productos.variantes.destroy', $variante) }}"
                                                   method="POST"
-                                                  onsubmit="return confirm('¿Desactivar esta variante?')">
+                                                  data-confirm="¿Desactivar esta variante?">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
@@ -393,7 +393,7 @@
                                                                 <button class="text-white hover:text-yellow-300 text-xs p-1" title="Marcar como principal"><i class="fas fa-star"></i></button>
                                                             </form>
                                                         @endunless
-                                                        <form action="{{ route('inventario.productos.imagenes.destroy', $img) }}" method="POST" onsubmit="return confirm('¿Eliminar esta imagen?')">
+                                                        <form action="{{ route('inventario.productos.imagenes.destroy', $img) }}" method="POST" data-confirm="¿Eliminar esta imagen?">
                                                             @csrf @method('DELETE')
                                                             <button class="text-white hover:text-red-300 text-xs p-1" title="Eliminar"><i class="fas fa-trash"></i></button>
                                                         </form>

@@ -105,7 +105,7 @@
                             <form action="{{ route('facturacion.series.destroy', $serie) }}" method="POST" class="inline">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 transition" title="Eliminar"
-                                        onclick="return confirm('¿Eliminar la serie {{ $serie->serie }}?')">
+                                        data-confirm="¿Eliminar la serie {{ $serie->serie }}?">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>

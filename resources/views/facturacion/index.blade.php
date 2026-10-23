@@ -247,7 +247,7 @@
                                 <form action="{{ route('facturacion.enviar-sunat', $comp) }}" method="POST" class="inline">
                                     @csrf
                                     <button type="submit" class="text-amber-600 hover:text-amber-800 transition" title="Enviar a SUNAT"
-                                            onclick="return confirm('¿Enviar este comprobante a SUNAT?')">
+                                            data-confirm="¿Enviar este comprobante a SUNAT?">
                                         <i class="fas fa-paper-plane"></i>
                                     </button>
                                 </form>

@@ -166,7 +166,7 @@
                                         <button type="submit"
                                                 class="text-amber-600 hover:text-amber-800 text-xs font-medium transition"
                                                 title="Enviar a SUNAT"
-                                                onclick="return confirm('¿Enviar esta guía a SUNAT?')">
+                                                data-confirm="¿Enviar esta guía a SUNAT?">
                                             <i class="fas fa-paper-plane"></i>
                                         </button>
                                     </form>

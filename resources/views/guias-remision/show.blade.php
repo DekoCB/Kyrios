@@ -312,7 +312,7 @@
                     <form action="{{ route('guias-remision.enviar-sunat', $guia) }}" method="POST">
                         @csrf
                         <button type="submit"
-                                onclick="return confirm('¿Enviar esta guía a SUNAT?')"
+                                data-confirm="¿Enviar esta guía a SUNAT?"
                                 class="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg transition">
                             <i class="fas fa-paper-plane"></i>
                             {{ in_array($guia->sunat_estado, ['error', 'rechazado']) ? 'Reintentar envío a SUNAT' : 'Enviar a SUNAT' }}

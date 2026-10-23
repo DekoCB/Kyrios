@@ -121,7 +121,7 @@
         {{-- Reiniciar button --}}
         <div class="flex justify-end mb-3">
             <form action="{{ route('inventario-fisico.reiniciar', $conteo) }}" method="POST"
-                  onsubmit="return confirm('¿Reiniciar todo el conteo? Se borrarán todos los valores ingresados.')">
+                  data-confirm="¿Reiniciar todo el conteo? Se borrarán todos los valores ingresados.">
                 @csrf
                 <button type="submit"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg text-sm font-medium transition-colors">

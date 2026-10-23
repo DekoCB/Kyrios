@@ -190,13 +190,26 @@
 </div>
 <script>
 function confirmarApertura(form) {
-    var monto = parseFloat(document.getElementById('montoInicial').value) || 0;
-    var selectEl = form.querySelector('[name="almacen_id"]');
-    var almacenNombre = '{{ $almacen->nombre ?? "" }}';
-    if (selectEl) {
-        almacenNombre = selectEl.options[selectEl.selectedIndex]?.text ?? '';
+    if (form.dataset.confirmado) {
+        return true;
     }
-    return confirm('¿Confirmar apertura de caja con S/ ' + monto.toFixed(2) + '?\n\nAlmacén: ' + almacenNombre);
+    var monto = parseFloat(document.getElementById('montoInicial').value) || 0;
+    // El selector de almacén (administrador) está fuera del <form> y se asocia con form="…": se lee por form.elements.
+    var selectEl = form.elements['almacen_id'];
+    var almacenNombre = @json($almacen->nombre ?? '');
+    if (selectEl && selectEl.tagName === 'SELECT') {
+        almacenNombre = selectEl.options[selectEl.selectedIndex] ? selectEl.options[selectEl.selectedIndex].text : '';
+    }
+    window.kyrConfirm(
+        'Se abrirá la caja con S/ ' + monto.toFixed(2) + (almacenNombre ? '\n\nAlmacén: ' + almacenNombre : ''),
+        { titulo: 'Confirmar apertura de caja', aceptar: 'Abrir caja', peligro: false }
+    ).then(function (ok) {
+        if (ok) {
+            form.dataset.confirmado = '1';
+            form.requestSubmit();
+        }
+    });
+    return false;
 }
 </script>
 </body>

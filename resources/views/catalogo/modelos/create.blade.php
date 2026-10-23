@@ -70,7 +70,7 @@
                         </label>
                         <input type="text" name="nombre" id="nombre"
                                value="{{ old('nombre') }}" required
-                               placeholder="Ej: iPhone 14 Pro Max, Galaxy S23 Ultra"
+                               placeholder="Ej: Ring 30, Spot orientable"
                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                         @error('nombre')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>

@@ -133,7 +133,7 @@
                                 <form action="{{ route('catalogo.marcas.destroy', $marca) }}" method="POST" class="inline">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 transition" title="Eliminar"
-                                            onclick="return confirm('¿Eliminar la marca «{{ $marca->nombre }}»?')">
+                                            data-confirm="¿Eliminar la marca «{{ $marca->nombre }}»?">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
@@ -176,7 +176,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nombre <span class="text-red-500">*</span></label>
                         <input type="text" name="nombre" x-model="form.nombre" required
                                class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500"
-                               placeholder="Ej: Samsung, Apple...">
+                               placeholder="Ej: Philips, Osram...">
                     </div>
 
                     <div>

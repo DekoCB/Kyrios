@@ -103,7 +103,7 @@
                         @endif
                         @if($canDelete)
                             <form action="{{ route('inventario.almacenes.destroy', $almacen) }}" method="POST"
-                                class="inline" onsubmit="return confirm('¿Eliminar {{ addslashes($almacen->nombre) }}?')">
+                                class="inline" data-confirm="¿Eliminar {{ $almacen->nombre }}?">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="p-2 rounded-lg text-red-400 hover:bg-red-100 transition-colors" title="Eliminar">
                                     <i class="fas fa-trash text-sm"></i>

@@ -153,7 +153,7 @@
                                 <form action="{{ route('catalogo.unidades.destroy', $unidad) }}" method="POST" class="inline">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-500 hover:text-red-700 transition" title="Eliminar"
-                                            onclick="return confirm('¿Eliminar la unidad «{{ $unidad->nombre }}»?')">
+                                            data-confirm="¿Eliminar la unidad «{{ $unidad->nombre }}»?">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>

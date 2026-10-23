@@ -257,7 +257,7 @@
                                         <form action="{{ route('inventario.productos.codigos-barras.destroy', $codigo) }}"
                                               method="POST"
                                               class="inline"
-                                              onsubmit="return confirm('¿Estás seguro de eliminar este código de barras?')">
+                                              data-confirm="¿Estás seguro de eliminar este código de barras?">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="text-red-600 hover:text-red-900" title="Eliminar">

@@ -49,7 +49,7 @@
                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg
                               focus:ring-2 focus:ring-blue-500 focus:border-transparent
                               text-sm transition"
-                       placeholder="Ej: Samsung, Apple, Xiaomi...">
+                       placeholder="Ej: Philips, Osram, Ledvance...">
             </div>
 
             <p id="modalMarcaError"
@@ -114,7 +114,7 @@
                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg
                               focus:ring-2 focus:ring-indigo-500 focus:border-transparent
                               text-sm transition"
-                       placeholder="Ej: Galaxy S24, iPhone 15 Pro...">
+                       placeholder="Ej: Ring 30, Spot orientable">
             </div>
 
             <p id="modalModeloError"
