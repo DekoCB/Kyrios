@@ -48,6 +48,23 @@
         .rx-title { font-weight: 700; font-size: .95rem; margin: 0 0 8px; }
         .rx-empty { text-align: center; color: #6b7280; padding: 22px 8px; font-size: .92rem; }
         @media (min-width: 768px) { .rx-bar { left: 16rem; } }
+
+        /* Tema oscuro (misma paleta que app.css) */
+        .dark .rx-card, .dark .rx-bar { background: #1e1c17; border-color: #34312a; }
+        .dark .rx-label, .dark .rx-total { color: #bdb8a8; }
+        .dark .rx-title, .dark .rx-name, .dark .rx-qty input { color: #f3f0e6; }
+        .dark .rx-sub, .dark .rx-empty { color: #a8a292; }
+        .dark .rx-input, .dark .rx-select, .dark .rx-qty input, .dark .rx-qty button { background: #27251f; color: #ece8dc; border-color: #44413A; }
+        .dark .rx-input:focus, .dark .rx-select:focus, .dark .rx-scan, .dark .rx-item:hover { border-color: #FAD000; }
+        .dark .rx-btn { background: #FAD000; color: #26241f; }
+        .dark .rx-btn.sec { background: #34312a; color: #ece8dc; }
+        .dark .rx-btn.danger { background: rgba(239,68,68,.18); color: #fca5a5; }
+        .dark .rx-msg.ok { background: rgba(34,197,94,.16); color: #86efac; }
+        .dark .rx-msg.err { background: rgba(239,68,68,.16); color: #fca5a5; }
+        .dark .rx-line { border-bottom-color: #2a2822; }
+        .dark .rx-thumb { background: #27251f; color: #6b675b; }
+        .dark .rx-item { background: #27251f; border-color: #34312a; color: #ece8dc; }
+        .dark .rx-dano { background: rgba(250,208,0,.15); color: #FAD000; }
     </style>
 </head>
 <body class="bg-gray-50">
