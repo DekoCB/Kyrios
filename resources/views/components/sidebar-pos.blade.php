@@ -44,7 +44,7 @@
            }
        }"
        :class="collapsed ? 'w-16' : 'w-64'"
-       class="-translate-x-full md:translate-x-0 fixed left-0 top-0 h-full z-40 flex flex-col bg-gray-900 text-white shadow-2xl transition-all duration-300 ease-in-out">
+       class="-translate-x-full md:translate-x-0 kyr-sidebar fixed left-0 top-0 h-full z-40 flex flex-col bg-blue-900 text-white shadow-2xl transition-all duration-300 ease-in-out">
 
     {{-- ── Header ── --}}
     <div class="flex items-center h-14 shrink-0 border-b border-white/10 overflow-hidden"
@@ -137,6 +137,7 @@
     {{-- ── Footer: logout ── --}}
     <div class="shrink-0 border-t border-white/10 py-3"
          :class="collapsed ? 'px-2' : 'px-2'">
+        @include('partials.tema-toggle', ['clase' => 'mb-2'])
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit"

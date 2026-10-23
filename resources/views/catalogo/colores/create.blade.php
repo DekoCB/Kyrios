@@ -7,6 +7,7 @@
     <title>Nuevo Color - Catálogo</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
@@ -68,7 +69,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Color Visual</label>
                         <div class="flex items-start gap-4">
-                            <input type="color" id="colorPicker" value="{{ old('codigo_hex', '#3b82f6') }}"
+                            <input type="color" id="colorPicker" value="{{ old('codigo_hex', '#44413A') }}"
                                    oninput="syncColor(this.value)"
                                    class="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer p-0.5">
                             <div class="flex-1">
@@ -88,10 +89,10 @@
                         {{-- Preview card --}}
                         <div class="mt-4 p-4 rounded-xl border-2 border-gray-200 flex items-center gap-4 bg-gray-50">
                             <div id="colorSquare" class="w-16 h-16 rounded-xl shadow-md border border-gray-200 flex-shrink-0"
-                                 style="background: {{ old('codigo_hex', '#3b82f6') }}"></div>
+                                 style="background: {{ old('codigo_hex', '#44413A') }}"></div>
                             <div>
                                 <p class="font-semibold text-gray-800" id="previewNombre">{{ old('nombre', 'Nuevo color') }}</p>
-                                <p class="text-sm font-mono text-gray-500" id="previewHex">{{ old('codigo_hex', '#3b82f6') }}</p>
+                                <p class="text-sm font-mono text-gray-500" id="previewHex">{{ old('codigo_hex', '#44413A') }}</p>
                                 <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Vista previa</span>
                             </div>
                         </div>

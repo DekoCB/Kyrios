@@ -6,12 +6,12 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 9px; color: #1f2937; }
-        .header { background: #1e3a5f; color: #fff; padding: 10px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: #44413A; color: #fff; padding: 10px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { font-size: 13px; font-weight: bold; }
         .header p { font-size: 8px; opacity: .8; margin-top: 2px; }
         .meta { font-size: 8px; text-align: right; }
         table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-        thead th { background: #1e3a5f; color: #fff; padding: 5px 6px; text-align: left; font-size: 8px; text-transform: uppercase; }
+        thead th { background: #44413A; color: #fff; padding: 5px 6px; text-align: left; font-size: 8px; text-transform: uppercase; }
         thead th.right { text-align: right; }
         tbody tr:nth-child(even) { background: #f9fafb; }
         tbody td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; font-size: 8px; }
@@ -24,7 +24,7 @@
         .kpi { flex: 1; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 8px; text-align: center; }
         .kpi-val { font-size: 12px; font-weight: bold; }
         .kpi-lbl { font-size: 7px; color: #6b7280; margin-top: 1px; }
-        .blue { color: #1d4ed8; }
+        .blue { color: #44413A; }
         .red { color: #dc2626; }
         .amber { color: #d97706; }
     </style>

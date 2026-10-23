@@ -7,6 +7,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .chart-container { position: relative; height: 280px; }
@@ -414,7 +415,7 @@
 
 {{-- ── SCRIPTS CHART.JS ──────────────────────── --}}
 <script>
-const PALETTE = ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6'];
+const PALETTE = ['#44413A','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6'];
 
 const fmtSoles = (v) => 'S/ ' + Number(v).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
 
@@ -427,8 +428,8 @@ new Chart(document.getElementById('chartTendencia'), {
             {
                 label: 'Ventas (S/)',
                 data: @json($tendencia->pluck('total_ventas')),
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59,130,246,0.08)',
+                borderColor: '#C9A500',
+                backgroundColor: 'rgba(201,165,0,0.08)',
                 fill: true,
                 tension: 0.35,
                 pointRadius: {{ $tendencia->count() > 30 ? 2 : 4 }},

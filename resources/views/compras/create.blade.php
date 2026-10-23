@@ -7,6 +7,7 @@
     <title>Nueva Compra - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -744,7 +745,7 @@
                         <button type="button" 
                                 class="categoria-filter active px-4 py-2 rounded-full text-sm font-medium transition-all"
                                 data-categoria="todos"
-                                style="background-color: #1e3a8a; color: white;">
+                                style="background-color: #44413A; color: white;">
                             <i class="fas fa-boxes mr-1"></i>Todos
                         </button>
                         
@@ -1079,7 +1080,7 @@
         document.querySelectorAll('.categoria-filter').forEach(btn => {
             const btnCategoria = btn.dataset.categoria;
             if (btnCategoria == categoriaId) {
-                btn.style.backgroundColor = '#1e3a8a';
+                btn.style.backgroundColor = '#44413A';
                 btn.style.color = 'white';
             } else {
                 btn.style.backgroundColor = '#f3f4f6';
@@ -1147,7 +1148,7 @@
                     icon: 'warning',
                     title: 'Sin conexión a SUNAT',
                     text: res.message,
-                    confirmButtonColor: '#1e3a8a',
+                    confirmButtonColor: '#C9A500',
                 });
             }
         } catch (e) {
@@ -2134,7 +2135,7 @@
                 icon: 'warning',
                 title: 'Cantidad inválida',
                 text: 'La cantidad debe ser al menos 1',
-                confirmButtonColor: '#1e3a8a'
+                confirmButtonColor: '#C9A500'
             });
             return;
         }
@@ -2678,7 +2679,7 @@
                     icon: 'success',
                     title: 'Importación completada',
                     text: `Se importaron ${importados} de ${Math.min(lineas.length, inputs.length)} IMEIs válidos`,
-                    confirmButtonColor: '#2563eb'
+                    confirmButtonColor: '#C9A500'
                 });
             };
             
@@ -2821,7 +2822,7 @@
                     icon: 'warning',
                     title: 'Proveedor requerido',
                     text: 'Selecciona un proveedor antes de continuar.',
-                    confirmButtonColor: '#1e3a8a'
+                    confirmButtonColor: '#C9A500'
                 });
                 document.getElementById('buscar_proveedor')?.focus();
                 return false;
@@ -2833,7 +2834,7 @@
                     icon: 'warning',
                     title: 'Almacén requerido',
                     text: 'Debes seleccionar el almacén de destino.',
-                    confirmButtonColor: '#1e3a8a'
+                    confirmButtonColor: '#C9A500'
                 });
                 document.getElementById('almacen_id')?.focus();
                 return false;
@@ -2845,7 +2846,7 @@
                     icon: 'warning',
                     title: 'Productos requeridos',
                     text: 'Debes agregar al menos un producto a la compra.',
-                    confirmButtonColor: '#1e3a8a'
+                    confirmButtonColor: '#C9A500'
                 });
                 return false;
             }
@@ -2876,7 +2877,7 @@
                     icon: 'warning',
                     title: 'Datos incompletos',
                     text: filaIncompleta,
-                    confirmButtonColor: '#1e3a8a'
+                    confirmButtonColor: '#C9A500'
                 });
                 return false;
             }
@@ -2965,14 +2966,14 @@ function npAgregarVariante() {
     const capacidad  = document.getElementById('np_var_capacidad').value.trim();
 
     if (!colorId && !capacidad) {
-        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Ingresa al menos el color o la capacidad.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Ingresa al menos el color o la capacidad.', confirmButtonColor: '#C9A500' });
         return;
     }
 
     // Evitar duplicados
     const existe = npVariantes.some(v => v.color_id == colorId && v.capacidad === capacidad);
     if (existe) {
-        Swal.fire({ icon: 'warning', title: 'Variante duplicada', text: 'Ya agregaste esta combinación de color y capacidad.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Variante duplicada', text: 'Ya agregaste esta combinación de color y capacidad.', confirmButtonColor: '#C9A500' });
         return;
     }
 
@@ -3036,7 +3037,7 @@ function toggleModeloLabel() {
 async function crearMarcaRapida() {
     const categoriaId = document.getElementById('np_categoria').value;
     if (!categoriaId) {
-        Swal.fire({ icon: 'warning', title: 'Selecciona categoría', text: 'Primero selecciona una categoría antes de crear una marca.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Selecciona categoría', text: 'Primero selecciona una categoría antes de crear una marca.', confirmButtonColor: '#C9A500' });
         return;
     }
     const { value: nombre } = await Swal.fire({
@@ -3046,7 +3047,7 @@ async function crearMarcaRapida() {
         showCancelButton: true,
         confirmButtonText: 'Crear',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#1e3a8a',
+        confirmButtonColor: '#C9A500',
         inputValidator: v => !v.trim() ? 'El nombre es obligatorio' : null,
     });
     if (!nombre) return;
@@ -3073,7 +3074,7 @@ async function crearMarcaRapida() {
 async function crearModeloRapido() {
     const marcaId = document.getElementById('np_marca').value;
     if (!marcaId) {
-        Swal.fire({ icon: 'warning', title: 'Selecciona marca', text: 'Primero selecciona una marca antes de crear un modelo.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Selecciona marca', text: 'Primero selecciona una marca antes de crear un modelo.', confirmButtonColor: '#C9A500' });
         return;
     }
     const { value: nombre } = await Swal.fire({
@@ -3083,7 +3084,7 @@ async function crearModeloRapido() {
         showCancelButton: true,
         confirmButtonText: 'Crear',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#1e3a8a',
+        confirmButtonColor: '#C9A500',
         inputValidator: v => !v.trim() ? 'El nombre es obligatorio' : null,
     });
     if (!nombre) return;
@@ -3114,7 +3115,7 @@ async function crearColorRapido() {
         showCancelButton: true,
         confirmButtonText: 'Crear',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#1e3a8a',
+        confirmButtonColor: '#C9A500',
         inputValidator: v => !v.trim() ? 'El nombre es obligatorio' : null,
     });
     if (!nombre) return;
@@ -3222,28 +3223,28 @@ function guardarNuevoProducto() {
     const tipoGarantia    = document.getElementById('np_tipo_garantia')?.value || 'proveedor';
 
     if (!nombre) {
-        Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Ingresa el nombre del producto.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Ingresa el nombre del producto.', confirmButtonColor: '#C9A500' });
         document.getElementById('np_nombre').focus();
         return;
     }
     if (!categoriaId) {
-        Swal.fire({ icon: 'warning', title: 'Falta la categoría', text: 'Selecciona una categoría.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Falta la categoría', text: 'Selecciona una categoría.', confirmButtonColor: '#C9A500' });
         return;
     }
     if (!marcaId) {
-        Swal.fire({ icon: 'warning', title: 'Falta la marca', text: 'Selecciona una marca.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Falta la marca', text: 'Selecciona una marca.', confirmButtonColor: '#C9A500' });
         return;
     }
     if (!unidadMedidaId) {
-        Swal.fire({ icon: 'warning', title: 'Falta la unidad de medida', text: 'Selecciona una unidad de medida.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Falta la unidad de medida', text: 'Selecciona una unidad de medida.', confirmButtonColor: '#C9A500' });
         return;
     }
     if (tipo === 'serie' && !modeloId) {
-        Swal.fire({ icon: 'warning', title: 'Falta el modelo', text: 'Para productos con IMEI el modelo es obligatorio.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Falta el modelo', text: 'Para productos con IMEI el modelo es obligatorio.', confirmButtonColor: '#C9A500' });
         return;
     }
     if (tieneVariantes && npVariantes.length === 0) {
-        Swal.fire({ icon: 'warning', title: 'Sin variantes', text: 'Agregaste que tiene variantes pero no definiste ninguna. Agrega al menos una.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Sin variantes', text: 'Agregaste que tiene variantes pero no definiste ninguna. Agrega al menos una.', confirmButtonColor: '#C9A500' });
         return;
     }
 

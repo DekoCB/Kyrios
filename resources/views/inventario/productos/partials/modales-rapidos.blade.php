@@ -178,13 +178,13 @@
                     Color (opcional)
                 </label>
                 <div class="flex items-center gap-3">
-                    <input type="color" id="modalColorHex" value="#3b82f6"
+                    <input type="color" id="modalColorHex" value="#44413A"
                            class="h-11 w-14 rounded-lg cursor-pointer border-2 border-gray-200 p-0.5"
                            oninput="document.getElementById('modalColorPreview').style.backgroundColor = this.value">
                     <div id="modalColorPreview"
                          class="flex-1 h-11 rounded-lg border-2 border-gray-200 shadow-inner transition-colors"
-                         style="background-color:#3b82f6;"></div>
-                    <span id="modalColorHexLabel" class="text-xs font-mono text-gray-500 w-16">#3b82f6</span>
+                         style="background-color:#44413A;"></div>
+                    <span id="modalColorHexLabel" class="text-xs font-mono text-gray-500 w-16">#44413A</span>
                 </div>
             </div>
 
@@ -426,9 +426,9 @@ async function guardarModeloRapido() {
 // ── MODAL COLOR ───────────────────────────────────────────────
 function abrirModalColor() {
     document.getElementById('modalColorNombre').value = '';
-    document.getElementById('modalColorHex').value    = '#3b82f6';
-    document.getElementById('modalColorPreview').style.backgroundColor = '#3b82f6';
-    document.getElementById('modalColorHexLabel').textContent = '#3b82f6';
+    document.getElementById('modalColorHex').value    = '#44413A';
+    document.getElementById('modalColorPreview').style.backgroundColor = '#44413A';
+    document.getElementById('modalColorHexLabel').textContent = '#44413A';
     resetError('modalColorError');
     abrirModal('modalColor');
     setTimeout(() => document.getElementById('modalColorNombre').focus(), 50);

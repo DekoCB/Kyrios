@@ -8,6 +8,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .hover-scale {
@@ -406,7 +407,7 @@
                     datasets: [{
                         label: 'Ventas por Hora',
                         data: ventasHora,
-                        backgroundColor: '#1e3a8a',
+                        backgroundColor: '#C9A500',
                         borderRadius: 8
                     }]
                 },

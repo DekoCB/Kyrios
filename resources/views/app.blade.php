@@ -12,6 +12,7 @@
 
         <!-- Scripts -->
         @routes
+        @include('partials.tema-head')
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
         @inertiaHead
     </head>

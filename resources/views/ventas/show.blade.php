@@ -7,6 +7,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         @media print {
@@ -975,7 +976,7 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full">
                     <thead>
-                        <tr style="background-color: #1e3a5f; color: #fff;">
+                        <tr style="background-color: #44413A; color: #fff;">
                             <th class="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider">ITEM</th>
                             <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">CÓDIGO</th>
                             <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">DESCRIPCIÓN</th>

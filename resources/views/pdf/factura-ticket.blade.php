@@ -30,14 +30,14 @@ body {
 
 /* ─── HEADER ─── */
 .empresa-logo { display: block; margin: 0 auto 4px; max-height: 50px; max-width: 90%; }
-.empresa-nombre { font-size: 9.5pt; font-weight: bold; text-align: center; color: #1e3a5f; margin-bottom: 2px; }
+.empresa-nombre { font-size: 9.5pt; font-weight: bold; text-align: center; color: #44413A; margin-bottom: 2px; }
 .empresa-info { text-align: center; font-size: 6.5pt; color: #444; line-height: 1.5; margin-bottom: 3px; }
 
 /* ─── DOC TITLE ─── */
 .doc-tipo { text-align: center; font-weight: bold; font-size: 8pt; text-transform: uppercase;
             border-top: 1px solid #333; border-bottom: 1px solid #333;
             padding: 3px 0; margin: 5px 0; letter-spacing: 0.5px; }
-.doc-numero { text-align: center; font-size: 8pt; font-weight: bold; color: #1e3a5f;
+.doc-numero { text-align: center; font-size: 8pt; font-weight: bold; color: #44413A;
               margin-bottom: 5px; letter-spacing: 0.5px; }
 
 /* ─── CLIENTE ─── */
@@ -225,7 +225,7 @@ table.items th:last-child, table.items td:last-child { padding-right: 0; }
         [$pillColor, $pillLabel] = match($tipo) {
             'yape'          => ['#7c3aed', 'YAPE'],
             'plin'          => ['#16a34a', 'PLIN'],
-            'transferencia' => ['#1d4ed8', 'TRANSFERENCIA'],
+            'transferencia' => ['#44413A', 'TRANSFERENCIA'],
             'pos'           => ['#b91c1c', 'POS / TARJETA'],
             default         => ['#374151', strtoupper($tipo)],
         };

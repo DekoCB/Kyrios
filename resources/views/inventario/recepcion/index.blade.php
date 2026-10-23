@@ -7,6 +7,7 @@
     <title>Recepción con escáner - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         /* Pantalla pensada para PDA / celular: estilos propios (no dependen del CSS compilado de Tailwind) */
@@ -15,11 +16,11 @@
         .rx-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
         .rx-label { display: block; font-size: .78rem; font-weight: 600; color: #4b5563; margin-bottom: 4px; }
         .rx-input, .rx-select { width: 100%; padding: 12px 14px; font-size: 1rem; border: 2px solid #d1d5db; border-radius: 10px; background: #fff; }
-        .rx-input:focus, .rx-select:focus { outline: none; border-color: #1e40af; }
-        .rx-scan { font-size: 1.15rem; font-family: ui-monospace, Consolas, monospace; border-color: #1e40af; }
+        .rx-input:focus, .rx-select:focus { outline: none; border-color: #44413A; }
+        .rx-scan { font-size: 1.15rem; font-family: ui-monospace, Consolas, monospace; border-color: #44413A; }
         .rx-row { display: flex; gap: 10px; align-items: center; }
         .rx-grow { flex: 1; min-width: 0; }
-        .rx-btn { border: 0; border-radius: 10px; padding: 12px 16px; font-size: .95rem; font-weight: 600; cursor: pointer; background: #1e3a8a; color: #fff; }
+        .rx-btn { border: 0; border-radius: 10px; padding: 12px 16px; font-size: .95rem; font-weight: 600; cursor: pointer; background: #44413A; color: #fff; }
         .rx-btn.sec { background: #e5e7eb; color: #111827; }
         .rx-btn.danger { background: #fee2e2; color: #991b1b; }
         .rx-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -42,7 +43,7 @@
         .rx-pick { display: none; }
         .rx-pick.open { display: block; }
         .rx-item { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; }
-        .rx-item:hover { border-color: #1e40af; }
+        .rx-item:hover { border-color: #44413A; }
         .rx-title { font-weight: 700; font-size: .95rem; margin: 0 0 8px; }
         .rx-empty { text-align: center; color: #6b7280; padding: 22px 8px; font-size: .92rem; }
         @media (min-width: 768px) { .rx-bar { left: 16rem; } }

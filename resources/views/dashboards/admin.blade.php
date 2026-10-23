@@ -8,6 +8,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         [x-cloak] { display: none !important; }
@@ -591,7 +592,7 @@
 
                 {{-- Acciones Rápidas --}}
                 <div class="rounded-xl shadow-lg p-6 text-white"
-                     style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);">
+                     style="background: linear-gradient(135deg, #44413A 0%, #44413A 100%);">
                     <h3 class="text-lg font-bold mb-4 text-white">
                         <i class="fas fa-bolt mr-2 text-yellow-300"></i>Acciones Rápidas
                     </h3>
@@ -650,11 +651,11 @@
                 datasets: [{
                     label: 'Ventas {{ $anio_chart }}',
                     data: ventasData,
-                    borderColor: '#1e3a8a',
-                    backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                    borderColor: '#C9A500',
+                    backgroundColor: 'rgba(201,165,0, 0.1)',
                     tension: 0.4,
                     fill: true,
-                    pointBackgroundColor: '#1e3a8a',
+                    pointBackgroundColor: '#C9A500',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2,
                     pointRadius: 4

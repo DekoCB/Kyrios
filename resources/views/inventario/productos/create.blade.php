@@ -8,6 +8,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
@@ -1179,10 +1180,10 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Color HEX <span class="text-gray-400 text-xs">(opcional)</span></label>
                 <div class="flex gap-3 items-center">
-                    <input type="color" id="createColorPicker" value="#3b82f6"
+                    <input type="color" id="createColorPicker" value="#44413A"
                            class="h-10 w-14 rounded-lg border border-gray-300 cursor-pointer p-0.5"
                            oninput="document.getElementById('createColorHexText').value = this.value">
-                    <input type="text" id="createColorHexText" value="#3b82f6" maxlength="7"
+                    <input type="text" id="createColorHexText" value="#44413A" maxlength="7"
                            placeholder="#rrggbb"
                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-400"
                            oninput="if(/^#[a-fA-F0-9]{6}$/.test(this.value)) document.getElementById('createColorPicker').value = this.value">
@@ -1206,8 +1207,8 @@
 <script>
     function abrirModalColorCreate() {
         document.getElementById('createColorNombre').value = '';
-        document.getElementById('createColorPicker').value = '#3b82f6';
-        document.getElementById('createColorHexText').value = '#3b82f6';
+        document.getElementById('createColorPicker').value = '#44413A';
+        document.getElementById('createColorHexText').value = '#44413A';
         document.getElementById('createColorError').classList.add('hidden');
         const modal = document.getElementById('modalColorCreate');
         modal.classList.remove('hidden');

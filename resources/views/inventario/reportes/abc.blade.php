@@ -7,6 +7,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-100">
@@ -337,8 +338,8 @@
                     type: 'linear',
                     position: 'right',
                     min: 0, max: 100,
-                    title: { display: true, text: '% Acumulado', font: { size: 11 }, color: '#6366f1' },
-                    ticks: { callback: v => v + '%', font: { size: 11 }, color: '#6366f1' },
+                    title: { display: true, text: '% Acumulado', font: { size: 11 }, color: '#C9A500' },
+                    ticks: { callback: v => v + '%', font: { size: 11 }, color: '#C9A500' },
                     grid: { drawOnChartArea: false }
                 }
             }

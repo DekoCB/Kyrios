@@ -7,6 +7,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .chart-container { position: relative; height: 260px; }
@@ -198,7 +199,7 @@
 
 <script>
 const coloresPaleta = [
-    '#3b82f6','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'
+    '#44413A','#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'
 ];
 
 @if($ventasPorSucursal->isNotEmpty())
@@ -231,8 +232,8 @@ new Chart(document.getElementById('chartTendencia'), {
         datasets: [{
             label: 'Ventas (S/)',
             data: @json($tendenciaDiaria->pluck('total')),
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.1)',
+            borderColor: '#C9A500',
+            backgroundColor: 'rgba(201,165,0,0.1)',
             fill: true,
             tension: 0.3,
             pointRadius: @json($tendenciaDiaria->count() > 30 ? 2 : 4),
@@ -277,7 +278,7 @@ new Chart(document.getElementById('chartDiferencias'), {
 @if($metodoPorSucursal->isNotEmpty())
 @php
     $metodoLabels = ['efectivo','yape','plin','transferencia','mixto'];
-    $metodoColores = ['#10b981','#8b5cf6','#06b6d4','#3b82f6','#f59e0b'];
+    $metodoColores = ['#10b981','#8b5cf6','#06b6d4','#44413A','#f59e0b'];
     $sucursalLabels = $metodoPorSucursal->keys()->toArray();
     $datasets = [];
     foreach ($metodoLabels as $i => $met) {

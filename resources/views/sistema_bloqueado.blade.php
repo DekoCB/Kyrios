@@ -45,7 +45,7 @@
         }
         .glow-orb.one {
             width: 500px; height: 500px;
-            background: #6366f1;
+            background: #44413A;
             top: -150px; left: -100px;
         }
         .glow-orb.two {
@@ -89,7 +89,7 @@
             position: absolute;
             top: 0; left: 10%; right: 10%;
             height: 2px;
-            background: linear-gradient(90deg, transparent, #6366f1, #818cf8, transparent);
+            background: linear-gradient(90deg, transparent, #44413A, #818cf8, transparent);
             border-radius: 999px;
         }
 
@@ -137,7 +137,7 @@
         .brand-badge .dot {
             width: 6px; height: 6px;
             border-radius: 50%;
-            background: #6366f1;
+            background: #44413A;
             animation: blink 1.8s ease-in-out infinite;
         }
 
@@ -190,7 +190,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: #6366f1;
+            color: #44413A;
             margin-bottom: 14px;
         }
 
@@ -246,7 +246,7 @@
         }
 
         .footer-note span {
-            color: #6366f1;
+            color: #44413A;
             font-weight: 500;
         }
     </style>

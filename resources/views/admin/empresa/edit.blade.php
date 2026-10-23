@@ -7,6 +7,7 @@
     <title>Configuración de Empresa</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
@@ -155,7 +156,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-3">Logo para fondo oscuro</label>
-                        <div class="mb-3 p-3 rounded-lg border inline-flex" style="background:#1e3a8a;">
+                        <div class="mb-3 p-3 rounded-lg border inline-flex" style="background:#44413A;">
                             <img src="{{ $empresa->logo_url }}" alt="Logo fondo oscuro" class="h-20 object-contain">
                         </div>
                         <p class="text-xs text-gray-500 mb-2">{{ $empresa->logo_path ? 'Logo subido por la empresa.' : 'Logo oficial de Kyrios (letras blancas). Se usa hasta que suba otro.' }}</p>

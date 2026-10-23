@@ -10,7 +10,7 @@
         .subtitle { font-size: 9px; color: #6b7280; margin-bottom: 12px; }
         table { width: 100%; border-collapse: collapse; }
         thead th {
-            background-color: #1e3a5f;
+            background-color: #44413A;
             color: white;
             padding: 5px 6px;
             text-align: left;
@@ -22,7 +22,7 @@
         tbody tr:nth-child(even) { background-color: #f9fafb; }
         tbody td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; font-size: 8px; }
         tbody td.num { text-align: right; }
-        tfoot td { padding: 5px 6px; font-weight: bold; font-size: 8px; border-top: 2px solid #1e3a5f; }
+        tfoot td { padding: 5px 6px; font-weight: bold; font-size: 8px; border-top: 2px solid #44413A; }
         tfoot td.num { text-align: right; }
         .badge-open   { color: #16a34a; font-weight: bold; }
         .badge-closed { color: #6b7280; }

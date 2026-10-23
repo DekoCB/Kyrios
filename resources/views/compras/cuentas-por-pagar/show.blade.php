@@ -6,6 +6,7 @@
     <title>Cuenta por Pagar - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -712,7 +713,7 @@ const CSRF = '{{ csrf_token() }}';
 function generarCuotas() {
     const num = parseInt(document.getElementById('inputNumCuotas').value);
     if (!num || num < 1 || num > 48) {
-        Swal.fire({ icon: 'warning', title: 'Número inválido', text: 'Ingresa entre 1 y 48 cuotas.', confirmButtonColor: '#1e3a8a' });
+        Swal.fire({ icon: 'warning', title: 'Número inválido', text: 'Ingresa entre 1 y 48 cuotas.', confirmButtonColor: '#C9A500' });
         return;
     }
 
@@ -723,7 +724,7 @@ function generarCuotas() {
         showCancelButton: true,
         confirmButtonText: 'Sí, generar',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#1d4ed8',
+        confirmButtonColor: '#C9A500',
     }).then(result => {
         if (!result.isConfirmed) return;
 

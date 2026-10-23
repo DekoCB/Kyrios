@@ -7,7 +7,7 @@
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 10px; color: #1f2937; background: #fff; }
 
         /* Header */
-        .header { background: #1e3a8a; color: #fff; padding: 14px 20px; margin-bottom: 16px; }
+        .header { background: #44413A; color: #fff; padding: 14px 20px; margin-bottom: 16px; }
         .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
         .empresa-nombre { font-size: 16px; font-weight: bold; }
         .reporte-titulo { font-size: 14px; font-weight: bold; text-align: right; }
@@ -20,7 +20,7 @@
         .kpi-label { font-size: 8px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; }
         .kpi-value { font-size: 16px; font-weight: bold; color: #111827; margin-top: 2px; }
         .kpi-sub   { font-size: 8px; color: #9ca3af; margin-top: 2px; }
-        .kpi-card.blue  { border-left: 3px solid #3b82f6; }
+        .kpi-card.blue  { border-left: 3px solid #44413A; }
         .kpi-card.orange { border-left: 3px solid #f97316; }
         .kpi-card.green { border-left: 3px solid #10b981; }
         .kpi-card.purple { border-left: 3px solid #8b5cf6; }
@@ -31,7 +31,7 @@
 
         /* Table */
         table { width: 100%; border-collapse: collapse; }
-        thead th { background: #1e3a8a; color: #fff; padding: 6px 8px; font-size: 8px;
+        thead th { background: #44413A; color: #fff; padding: 6px 8px; font-size: 8px;
             text-transform: uppercase; letter-spacing: 0.04em; text-align: right; }
         thead th:first-child { text-align: left; }
         thead th:nth-child(2) { text-align: left; }
@@ -39,7 +39,7 @@
         tbody td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; font-size: 9px; text-align: right; }
         tbody td:first-child { text-align: left; font-weight: 500; }
         tbody td:nth-child(2) { text-align: left; color: #6b7280; }
-        tfoot td { background: #1e3a8a; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 9px; text-align: right; }
+        tfoot td { background: #44413A; color: #fff; padding: 6px 8px; font-weight: bold; font-size: 9px; text-align: right; }
         tfoot td:first-child { text-align: left; }
 
         /* Margen badge */

@@ -7,6 +7,7 @@
     <title>Editar Color - Catálogo</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
@@ -69,7 +70,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Color Visual</label>
                         <div class="flex items-start gap-4">
-                            @php $hexVal = old('codigo_hex', $color->codigo_hex ?? '#3b82f6'); @endphp
+                            @php $hexVal = old('codigo_hex', $color->codigo_hex ?? '#44413A'); @endphp
                             <input type="color" id="colorPicker" value="{{ $hexVal }}"
                                    oninput="syncColor(this.value)"
                                    class="w-16 h-12 rounded-lg border border-gray-300 cursor-pointer p-0.5">

@@ -15,6 +15,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
         <!-- Scripts -->
+        @include('partials.tema-head')
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         <style>
@@ -36,7 +37,7 @@
                 justify-content: center;
                 align-items: center;
                 padding: 3rem;
-                background: linear-gradient(135deg, #034C8C, #4F758C, #FF3950, #034C8C);
+                background: linear-gradient(135deg, #1f1d18, #44413A, #6b5a00, #2b2924);
                 background-size: 400% 400%;
                 animation: gradientFlow 10s ease infinite;
                 color: #fff;
@@ -55,10 +56,10 @@
                 position: absolute;
                 inset: 0;
                 background:
-                    radial-gradient(circle 320px at 15% 85%, rgba(255, 57, 80, 0.25) 0%, transparent 70%),
-                    radial-gradient(circle 280px at 85% 15%, rgba(3, 76, 140, 0.35) 0%, transparent 70%),
-                    radial-gradient(circle 220px at 50% 50%, rgba(79, 117, 140, 0.2) 0%, transparent 65%),
-                    radial-gradient(circle 180px at 75% 70%, rgba(255, 57, 80, 0.15) 0%, transparent 60%);
+                    radial-gradient(circle 320px at 15% 85%, rgba(250, 208, 0, 0.25) 0%, transparent 70%),
+                    radial-gradient(circle 280px at 85% 15%, rgba(68, 65, 58, 0.35) 0%, transparent 70%),
+                    radial-gradient(circle 220px at 50% 50%, rgba(250, 208, 0, 0.2) 0%, transparent 65%),
+                    radial-gradient(circle 180px at 75% 70%, rgba(250, 208, 0, 0.15) 0%, transparent 60%);
                 animation: meshPulse 8s ease-in-out infinite alternate;
                 z-index: 1;
             }
@@ -158,27 +159,27 @@
             .geo-1 {
                 width: 350px; height: 350px;
                 bottom: -100px; left: -100px;
-                background: radial-gradient(circle, rgba(255,57,80,0.12) 0%, transparent 70%);
+                background: radial-gradient(circle, rgba(250,208,0,0.12) 0%, transparent 70%);
                 border: 1px solid rgba(255,255,255,0.06);
                 animation: float1 8s ease-in-out infinite;
             }
             .geo-2 {
                 width: 220px; height: 220px;
                 top: 8%; right: 3%;
-                background: radial-gradient(circle, rgba(3,76,140,0.15) 0%, transparent 70%);
+                background: radial-gradient(circle, rgba(250,208,0,0.15) 0%, transparent 70%);
                 border: 1px solid rgba(255,255,255,0.05);
                 animation: float2 11s ease-in-out infinite;
             }
             .geo-3 {
                 width: 140px; height: 140px;
                 bottom: 18%; right: 12%;
-                background: radial-gradient(circle, rgba(255,57,80,0.1) 0%, transparent 70%);
+                background: radial-gradient(circle, rgba(250,208,0,0.1) 0%, transparent 70%);
                 animation: float3 7s ease-in-out infinite;
             }
             .geo-4 {
                 width: 80px; height: 80px;
                 top: 30%; left: 10%;
-                background: radial-gradient(circle, rgba(79,117,140,0.18) 0%, transparent 70%);
+                background: radial-gradient(circle, rgba(250,208,0,0.18) 0%, transparent 70%);
                 animation: float4 9s ease-in-out infinite;
             }
             .geo-5 {
@@ -257,7 +258,7 @@
                 .login-page { grid-template-columns: 1fr; }
                 .login-brand { display: none; }
                 .login-form-panel {
-                    background: linear-gradient(160deg, #034C8C, #4F758C, #FF3950, #034C8C);
+                    background: linear-gradient(160deg, #44413A, #8a8576, #FAD000, #44413A);
                     background-size: 400% 400%;
                     animation: gradientFlow 10s ease infinite;
                     min-height: 100vh;
@@ -284,11 +285,31 @@
             @media (min-width: 901px) {
                 .mobile-brand { display: none; }
             }
+            .dark .login-form-panel { background: #14130f; }
+            .dark .form-card { background: #1e1c17; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+            .dark .form-header h2 { color: #f3f0e6; }
+            .dark .form-header p { color: #a8a292; }
+            .dark .form-footer { color: #8a8576; }
+            .dark .form-card label, .dark .form-card .text-gray-700, .dark .form-card .text-gray-600 { color: #d4cfbf; }
+            .dark .login-form-header h2 { color: #f3f0e6; }
+            .dark .login-form-header p, .dark .remember-check span, .dark .register-row { color: #a8a292; }
+            .dark .welcome-icon { background: #FAD000; }
+            .dark .welcome-icon i { color: #26241f; }
+            .dark .input-group label { color: #d4cfbf; }
+            .dark .input-group .input-wrap input { background: #27251f; border-color: #44413A; color: #ece8dc; }
+            .dark .input-group .input-wrap input:focus { border-color: #FAD000; background: #2a2822; box-shadow: 0 0 0 3px rgba(250,208,0,.15); }
+            .dark .input-group .input-wrap input::placeholder { color: #6b675b; }
+            .dark .input-group .input-wrap .input-icon, .dark .forgot-link, .dark .register-row a { color: #FAD000; }
+            .dark .login-btn { background: #FAD000; color: #26241f; box-shadow: 0 4px 12px rgba(250,208,0,.2); }
+            .dark .login-divider span, .dark .login-divider { color: #8a8576; }
+            .dark .login-divider::before, .dark .login-divider::after { background: #44413A; }
+            .tema-flotante { position: fixed; top: 14px; right: 14px; z-index: 60; }
         </style>
     </head>
     <body class="antialiased">
         @php $empresa = \App\Models\Empresa::instancia(); @endphp
 
+        @include('partials.tema-toggle', ['clase' => 'tema-flotante'])
         <div class="login-page">
             {{-- ── LEFT: Branding Panel ─────────────────────── --}}
             <div class="login-brand">
@@ -307,7 +328,7 @@
 
                     <div class="feature-list">
                         <div class="feature-item">
-                            <span class="feature-icon" style="background:rgba(59,130,246,.2); color:#60a5fa;">
+                            <span class="feature-icon" style="background:rgba(250,208,0,.2); color:#FAD000;">
                                 <i class="fas fa-chart-pie"></i>
                             </span>
                             Control total de ventas, compras e inventario
@@ -319,7 +340,7 @@
                             Facturación electrónica SUNAT integrada
                         </div>
                         <div class="feature-item">
-                            <span class="feature-icon" style="background:rgba(168,85,247,.2); color:#c084fc;">
+                            <span class="feature-icon" style="background:rgba(250,208,0,.2); color:#FFE04D;">
                                 <i class="fas fa-boxes-stacked"></i>
                             </span>
                             Gestión multi-almacén con stock por variante

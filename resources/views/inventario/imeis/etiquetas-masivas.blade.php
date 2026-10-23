@@ -118,7 +118,7 @@
         .estado-en-stock { color: #059669; }
         .estado-reservado { color: #d97706; }
         .estado-vendido { color: #dc2626; }
-        .estado-garantia { color: #2563eb; }
+        .estado-garantia { color: #44413A; }
         .estado-devuelto { color: #ea580c; }
         .estado-reemplazado { color: #7c3aed; }
         
@@ -195,7 +195,7 @@
 
         <!-- Botones de impresión (no se imprimen) -->
         <div class="no-print" style="margin-bottom: 1cm; text-align: center;">
-            <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
+            <button onclick="window.print()" style="padding: 10px 20px; background: #44413A; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">
                 <i class="fas fa-print"></i> Imprimir Etiquetas ({{ count($imeis) }})
             </button>
             <button onclick="window.close()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 5px; cursor: pointer;">

@@ -18,16 +18,16 @@ body { font-family:'DejaVu Sans',sans-serif; font-size:7.5pt; color:#000; backgr
 .hdr-doc     { width:42%; vertical-align:top; }
 
 .empresa-logo  { height:36px; margin-bottom:3px; display:block; }
-.empresa-name  { font-size:11pt; font-weight:bold; color:#1e3a5f; line-height:1.2; }
+.empresa-name  { font-size:11pt; font-weight:bold; color:#44413A; line-height:1.2; }
 .empresa-sub   { font-size:7pt; color:#444; margin-top:1px; line-height:1.5; }
 
-.doc-ruc-box   { background:#1e3a5f; color:#fff; font-weight:bold; font-size:9pt;
+.doc-ruc-box   { background:#44413A; color:#fff; font-weight:bold; font-size:9pt;
                  text-align:center; padding:4px 6px; border-radius:2px 2px 0 0; }
-.doc-tipo-box  { border:1.5px solid #1e3a5f; border-top:none; text-align:center;
-                 padding:3px 6px; font-weight:bold; font-size:7.5pt; color:#1e3a5f;
+.doc-tipo-box  { border:1.5px solid #44413A; border-top:none; text-align:center;
+                 padding:3px 6px; font-weight:bold; font-size:7.5pt; color:#44413A;
                  text-transform:uppercase; line-height:1.4; }
-.doc-num-box   { border:1.5px solid #1e3a5f; border-top:none; text-align:center;
-                 font-size:13pt; font-weight:bold; color:#1e3a5f; padding:4px 6px;
+.doc-num-box   { border:1.5px solid #44413A; border-top:none; text-align:center;
+                 font-size:13pt; font-weight:bold; color:#44413A; padding:4px 6px;
                  font-family:monospace; border-radius:0 0 2px 2px; letter-spacing:1px; }
 
 /* ── dates row ── */
@@ -38,8 +38,8 @@ body { font-family:'DejaVu Sans',sans-serif; font-size:7.5pt; color:#000; backgr
              min-width:100px; display:inline-block; padding-bottom:1px; }
 
 /* ── section boxes ── */
-.box  { border:1px solid #1e3a5f; border-collapse:collapse; }
-.box-title { background:#1e3a5f; color:#fff; font-size:6.5pt; font-weight:bold;
+.box  { border:1px solid #44413A; border-collapse:collapse; }
+.box-title { background:#44413A; color:#fff; font-size:6.5pt; font-weight:bold;
              text-transform:uppercase; letter-spacing:0.5px; padding:2px 5px; }
 .box-body  { padding:3px 5px; }
 .fl  { font-size:6pt; font-weight:bold; color:#777; text-transform:uppercase; margin-top:2px; }
@@ -49,7 +49,7 @@ body { font-family:'DejaVu Sans',sans-serif; font-size:7.5pt; color:#000; backgr
 
 /* ── items table ── */
 table.items { width:100%; border-collapse:collapse; font-size:7pt; }
-table.items thead tr { background:#1e3a5f; }
+table.items thead tr { background:#44413A; }
 table.items thead th { color:#fff; font-weight:bold; padding:3px 4px; text-align:left;
                         font-size:6.5pt; border-right:1px solid #3a5f9f; }
 table.items thead th:last-child { border-right:none; }
@@ -58,7 +58,7 @@ table.items tbody td { padding:2px 4px; border-bottom:1px solid #e2e8f0;
                         border-right:1px solid #e2e8f0; vertical-align:top; }
 table.items tbody td:last-child { border-right:none; }
 table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
-                        border-top:1.5px solid #1e3a5f; font-size:7pt; }
+                        border-top:1.5px solid #44413A; font-size:7pt; }
 
 /* ── motivos checkboxes ── */
 .motivo-item { font-size:6.5pt; margin-bottom:2px; line-height:1.4; }
@@ -339,7 +339,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <td>
                     <span style="font-weight:bold">{{ $detalle->producto?->nombre }}</span>
                     @if($detalle->variante)
-                        <span style="color:#4f46e5; font-size:6.5pt"> · {{ $detalle->variante->nombre_completo }}</span>
+                        <span style="color:#44413A; font-size:6.5pt"> · {{ $detalle->variante->nombre_completo }}</span>
                     @endif
                 </td>
                 <td style="text-align:center; font-size:6.5pt; font-family:monospace; color:#555">

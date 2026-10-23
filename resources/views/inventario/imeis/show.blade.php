@@ -6,6 +6,7 @@
     <title>Detalle de IMEI - {{ $imei->codigo_imei }} - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .estado-badge {
@@ -20,7 +21,7 @@
         .estado-en-stock { background-color: #d1fae5; color: #065f46; }
         .estado-reservado { background-color: #fef3c7; color: #92400e; }
         .estado-vendido { background-color: #fee2e2; color: #991b1b; }
-        .estado-garantia { background-color: #dbeafe; color: #1e40af; }
+        .estado-garantia { background-color: #dbeafe; color: #44413A; }
         .estado-devuelto { background-color: #ffedd5; color: #9a3412; }
         .estado-reemplazado { background-color: #f3e8ff; color: #6b21a8; }
         
@@ -41,7 +42,7 @@
             width: 1rem;
             height: 1rem;
             border-radius: 50%;
-            background-color: #3b82f6;
+            background-color: #44413A;
             border: 2px solid white;
         }
         .qr-container {

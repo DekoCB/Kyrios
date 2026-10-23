@@ -13,17 +13,17 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 8.5pt; color: #1a1a1a; b
 .header-right { display: table-cell; width: 38%; vertical-align: top; }
 
 .logo { height: 64px; width: auto; margin-bottom: 6px; }
-.empresa-nombre { font-size: 13pt; font-weight: bold; color: #1e3a5f; margin-bottom: 2px; }
+.empresa-nombre { font-size: 13pt; font-weight: bold; color: #44413A; margin-bottom: 2px; }
 .empresa-sub { font-size: 7.5pt; color: #555; margin-bottom: 6px; }
 .empresa-dir { font-size: 7.5pt; color: #333; line-height: 1.4; }
 
-.doc-ruc { background: #1e3a5f; color: #fff; font-weight: bold; font-size: 11pt;
+.doc-ruc { background: #44413A; color: #fff; font-weight: bold; font-size: 11pt;
            text-align: center; padding: 6px 10px; border-radius: 3px 3px 0 0; }
-.doc-tipo { background: #2563eb; color: #fff; font-weight: bold; font-size: 8.5pt;
+.doc-tipo { background: #44413A; color: #fff; font-weight: bold; font-size: 8.5pt;
             text-align: center; padding: 5px 10px; }
-.doc-numero { background: #f8fafc; border: 1.5px solid #2563eb; font-size: 10pt;
+.doc-numero { background: #f8fafc; border: 1.5px solid #44413A; font-size: 10pt;
               font-weight: bold; text-align: center; padding: 6px 10px;
-              border-radius: 0 0 3px 3px; color: #1e3a5f; letter-spacing: 0.5px; }
+              border-radius: 0 0 3px 3px; color: #44413A; letter-spacing: 0.5px; }
 
 /* ─── FECHA/INFO ROW ─── */
 .info-row { display: table; width: 100%; border: 1px solid #c0d0e0; margin-bottom: 8px; border-radius: 3px; }
@@ -42,7 +42,7 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 8.5pt; color: #1a1a1a; b
 
 /* ─── ITEMS TABLE ─── */
 table.items { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 7.5pt; }
-table.items thead tr { background: #1e3a5f; color: #fff; }
+table.items thead tr { background: #44413A; color: #fff; }
 table.items thead th { padding: 5px 6px; text-align: left; font-weight: bold; font-size: 7pt; letter-spacing: 0.3px; }
 table.items thead th.center { text-align: center; }
 table.items thead th.right  { text-align: right; }
@@ -78,9 +78,9 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
 .totales-label { display: table-cell; font-size: 8pt; color: #444; padding: 2px 0; }
 .totales-val   { display: table-cell; font-size: 8pt; color: #1a1a1a; font-weight: bold;
                  text-align: right; padding: 2px 0; width: 90px; }
-.totales-total .totales-label { font-size: 9.5pt; font-weight: bold; color: #1e3a5f; }
-.totales-total .totales-val   { font-size: 9.5pt; font-weight: bold; color: #1e3a5f; }
-.totales-divider { border-top: 1.5px solid #1e3a5f; margin: 3px 0; }
+.totales-total .totales-label { font-size: 9.5pt; font-weight: bold; color: #44413A; }
+.totales-total .totales-val   { font-size: 9.5pt; font-weight: bold; color: #44413A; }
+.totales-divider { border-top: 1.5px solid #44413A; margin: 3px 0; }
 
 /* ─── FOOTER LEGAL ─── */
 .footer { border-top: 1px solid #c0d0e0; margin-top: 10px; padding-top: 8px; display: table; width: 100%; }
@@ -244,7 +244,7 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
                 [$pillColor, $pillLabel] = match($tipo) {
                     'yape'          => ['#7c3aed', 'YAPE'],
                     'plin'          => ['#16a34a', 'PLIN'],
-                    'transferencia' => ['#1d4ed8', 'TRANSFERENCIA'],
+                    'transferencia' => ['#44413A', 'TRANSFERENCIA'],
                     'pos'           => ['#b91c1c', 'POS / TARJETA'],
                     default         => ['#374151', strtoupper($tipo)],
                 };

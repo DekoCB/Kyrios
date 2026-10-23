@@ -7,6 +7,7 @@
     <title>Colores - Catálogo</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    @include('partials.tema-head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
@@ -234,7 +235,7 @@
             btnTexto: '',
             formAction: '',
             formMethod: 'POST',
-            form: { nombre: '', codigo_hex: '#3B82F6', codigo_color: '', estado: 'activo' },
+            form: { nombre: '', codigo_hex: '#44413A', codigo_color: '', estado: 'activo' },
 
             init() {},
 
@@ -243,7 +244,7 @@
                 this.btnTexto = 'Guardar Color';
                 this.formAction = '{{ route('catalogo.colores.store') }}';
                 this.formMethod = 'POST';
-                this.form = { nombre: '', codigo_hex: '#3B82F6', codigo_color: '', estado: 'activo' };
+                this.form = { nombre: '', codigo_hex: '#44413A', codigo_color: '', estado: 'activo' };
                 this.modalAbierto = true;
             },
 
@@ -254,7 +255,7 @@
                 this.formMethod = 'PUT';
                 this.form = {
                     nombre: nombre,
-                    codigo_hex: hex || '#3B82F6',
+                    codigo_hex: hex || '#44413A',
                     codigo_color: codigo,
                     estado: estado
                 };
