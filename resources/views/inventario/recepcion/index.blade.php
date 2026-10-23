@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Recepción con escáner - {{ config('app.name') }}</title>
+    @php($salida = ($modo ?? 'ingreso') === 'salida')
+    <title>{{ $salida ? 'Salida' : 'Recepción' }} con escáner - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
@@ -53,7 +54,11 @@
     <x-sidebar :role="auth()->user()->role->nombre" />
 
     <div class="md:ml-64 p-4 md:p-8">
-        <x-header title="Recepción con escáner" subtitle="Escanee las cajas para sumar mercadería al almacén sin digitar códigos" />
+        <x-header :title="$salida ? 'Salida con escáner' : 'Recepción con escáner'" :subtitle="$salida ? 'Escanee cada producto que sale del almacén: se descuenta el stock sin digitar códigos' : 'Escanee las cajas para sumar mercadería al almacén sin digitar códigos'" />
+        <div style="max-width:760px;margin:0 auto 12px;display:flex;gap:8px;">
+            <a href="{{ route('inventario.recepcion.index') }}" class="rx-btn {{ $salida ? 'sec' : '' }}" style="text-decoration:none;flex:1;text-align:center;"><i class="fas fa-arrow-down"></i> Entrada</a>
+            <a href="{{ route('inventario.salida.index') }}" class="rx-btn {{ $salida ? '' : 'sec' }}" style="text-decoration:none;flex:1;text-align:center;"><i class="fas fa-arrow-up"></i> Salida</a>
+        </div>
 
         <div class="rx">
             <div id="rxMsg" class="rx-msg" role="status" aria-live="polite"></div>
@@ -61,7 +66,7 @@
             <div class="rx-card">
                 <div class="rx-row" style="flex-wrap: wrap;">
                     <div class="rx-grow" style="min-width: 200px;">
-                        <label class="rx-label" for="rxAlmacen">Almacén que recibe</label>
+                        <label class="rx-label" for="rxAlmacen">{{ $salida ? 'Almacén de donde sale' : 'Almacén que recibe' }}</label>
                         <select id="rxAlmacen" class="rx-select">
                             <option value="">Seleccione…</option>
                             @foreach($almacenes as $a)
@@ -69,9 +74,19 @@
                             @endforeach
                         </select>
                     </div>
+                    @if($salida)
                     <div class="rx-grow" style="min-width: 200px;">
-                        <label class="rx-label" for="rxRef">Guía / factura (opcional)</label>
-                        <input id="rxRef" class="rx-input" type="text" maxlength="100" autocomplete="off">
+                        <label class="rx-label" for="rxMotivo">Motivo de la salida</label>
+                        <select id="rxMotivo" class="rx-select">
+                            @foreach($motivos as $m)
+                                <option value="{{ $m->id }}">{{ $m->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+                    <div class="rx-grow" style="min-width: 200px;">
+                        <label class="rx-label" for="rxRef">{{ $salida ? 'Observación / N.º de venta u obra (opcional)' : 'Guía / factura (opcional)' }}</label>
+                        <input id="rxRef" class="rx-input" type="text" maxlength="{{ $salida ? 255 : 100 }}" autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -116,7 +131,7 @@
         <div class="rx-bar-in">
             <button type="button" id="rxClear" class="rx-btn danger" title="Vaciar la lista"><i class="fas fa-trash"></i></button>
             <span id="rxTotal" class="rx-total">0 unidades</span>
-            <button type="button" id="rxConfirm" class="rx-btn rx-grow" disabled><i class="fas fa-check"></i> Registrar ingreso</button>
+            <button type="button" id="rxConfirm" class="rx-btn rx-grow" disabled><i class="fas fa-check"></i> {{ $salida ? 'Registrar salida' : 'Registrar ingreso' }}</button>
         </div>
     </div>
 
@@ -126,20 +141,21 @@
         buscar: @json(route('inventario.recepcion.buscar')),
         variantes: @json(route('inventario.recepcion.variantes')),
         asociar: @json(route('inventario.recepcion.asociar')),
-        confirmar: @json(route('inventario.recepcion.confirmar')),
+        confirmar: @json($salida ? route('inventario.salida.confirmar') : route('inventario.recepcion.confirmar')),
         crear: @json(route('inventario.productos.create'))
     };
     var CSRF = document.querySelector('meta[name="csrf-token"]').content;
-    var STORE = 'kyrios_recepcion_v1';
+    var SALIDA = @json($salida);
+    var STORE = SALIDA ? 'kyrios_salida_v1' : 'kyrios_recepcion_v1';
     var $ = function (id) { return document.getElementById(id); };
     var scan = $('rxScan'), lines = [], pendingCode = '', audioCtx = null, busy = Promise.resolve();
 
     // ── Borrador en el navegador (sobrevive a una recarga o a un corte de Wi-Fi) ──
-    function save() { try { localStorage.setItem(STORE, JSON.stringify({ lines: lines, almacen: $('rxAlmacen').value, ref: $('rxRef').value })); } catch (e) {} }
+    function save() { try { localStorage.setItem(STORE, JSON.stringify({ lines: lines, almacen: $('rxAlmacen').value, ref: $('rxRef').value, motivo: SALIDA ? $('rxMotivo').value : null })); } catch (e) {} }
     function load() {
         try {
             var d = JSON.parse(localStorage.getItem(STORE) || 'null');
-            if (d && Array.isArray(d.lines)) { lines = d.lines; $('rxAlmacen').value = d.almacen || ''; $('rxRef').value = d.ref || ''; }
+            if (d && Array.isArray(d.lines)) { lines = d.lines; $('rxAlmacen').value = d.almacen || ''; $('rxRef').value = d.ref || ''; if (SALIDA && d.motivo) $('rxMotivo').value = d.motivo; }
         } catch (e) {}
     }
 
@@ -177,6 +193,7 @@
             var sub = el('div', 'rx-sub'); sub.appendChild(el('span', 'rx-code', l.codigo_kyrios));
             if (l.detalle && l.detalle !== 'Variante base') sub.appendChild(document.createTextNode(' · ' + l.detalle));
             if (l.marca) sub.appendChild(document.createTextNode(' · ' + l.marca));
+            if (SALIDA) sub.appendChild(document.createTextNode(' · Stock: ' + l.stock_almacen));
             info.appendChild(sub);
             if (l.estado_dano && l.estado_dano !== 'ninguno') info.appendChild(el('span', 'rx-dano', 'Daño ' + l.estado_dano));
             row.appendChild(info);
@@ -187,8 +204,8 @@
             var plus = el('button', '', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'Sumar');
             var del = el('button', '', '×'); del.type = 'button'; del.setAttribute('aria-label', 'Quitar'); del.style.color = '#991b1b';
             minus.onclick = function () { l.cantidad = Math.max(1, l.cantidad - 1); update(); };
-            plus.onclick = function () { l.cantidad += 1; update(); };
-            inp.onchange = function () { l.cantidad = Math.max(1, Math.min(100000, parseInt(inp.value, 10) || 1)); update(); };
+            plus.onclick = function () { if (l.cantidad + 1 > tope(l)) { beep(false); msg('No hay más stock de ' + l.codigo_kyrios + ' en este almacén.', 'err'); return; } l.cantidad += 1; update(); };
+            inp.onchange = function () { l.cantidad = Math.max(1, Math.min(tope(l), parseInt(inp.value, 10) || 1)); update(); };
             del.onclick = function () { lines.splice(idx, 1); update(); };
             [minus, inp, plus, del].forEach(function (n) { q.appendChild(n); });
             row.appendChild(q);
@@ -203,11 +220,20 @@
 
     function addLine(v) {
         var found = lines.filter(function (l) { return l.id === v.id; })[0];
-        if (found) { found.cantidad += 1; lines.splice(lines.indexOf(found), 1); lines.unshift(found); }
+        if (SALIDA) {
+            var disp = v.stock_almacen != null ? v.stock_almacen : (found ? found.stock_almacen : 0);
+            if (disp < 1 || (found && found.cantidad + 1 > disp)) {
+                beep(false); msg('Sin stock suficiente de ' + v.codigo_kyrios + ' en este almacén (hay ' + disp + ').', 'err'); return;
+            }
+            v.stock_almacen = disp;
+        }
+        if (found) { if (SALIDA) found.stock_almacen = v.stock_almacen; found.cantidad += 1; lines.splice(lines.indexOf(found), 1); lines.unshift(found); }
         else { v.cantidad = 1; lines.unshift(v); }
         update(); beep(true);
-        msg('Leído: ' + (v.nombre || '') + ' · ' + v.codigo_kyrios, 'ok');
+        msg('Leído: ' + (v.nombre || '') + ' · ' + v.codigo_kyrios + (SALIDA ? ' · quedan ' + (v.stock_almacen - (found || v).cantidad) : ''), 'ok');
     }
+    function tope(l) { return SALIDA ? Math.max(1, l.stock_almacen || 1) : 100000; }
+    function paramAlmacen() { return SALIDA ? '&almacen_id=' + encodeURIComponent($('rxAlmacen').value) : ''; }
 
     // ── Panel auxiliares ──
     function closePanels() { $('rxUnknown').classList.remove('open'); $('rxChoose').classList.remove('open'); $('rxSearchResults').innerHTML = ''; $('rxSearch').value = ''; }
@@ -240,7 +266,8 @@
         var code = raw.replace(/[\x00-\x1F\x7F]+/g, '').trim();
         if (!code) return;
         closePanels();
-        return api(URLS.buscar + '?codigo=' + encodeURIComponent(code)).then(function (r) {
+        if (SALIDA && !$('rxAlmacen').value) { beep(false); msg('Primero elija el almacén de donde sale la mercadería.', 'err'); $('rxAlmacen').focus(); return; }
+        return api(URLS.buscar + '?codigo=' + encodeURIComponent(code) + paramAlmacen()).then(function (r) {
             var res = r.resultados || [];
             if (res.length === 1) addLine(res[0]);
             else if (res.length > 1) showChoose(res);
@@ -270,7 +297,7 @@
         st = setTimeout(function () {
             var box = $('rxSearchResults'); box.innerHTML = '';
             if (q.length < 2) return;
-            api(URLS.variantes + '?q=' + encodeURIComponent(q)).then(function (list) {
+            api(URLS.variantes + '?q=' + encodeURIComponent(q) + paramAlmacen()).then(function (list) {
                 if (!Array.isArray(list) || !list.length) { box.appendChild(el('div', 'rx-sub', 'Sin resultados.')); return; }
                 list.forEach(function (v) {
                     box.appendChild(itemButton(v, function () {
@@ -288,21 +315,21 @@
     // Registrar el ingreso
     $('rxConfirm').onclick = function () {
         var almacen = $('rxAlmacen').value;
-        if (!almacen) { beep(false); msg('Seleccione el almacén que recibe la mercadería.', 'err'); $('rxAlmacen').focus(); return; }
+        if (!almacen) { beep(false); msg(SALIDA ? 'Seleccione el almacén de donde sale la mercadería.' : 'Seleccione el almacén que recibe la mercadería.', 'err'); $('rxAlmacen').focus(); return; }
         var btn = this; btn.disabled = true;
         api(URLS.confirmar, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({ almacen_id: almacen, documento_referencia: $('rxRef').value || null,
-                lineas: lines.map(function (l) { return { variante_id: l.id, cantidad: l.cantidad }; }) })
+            body: JSON.stringify(Object.assign({ almacen_id: almacen }, SALIDA ? { motivo_id: $('rxMotivo').value, observaciones: $('rxRef').value || null } : { documento_referencia: $('rxRef').value || null }, {
+                lineas: lines.map(function (l) { return { variante_id: l.id, cantidad: l.cantidad }; }) }))
         }).then(function (r) {
             if (r.ok) {
                 var n = lines.reduce(function (s, l) { return s + l.cantidad; }, 0);
                 lines = []; $('rxRef').value = ''; update(); beep(true);
-                msg('Ingreso registrado: ' + n + ' unidades en ' + r.movimientos + ' variante(s).', 'ok');
+                msg((SALIDA ? 'Salida registrada: ' : 'Ingreso registrado: ') + n + ' unidades en ' + r.movimientos + ' variante(s).', 'ok');
             } else {
                 beep(false); btn.disabled = false;
                 var firstErr = r.errors ? Object.values(r.errors)[0][0] : null;
-                msg(r.mensaje || firstErr || 'No se pudo registrar el ingreso.', 'err');
+                msg(r.mensaje || firstErr || (SALIDA ? 'No se pudo registrar la salida.' : 'No se pudo registrar el ingreso.'), 'err');
             }
             scan.focus();
         }).catch(function () { btn.disabled = false; beep(false); msg('Sin conexión. La lista queda guardada en este equipo.', 'err'); });
@@ -314,7 +341,18 @@
         this.dataset.armed = '1'; this.textContent = '¿Vaciar?'; var b = this;
         setTimeout(function () { b.dataset.armed = ''; b.innerHTML = '<i class="fas fa-trash"></i>'; }, 3000);
     };
-    $('rxAlmacen').onchange = save; $('rxRef').onchange = save;
+    $('rxAlmacen').onchange = function () {
+        if (SALIDA && lines.length) {
+            Promise.all(lines.map(function (l) {
+                return api(URLS.buscar + '?codigo=' + encodeURIComponent(l.codigo_kyrios) + paramAlmacen()).then(function (r) {
+                    var m = (r.resultados || []).filter(function (x) { return x.id === l.id; })[0];
+                    l.stock_almacen = m ? m.stock_almacen : 0; l.cantidad = Math.max(1, Math.min(l.cantidad, tope(l)));
+                });
+            })).then(function () { update(); msg('Stock actualizado para el almacén elegido. Revise las cantidades.', 'ok'); });
+        }
+        save();
+    };
+    $('rxRef').onchange = save; if (SALIDA) $('rxMotivo').onchange = save;
 
     // El lector necesita el foco: se recupera al tocar fuera de otros campos
     document.addEventListener('click', function (e) { if (!e.target.closest('input,select,textarea,button,a')) scan.focus(); });

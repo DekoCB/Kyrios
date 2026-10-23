@@ -176,6 +176,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/confirmar', [\App\Http\Controllers\RecepcionEscanerController::class, 'confirmar'])->name('confirmar');
         });
 
+        // SALIDA RÁPIDA CON ESCÁNER (PDA): reutiliza la búsqueda y asociación de códigos de la recepción
+        Route::middleware('role:Administrador,Almacenero')->prefix('salida-escaner')->name('salida.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\RecepcionEscanerController::class, 'salida'])->name('index');
+            Route::post('/confirmar', [\App\Http\Controllers\RecepcionEscanerController::class, 'retirar'])->name('confirmar');
+        });
+
         // CATEGORÍAS
         Route::middleware('role:Administrador,Almacenero')->group(function () {
             Route::get('/categorias', [CategoriaController::class, 'index'])->name('categorias.index');

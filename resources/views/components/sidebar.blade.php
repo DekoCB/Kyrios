@@ -259,6 +259,12 @@
                                     <i class="fas fa-barcode mr-3 text-sm"></i>Recepción con escáner
                                 </a>
                             </li>
+                            <li>
+                                <a href="{{ route('inventario.salida.index') }}"
+                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.salida.*') ? 'bg-blue-600' : '' }}">
+                                    <i class="fas fa-barcode mr-3 text-sm"></i>Salida con escáner
+                                </a>
+                            </li>
                             @endif
                             <li>
                                 <a href="{{ route('inventario.almacenes.index') }}"

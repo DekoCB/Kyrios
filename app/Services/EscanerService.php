@@ -149,4 +149,63 @@ class EscanerService
             return $n;
         });
     }
+
+    /**
+     * Salida de mercadería por cantidad: descuenta stock de la variante en el almacén (nunca deja negativo)
+     * y deja un movimiento de inventario por variante con su motivo.
+     *
+     * @param array<int, array{variante_id:int, cantidad:int}> $lineas
+     * @return int cantidad de movimientos creados
+     */
+    public function retirar(int $almacenId, array $lineas, int $userId, int $motivoId, ?string $observaciones = null): int
+    {
+        $motivo = \App\Models\Catalogo\MotivoMovimiento::where('tipo', 'salida')->findOrFail($motivoId);
+
+        return DB::transaction(function () use ($almacenId, $lineas, $userId, $motivo, $observaciones) {
+            $porVariante = [];
+            foreach ($lineas as $l) {
+                $porVariante[$l['variante_id']] = ($porVariante[$l['variante_id']] ?? 0) + (int) $l['cantidad'];
+            }
+
+            $n = 0;
+            foreach ($porVariante as $varianteId => $cantidad) {
+                if ($cantidad < 1) {
+                    continue;
+                }
+                $variante = ProductoVariante::with('producto')->lockForUpdate()->findOrFail($varianteId);
+                $producto = $variante->producto;
+
+                if ($producto->tipo_inventario === 'serie') {
+                    throw new \RuntimeException("{$producto->nombre} se controla por serie/IMEI y no puede retirarse por cantidad.");
+                }
+
+                $stock = StockAlmacen::fila($producto->id, $almacenId, $variante->id);
+                $anterior = (int) $stock->cantidad;
+                if ($cantidad > $anterior) {
+                    throw new \RuntimeException("Stock insuficiente de {$variante->codigo_kyrios}: hay {$anterior} y se intenta sacar {$cantidad}.");
+                }
+
+                $stock->decrement('cantidad', $cantidad);
+                $variante->decrement('stock_actual', $cantidad);
+                $producto->update(['stock_actual' => StockAlmacen::where('producto_id', $producto->id)->sum('cantidad')]);
+
+                MovimientoInventario::create([
+                    'producto_id'          => $producto->id,
+                    'variante_id'          => $variante->id,
+                    'almacen_id'           => $almacenId,
+                    'user_id'              => $userId,
+                    'tipo_movimiento'      => 'salida',
+                    'cantidad'             => $cantidad,
+                    'stock_anterior'       => $anterior,
+                    'stock_nuevo'          => $anterior - $cantidad,
+                    'motivo_movimiento_id' => $motivo->id,
+                    'motivo'               => $motivo->nombre . ' (escáner)',
+                    'observaciones'        => $observaciones,
+                ]);
+                $n++;
+            }
+
+            return $n;
+        });
+    }
 }
