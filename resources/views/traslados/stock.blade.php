@@ -78,7 +78,6 @@
         <div class="flex flex-wrap gap-4 mb-4 text-xs text-gray-500">
             <span><span class="inline-block w-3 h-3 bg-green-500 rounded-full mr-1"></span>Con stock</span>
             <span><span class="inline-block w-3 h-3 bg-gray-200 rounded-full mr-1"></span>Sin stock</span>
-            <span><i class="fas fa-barcode text-purple-500 mr-1"></i>Productos rastreados por IMEI</span>
         </div>
 
         {{-- Tabla --}}
@@ -111,11 +110,6 @@
                             <td class="px-5 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10">
                                 <div class="font-medium text-gray-900 flex items-center gap-2">
                                     {{ $producto->nombre }}
-                                    @if($producto->es_serie)
-                                        <span class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-700 rounded">
-                                            <i class="fas fa-barcode mr-0.5"></i>IMEI
-                                        </span>
-                                    @endif
                                 </div>
                                 <div class="text-xs text-gray-400 font-mono">{{ $producto->codigo }}</div>
                             </td>
@@ -132,11 +126,8 @@
                                 <td class="px-4 py-3 text-center border-l border-gray-100">
                                     @if($cantidad > 0)
                                         <span class="inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 text-xs font-bold rounded-full
-                                            {{ $producto->es_serie ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700' }}">
+                                            bg-green-100 text-green-700">
                                             {{ $cantidad }}
-                                            @if($producto->es_serie)
-                                                <span class="ml-0.5 font-normal opacity-70">u</span>
-                                            @endif
                                         </span>
                                     @else
                                         <span class="text-gray-300">—</span>

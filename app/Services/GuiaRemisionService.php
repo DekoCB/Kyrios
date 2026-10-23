@@ -7,8 +7,6 @@ use App\Models\GuiaRemision;
 use App\Models\GuiaRemisionDetalle;
 use App\Models\MovimientoInventario;
 use App\Models\StockAlmacen;
-use App\Models\Imei;
-use App\Models\TrasladoImei;
 use App\Models\Producto;
 use App\Models\SerieComprobante;
 use Illuminate\Support\Facades\DB;
@@ -189,36 +187,20 @@ class GuiaRemisionService
                 throw new \Exception('Esta guía no puede confirmarse en su estado actual.');
             }
 
-            $movimientos = MovimientoInventario::with(['producto', 'imeisTrasladados'])
+            $movimientos = MovimientoInventario::with('producto')
                 ->where('numero_guia', $guia->numero_guia)
                 ->where('estado', 'pendiente')
                 ->get();
 
             foreach ($movimientos as $mov) {
+                // Transferencia interna: acreditar stock en destino. A un externo es salida
+                // definitiva: el stock ya se descontó al crear la guía.
                 if ($guia->tipo_destino === 'almacen') {
-                    // Transferencia interna: acreditar stock en destino
-                    $esSerie = $mov->producto->tipo_inventario === 'serie';
+                    $stockDestino = StockAlmacen::fila($mov->producto_id, $guia->almacen_destino_id, $mov->variante_id);
+                    $stockDestino->increment('cantidad', $mov->cantidad);
 
-                    if ($esSerie) {
-                        $imeiIds = $mov->imeisTrasladados->pluck('imei_id')->toArray();
-                        Imei::whereIn('id', $imeiIds)->update([
-                            'almacen_id'  => $guia->almacen_destino_id,
-                            'estado_imei' => Imei::ESTADO_EN_STOCK,
-                        ]);
-                    } else {
-                        $stockDestino = StockAlmacen::fila($mov->producto_id, $guia->almacen_destino_id, $mov->variante_id);
-                        $stockDestino->increment('cantidad', $mov->cantidad);
-                    }
-
-                    $totalStock = $this->calcularStockTotal($mov->producto_id, $esSerie, $guia->almacen_destino_id);
+                    $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
                     $mov->producto->update(['stock_actual' => $totalStock]);
-
-                } else {
-                    // Salida a externo: confirmar IMEIs como salida definitiva
-                    $imeiIds = $mov->imeisTrasladados->pluck('imei_id')->toArray();
-                    if (!empty($imeiIds)) {
-                        Imei::whereIn('id', $imeiIds)->update(['estado_imei' => 'vendido']);
-                    }
                 }
 
                 $mov->update([
@@ -240,33 +222,18 @@ class GuiaRemisionService
                 throw new \Exception('Esta guía no puede anularse en su estado actual.');
             }
 
-            $movimientos = MovimientoInventario::with(['producto', 'imeisTrasladados'])
+            $movimientos = MovimientoInventario::with('producto')
                 ->where('numero_guia', $guia->numero_guia)
                 ->whereIn('estado', ['pendiente', 'confirmado'])
                 ->get();
 
             foreach ($movimientos as $mov) {
-                $esSerie = $mov->producto->tipo_inventario === 'serie';
+                // Revertir descuento en origen
+                $stockOrigen = StockAlmacen::fila($mov->producto_id, $guia->almacen_id, $mov->variante_id);
+                $stockOrigen->increment('cantidad', $mov->cantidad);
 
-                if ($esSerie) {
-                    $imeiIds = $mov->imeisTrasladados->pluck('imei_id')->toArray();
-                    if (!empty($imeiIds)) {
-                        Imei::whereIn('id', $imeiIds)->update([
-                            'almacen_id'  => $guia->almacen_id,
-                            'estado_imei' => Imei::ESTADO_EN_STOCK,
-                        ]);
-                    }
-                    $totalStock = Imei::where('producto_id', $mov->producto_id)
-                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)->count();
-                    $mov->producto->update(['stock_actual' => $totalStock]);
-                } else {
-                    // Revertir descuento en origen
-                    $stockOrigen = StockAlmacen::fila($mov->producto_id, $guia->almacen_id, $mov->variante_id);
-                    $stockOrigen->increment('cantidad', $mov->cantidad);
-
-                    $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
-                    $mov->producto->update(['stock_actual' => $totalStock]);
-                }
+                $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
+                $mov->producto->update(['stock_actual' => $totalStock]);
 
                 $mov->update(['estado' => 'anulado']);
             }
@@ -280,101 +247,53 @@ class GuiaRemisionService
     private function moverStock(GuiaRemision $guia, array $linea, int $userId, string $numeroGuia): void
     {
         $producto  = Producto::findOrFail($linea['producto_id']);
-        $esSerie   = $producto->tipo_inventario === 'serie';
         $almacenId = $guia->almacen_id;
         $tipoMov   = $guia->tipo_destino === 'almacen' ? 'transferencia' : 'salida';
 
-        if ($esSerie) {
-            $imeiIds  = array_values(array_unique((array) ($linea['imei_ids'] ?? [])));
-            $cantidad = count($imeiIds);
+        $cantidad = (int) ($linea['cantidad'] ?? 0);
 
-            if ($cantidad === 0) {
-                throw new \Exception("Producto «{$producto->nombre}»: debe seleccionar al menos un IMEI.");
-            }
-
-            $validos = Imei::whereIn('id', $imeiIds)
-                ->where('producto_id', $producto->id)
-                ->where('almacen_id', $almacenId)
-                ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                ->count();
-
-            if ($validos !== $cantidad) {
-                throw new \Exception("Producto «{$producto->nombre}»: uno o más IMEIs no están disponibles.");
-            }
-
-            $stockAnterior = Imei::where('producto_id', $producto->id)
-                ->where('almacen_id', $almacenId)
-                ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                ->count();
-
-            $movimiento = MovimientoInventario::create([
-                'producto_id'        => $producto->id,
-                'almacen_id'         => $almacenId,
-                'almacen_destino_id' => $guia->almacen_destino_id,
-                'user_id'            => $userId,
-                'tipo_movimiento'    => $tipoMov,
-                'cantidad'           => $cantidad,
-                'variante_id'        => $linea['variante_id'] ?? null,
-                'stock_anterior'     => $stockAnterior,
-                'stock_nuevo'        => $stockAnterior - $cantidad,
-                'numero_guia'        => $numeroGuia,
-                'fecha_traslado'     => $guia->fecha_traslado->toDateString(),
-                'observaciones'      => $linea['descripcion'] ?? null,
-                'estado'             => 'pendiente',
-            ]);
-
-            foreach ($imeiIds as $imeiId) {
-                TrasladoImei::create(['movimiento_id' => $movimiento->id, 'imei_id' => $imeiId]);
-            }
-
-            Imei::whereIn('id', $imeiIds)->update(['estado_imei' => Imei::ESTADO_EN_TRANSITO]);
-
-        } else {
-            $cantidad = (int) ($linea['cantidad'] ?? 0);
-
-            if ($cantidad < 1) {
-                throw new \Exception("Producto «{$producto->nombre}»: la cantidad debe ser al menos 1.");
-            }
-
-            $varianteId = !empty($linea['variante_id']) ? (int) $linea['variante_id'] : null;
-            if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
-                throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante.");
-            }
-
-            $stockOrigen = StockAlmacen::where('producto_id', $producto->id)
-                ->where('almacen_id', $almacenId)
-                ->deVariante($varianteId)
-                ->first();
-
-            if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
-                $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
-                $nombre = $producto->nombre . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
-                throw new \Exception(
-                    "Producto «{$nombre}»: stock insuficiente (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
-                );
-            }
-
-            MovimientoInventario::create([
-                'producto_id'        => $producto->id,
-                'almacen_id'         => $almacenId,
-                'almacen_destino_id' => $guia->almacen_destino_id,
-                'user_id'            => $userId,
-                'tipo_movimiento'    => $tipoMov,
-                'cantidad'           => $cantidad,
-                'variante_id'        => $linea['variante_id'] ?? null,
-                'stock_anterior'     => $stockOrigen->cantidad,
-                'stock_nuevo'        => $stockOrigen->cantidad - $cantidad,
-                'numero_guia'        => $numeroGuia,
-                'fecha_traslado'     => $guia->fecha_traslado->toDateString(),
-                'observaciones'      => $linea['descripcion'] ?? null,
-                'estado'             => 'pendiente',
-            ]);
-
-            $stockOrigen->decrement('cantidad', $cantidad);
-
-            $total = StockAlmacen::where('producto_id', $producto->id)->sum('cantidad');
-            $producto->update(['stock_actual' => $total]);
+        if ($cantidad < 1) {
+            throw new \Exception("Producto «{$producto->nombre}»: la cantidad debe ser al menos 1.");
         }
+
+        $varianteId = !empty($linea['variante_id']) ? (int) $linea['variante_id'] : null;
+        if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
+            throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante.");
+        }
+
+        $stockOrigen = StockAlmacen::where('producto_id', $producto->id)
+            ->where('almacen_id', $almacenId)
+            ->deVariante($varianteId)
+            ->first();
+
+        if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
+            $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
+            $nombre = $producto->nombre . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
+            throw new \Exception(
+                "Producto «{$nombre}»: stock insuficiente (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
+            );
+        }
+
+        MovimientoInventario::create([
+            'producto_id'        => $producto->id,
+            'almacen_id'         => $almacenId,
+            'almacen_destino_id' => $guia->almacen_destino_id,
+            'user_id'            => $userId,
+            'tipo_movimiento'    => $tipoMov,
+            'cantidad'           => $cantidad,
+            'variante_id'        => $linea['variante_id'] ?? null,
+            'stock_anterior'     => $stockOrigen->cantidad,
+            'stock_nuevo'        => $stockOrigen->cantidad - $cantidad,
+            'numero_guia'        => $numeroGuia,
+            'fecha_traslado'     => $guia->fecha_traslado->toDateString(),
+            'observaciones'      => $linea['descripcion'] ?? null,
+            'estado'             => 'pendiente',
+        ]);
+
+        $stockOrigen->decrement('cantidad', $cantidad);
+
+        $total = StockAlmacen::where('producto_id', $producto->id)->sum('cantidad');
+        $producto->update(['stock_actual' => $total]);
     }
 
     /**
@@ -413,14 +332,5 @@ class GuiaRemisionService
         $numero = $serie->serie . '-' . str_pad($serie->correlativo_actual, 8, '0', STR_PAD_LEFT);
         $serie->increment('correlativo_actual');
         return $numero;
-    }
-
-    private function calcularStockTotal(int $productoId, bool $esSerie, int $almacenId): int
-    {
-        if ($esSerie) {
-            return Imei::where('producto_id', $productoId)
-                ->where('estado_imei', Imei::ESTADO_EN_STOCK)->count();
-        }
-        return StockAlmacen::where('producto_id', $productoId)->sum('cantidad');
     }
 }

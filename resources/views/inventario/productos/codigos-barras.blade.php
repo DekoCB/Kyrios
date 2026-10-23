@@ -461,7 +461,7 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generando...';
 
-            const tipoProducto = '{{ $producto->tipo_inventario === "serie" ? "celular" : "accesorio" }}';
+            const tipoProducto = 'accesorio';
 
             fetch('{{ route("inventario.productos.generar-codigo-barras") }}', {
                 method: 'POST',

@@ -212,7 +212,7 @@
                         </span>
                         Productos de la Compra
                     </h3>
-                    <p class="text-xs text-gray-500 mb-4 ml-10">Puedes corregir cantidades, precios y gestionar IMEIs. El stock se ajustará automáticamente.</p>
+                    <p class="text-xs text-gray-500 mb-4 ml-10">Puedes corregir cantidades y precios. El stock se ajustará automáticamente.</p>
 
                     <div class="rounded-xl border-2 border-green-200 overflow-hidden">
                         <div class="overflow-x-auto">
@@ -234,11 +234,6 @@
                                             <input type="hidden" name="detalles[{{ $i }}][id]" value="{{ $detalle->id }}">
                                             <p class="font-medium text-gray-900 text-sm">{{ $detalle->producto->nombre }}</p>
                                             <p class="text-xs text-gray-500">{{ $detalle->producto->marca->nombre ?? '' }}</p>
-                                            @if($detalle->producto->tipo_inventario === 'serie')
-                                                <span class="inline-flex items-center gap-1 text-xs text-purple-600 mt-0.5">
-                                                    <i class="fas fa-microchip text-xs"></i> Con IMEI
-                                                </span>
-                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-600">
                                             {{ $detalle->variante?->color?->nombre ?? ($detalle->producto->modelo->nombre ?? '-') }}
@@ -269,14 +264,6 @@
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-center gap-1">
-                                                @if($detalle->producto->tipo_inventario === 'serie')
-                                                <button type="button"
-                                                        onclick="abrirModalImeis({{ $detalle->id }}, '{{ addslashes($detalle->producto->nombre) }}')"
-                                                        title="Gestionar IMEIs"
-                                                        class="p-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-xs">
-                                                    <i class="fas fa-microchip"></i>
-                                                </button>
-                                                @endif
                                                 <button type="button"
                                                         onclick="eliminarDetalle({{ $detalle->id }}, '{{ addslashes($detalle->producto->nombre) }}')"
                                                         title="Eliminar producto"
@@ -357,100 +344,10 @@
         </div>
     </div>
 
-    <!-- ===== MODAL GESTIÓN DE IMEIs ===== -->
-    <div id="modalImeis" class="fixed inset-0 z-50 hidden overflow-y-auto">
-        <div class="flex min-h-screen items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/50" onclick="cerrarModalImeis()"></div>
-            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
-                <!-- Header -->
-                <div class="bg-gradient-to-r from-purple-700 to-purple-600 px-6 py-4 rounded-t-2xl flex items-center justify-between">
-                    <div>
-                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                            <i class="fas fa-microchip"></i>
-                            Gestión de IMEIs
-                        </h3>
-                        <p class="text-purple-200 text-sm mt-0.5" id="modal-imei-producto-nombre"></p>
-                    </div>
-                    <button onclick="cerrarModalImeis()" class="text-white/80 hover:text-white transition">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-
-                <!-- Body -->
-                <div class="p-6">
-                    <div id="modal-imei-loading" class="text-center py-8 text-gray-500">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                        <p>Cargando IMEIs...</p>
-                    </div>
-                    <div id="modal-imei-content" class="hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <p class="text-sm text-gray-600">
-                                <span id="modal-imei-count" class="font-semibold text-purple-700">0</span> IMEI(s) registrados
-                            </p>
-                            <p class="text-xs text-gray-400">Solo puedes editar/eliminar IMEIs en stock</p>
-                        </div>
-                        <div class="rounded-xl border border-gray-200 overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">#</th>
-                                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Código IMEI</th>
-                                        <th class="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Estado</th>
-                                        <th class="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabla-imeis-body" class="bg-white divide-y divide-gray-100 text-sm">
-                                </tbody>
-                            </table>
-                        </div>
-                        <div id="modal-imei-vacio" class="hidden text-center py-6 text-gray-400">
-                            <i class="fas fa-inbox text-3xl mb-2"></i>
-                            <p>No hay IMEIs registrados para este producto</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== MODAL EDITAR IMEI ===== -->
-    <div id="modalEditarImei" class="fixed inset-0 z-60 hidden overflow-y-auto">
-        <div class="flex min-h-screen items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/60"></div>
-            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-                <div class="bg-purple-700 px-6 py-4 rounded-t-2xl flex items-center justify-between">
-                    <h3 class="text-base font-bold text-white"><i class="fas fa-pen mr-2"></i>Editar IMEI</h3>
-                    <button onclick="cerrarModalEditarImei()" class="text-white/80 hover:text-white">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="p-6">
-                    <input type="hidden" id="edit-imei-id">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Nuevo código IMEI</label>
-                    <input type="text" id="edit-imei-codigo" maxlength="15"
-                           class="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 font-mono text-sm"
-                           placeholder="15 dígitos">
-                    <p class="text-xs text-gray-400 mt-1">Debe tener exactamente 15 dígitos numéricos.</p>
-                    <div id="edit-imei-error" class="hidden mt-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2"></div>
-                    <div class="flex gap-3 mt-5">
-                        <button onclick="cerrarModalEditarImei()" class="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition text-sm font-medium">
-                            Cancelar
-                        </button>
-                        <button onclick="guardarImei()" id="btn-guardar-imei"
-                                class="flex-1 px-4 py-2.5 bg-purple-700 text-white rounded-xl hover:bg-purple-600 transition text-sm font-medium">
-                            <i class="fas fa-save mr-1"></i>Guardar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
         // ── URLs para AJAX ──────────────────────────────────────────────
         const COMPRA_ID = {{ $compra->id }};
         const URL_DETALLE_BASE  = '{{ url("compras/{$compra->id}/detalle") }}';
-        const URL_IMEI_BASE     = '{{ url("compras/{$compra->id}/imei") }}';
         const CSRF_TOKEN        = document.querySelector('meta[name="csrf-token"]').content;
 
         // ── Submit del formulario ───────────────────────────────────────
@@ -610,202 +507,6 @@
             });
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // MODAL IMEIs
-        // ══════════════════════════════════════════════════════════════════
-        let detalleIdActivo = null;
-
-        const estadoImeiLabels = {
-            'en_stock':    { label: 'En Stock',    cls: 'bg-green-100 text-green-700' },
-            'en_transito': { label: 'En Tránsito', cls: 'bg-blue-100 text-blue-700' },
-            'reservado':   { label: 'Reservado',   cls: 'bg-yellow-100 text-yellow-700' },
-            'vendido':     { label: 'Vendido',      cls: 'bg-red-100 text-red-700' },
-            'garantia':    { label: 'Garantía',    cls: 'bg-orange-100 text-orange-700' },
-            'devuelto':    { label: 'Devuelto',    cls: 'bg-gray-100 text-gray-600' },
-            'reemplazado': { label: 'Reemplazado', cls: 'bg-gray-100 text-gray-600' },
-        };
-
-        function abrirModalImeis(detalleId, nombreProducto) {
-            detalleIdActivo = detalleId;
-            document.getElementById('modal-imei-producto-nombre').textContent = nombreProducto;
-            document.getElementById('modal-imei-loading').classList.remove('hidden');
-            document.getElementById('modal-imei-content').classList.add('hidden');
-            document.getElementById('modalImeis').classList.remove('hidden');
-
-            fetch(`${URL_DETALLE_BASE}/${detalleId}/imeis`, {
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN }
-            })
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('modal-imei-loading').classList.add('hidden');
-                document.getElementById('modal-imei-content').classList.remove('hidden');
-
-                if (data.success) {
-                    renderImeis(data.imeis);
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
-                    cerrarModalImeis();
-                }
-            })
-            .catch(() => {
-                cerrarModalImeis();
-                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los IMEIs.' });
-            });
-        }
-
-        function renderImeis(imeis) {
-            const tbody = document.getElementById('tabla-imeis-body');
-            const vacio = document.getElementById('modal-imei-vacio');
-            const count = document.getElementById('modal-imei-count');
-
-            count.textContent = imeis.length;
-            tbody.innerHTML = '';
-
-            if (imeis.length === 0) {
-                vacio.classList.remove('hidden');
-                return;
-            }
-            vacio.classList.add('hidden');
-
-            imeis.forEach((imei, idx) => {
-                const estadoInfo = estadoImeiLabels[imei.estado_imei] || { label: imei.estado_imei, cls: 'bg-gray-100 text-gray-600' };
-                const editable   = imei.estado_imei !== 'vendido';
-                const tr = document.createElement('tr');
-                tr.id = `imei-row-${imei.id}`;
-                tr.innerHTML = `
-                    <td class="px-4 py-2.5 text-gray-500 text-xs">${idx + 1}</td>
-                    <td class="px-4 py-2.5 font-mono text-sm font-medium text-gray-800" id="imei-codigo-${imei.id}">${imei.codigo_imei}</td>
-                    <td class="px-4 py-2.5 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${estadoInfo.cls}">${estadoInfo.label}</span>
-                    </td>
-                    <td class="px-4 py-2.5 text-center">
-                        ${editable ? `
-                        <div class="flex items-center justify-center gap-1">
-                            <button onclick="abrirEditarImei(${imei.id}, '${imei.codigo_imei}')"
-                                    class="p-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition" title="Editar IMEI">
-                                <i class="fas fa-pen text-xs"></i>
-                            </button>
-                            <button onclick="eliminarImei(${imei.id}, '${imei.codigo_imei}')"
-                                    class="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition" title="Eliminar IMEI">
-                                <i class="fas fa-trash text-xs"></i>
-                            </button>
-                        </div>` : `<span class="text-xs text-gray-400">—</span>`}
-                    </td>`;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function cerrarModalImeis() {
-            document.getElementById('modalImeis').classList.add('hidden');
-            detalleIdActivo = null;
-        }
-
-        // ── Editar IMEI ─────────────────────────────────────────────────
-        function abrirEditarImei(imeiId, codigoActual) {
-            document.getElementById('edit-imei-id').value    = imeiId;
-            document.getElementById('edit-imei-codigo').value = codigoActual;
-            document.getElementById('edit-imei-error').classList.add('hidden');
-            document.getElementById('modalEditarImei').classList.remove('hidden');
-            setTimeout(() => document.getElementById('edit-imei-codigo').focus(), 100);
-        }
-
-        function cerrarModalEditarImei() {
-            document.getElementById('modalEditarImei').classList.add('hidden');
-        }
-
-        function guardarImei() {
-            const imeiId  = document.getElementById('edit-imei-id').value;
-            const codigo  = document.getElementById('edit-imei-codigo').value.trim();
-            const errDiv  = document.getElementById('edit-imei-error');
-            const btn     = document.getElementById('btn-guardar-imei');
-
-            errDiv.classList.add('hidden');
-
-            if (!/^\d{15}$/.test(codigo)) {
-                errDiv.textContent = 'El IMEI debe tener exactamente 15 dígitos numéricos.';
-                errDiv.classList.remove('hidden');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Guardando...';
-
-            fetch(`${URL_IMEI_BASE}/${imeiId}`, {
-                method: 'PUT',
-                headers: {
-                    'X-CSRF-TOKEN': CSRF_TOKEN,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ codigo_imei: codigo })
-            })
-            .then(r => r.json())
-            .then(data => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save mr-1"></i>Guardar';
-
-                if (data.success) {
-                    const el = document.getElementById(`imei-codigo-${imeiId}`);
-                    if (el) el.textContent = codigo;
-                    cerrarModalEditarImei();
-                    Swal.fire({ icon: 'success', title: 'Actualizado', text: data.message, timer: 1800, showConfirmButton: false });
-                } else {
-                    errDiv.textContent = data.message || 'Error al actualizar.';
-                    errDiv.classList.remove('hidden');
-                }
-            })
-            .catch(() => {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save mr-1"></i>Guardar';
-                errDiv.textContent = 'Error de conexión. Intenta de nuevo.';
-                errDiv.classList.remove('hidden');
-            });
-        }
-
-        // ── Eliminar IMEI ────────────────────────────────────────────────
-        function eliminarImei(imeiId, codigo) {
-            Swal.fire({
-                title: '¿Eliminar IMEI?',
-                html: `<p class="text-sm text-gray-600">Se eliminará el IMEI <strong class="font-mono">${codigo}</strong> y se reducirá el stock en 1.</p>`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: '<i class="fas fa-trash mr-1"></i>Sí, eliminar',
-                cancelButtonText: 'Cancelar',
-            }).then(result => {
-                if (!result.isConfirmed) return;
-
-                fetch(`${URL_IMEI_BASE}/${imeiId}`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Accept': 'application/json' }
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        const row = document.getElementById(`imei-row-${imeiId}`);
-                        if (row) row.remove();
-
-                        const count = document.getElementById('modal-imei-count');
-                        const newCount = parseInt(count.textContent) - 1;
-                        count.textContent = newCount;
-                        if (newCount === 0) {
-                            document.getElementById('modal-imei-vacio').classList.remove('hidden');
-                        }
-
-                        Swal.fire({ icon: 'success', title: 'Eliminado', text: data.message, timer: 1800, showConfirmButton: false });
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'Error', text: data.message });
-                    }
-                })
-                .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión.' }));
-            });
-        }
-
-        // ── Enter en campo IMEI ─────────────────────────────────────────
-        document.getElementById('edit-imei-codigo').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') guardarImei();
-        });
     </script>
 </body>
 </html>

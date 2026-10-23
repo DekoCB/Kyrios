@@ -106,8 +106,8 @@
                         <span><i class="fas fa-tag mr-1"></i>{{ $productoSel->categoria?->nombre ?? '—' }}</span>
                         <span><i class="fas fa-trademark mr-1"></i>{{ $productoSel->marca?->nombre ?? '—' }}</span>
                         <span class="px-2 py-0.5 rounded-full text-xs font-semibold
-                            {{ $productoSel->tipo_inventario === 'serie' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                            {{ ucfirst($productoSel->tipo_inventario) }}
+                            bg-blue-100 text-blue-700">
+                            Cantidad
                         </span>
                     </div>
                 </div>

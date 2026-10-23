@@ -119,7 +119,7 @@ class PedidoController extends Controller
      * Cambiar estado del pedido. "recibido" NO se asigna aquí — solo se
      * alcanza generando la Compra real desde compras/create?pedido_id=X
      * (ver CompraService::registrarCompra), para que la mercadería quede
-     * efectivamente registrada en stock/IMEIs/cuenta por pagar.
+     * efectivamente registrada en stock/cuenta por pagar.
      */
     public function cambiarEstado(Request $request, Pedido $pedido)
     {

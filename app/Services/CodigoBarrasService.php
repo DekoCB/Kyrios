@@ -13,7 +13,6 @@ class CodigoBarrasService
      * Prefijos para diferentes tipos de productos
      */
     const PREFIJOS = [
-        'celular' => '200',
         'accesorio' => '300',
         'cargador' => '310',
         'case' => '320',
@@ -26,7 +25,7 @@ class CodigoBarrasService
      */
     public function generarCodigoUnico(Producto $producto = null, string $tipo = null): string
     {
-        $tipo = $tipo ?? ($producto ? ($producto->tipo_inventario === 'serie' ? 'celular' : 'accesorio') : 'otros');
+        $tipo = $tipo ?? ($producto ? 'accesorio' : 'otros');
         $prefijo = self::PREFIJOS[$tipo] ?? '400';
         
         do {
@@ -219,26 +218,6 @@ class CodigoBarrasService
         return $codigos;
     }
 
-    /**
-     * Generar código de barras para IMEI (15 dígitos)
-     */
-    public function generarCodigoIMEI(): string
-    {
-        do {
-            // Formato IMEI: AA-BBBBBB-CCCCCC-D (15 dígitos)
-            $tac = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT); // Type Allocation Code
-            $snr = str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT); // Serial Number
-            $base = $tac . $snr;
-            $digito = $this->calcularDigitoVerificador($base);
-            $imei = $base . $digito;
-            
-            // Verificar que no exista
-            $existe = \App\Models\Imei::where('codigo_imei', $imei)->exists();
-            
-        } while ($existe);
-        
-        return $imei;
-    }
 
     /**
      * Formatear código de barras para impresión
@@ -249,12 +228,6 @@ class CodigoBarrasService
             case 'ean13':
                 // Formato: 1234567890123 -> 123456 789012 3
                 return substr($codigo, 0, 6) . ' ' . substr($codigo, 6, 6) . ' ' . substr($codigo, -1);
-            case 'imei':
-                // Formato: 123456789012345 -> 12-345678-901234-5
-                return substr($codigo, 0, 2) . '-' . 
-                       substr($codigo, 2, 6) . '-' . 
-                       substr($codigo, 8, 6) . '-' . 
-                       substr($codigo, -1);
             default:
                 return $codigo;
         }

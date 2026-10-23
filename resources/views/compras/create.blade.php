@@ -64,7 +64,7 @@
                 <span>
                     Recibiendo mercadería del pedido <strong>{{ $pedidoOrigen['codigo'] }}</strong> —
                     proveedor, almacén y productos se precargaron. Completa factura, precios finales
-                    e IMEIs (si aplica) y guarda para cerrar el pedido.
+                    y guarda para cerrar el pedido.
                 </span>
             </div>
         @endif
@@ -570,7 +570,6 @@
                                         <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase">Cant.</th>
                                         <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase" id="thPrecioUnit">P. Unit. (S/)</th>
                                         <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase" id="thSubtotal">Subtotal</th>
-                                        <th class="px-3 py-2 text-left text-[10px] font-semibold text-gray-600 uppercase">IMEIs</th>
                                         <th class="px-3 py-2 text-center text-[10px] font-semibold text-gray-600 uppercase w-16">Acc.</th>
                                     </tr>
                                 </thead>
@@ -805,124 +804,6 @@
             </div>
         </div>
     </div>
-    {{-- MODAL DE IMEIs MEJORADO --}}
-    <div id="imeiModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="cerrarModalIMEI()"></div>
-        
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <!-- Header con gradiente -->
-            <div class="bg-gradient-to-r from-purple-700 to-purple-600 px-6 py-4 flex justify-between items-center">
-                <h3 class="text-xl font-bold text-white flex items-center" id="imeiModalTitle">
-                    <i class="fas fa-microchip mr-3"></i>
-                    Registrar IMEIs
-                </h3>
-                <button onclick="cerrarModalIMEI()" class="text-white/80 hover:text-white transition">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
-            </div>
-
-            <!-- Tabs: Manual / Pistola -->
-            <div class="flex border-b border-gray-200 bg-gray-50">
-                <button type="button" id="tab_manual"
-                        onclick="activarModoIMEI('manual')"
-                        class="flex-1 py-2.5 text-sm font-medium text-purple-700 border-b-2 border-purple-600 bg-white transition">
-                    <i class="fas fa-keyboard mr-1"></i> Manual
-                </button>
-                <button type="button" id="tab_pistola"
-                        onclick="activarModoIMEI('pistola')"
-                        class="flex-1 py-2.5 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition">
-                    <i class="fas fa-barcode mr-1"></i> Pistola / Escáner
-                </button>
-            </div>
-
-            <!-- Cuerpo del modal -->
-            <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-
-                <!-- ── MODO MANUAL ── -->
-                <div id="panel_manual">
-                    <!-- Barra de herramientas -->
-                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 bg-gray-50 rounded-xl">
-                        <span class="text-sm font-medium text-gray-700">
-                            <i class="fas fa-info-circle mr-1 text-blue-500"></i>
-                            Total: <span id="imeiTotalCount" class="font-bold text-purple-700">0</span> IMEIs
-                        </span>
-                        <div class="flex flex-wrap gap-2">
-                            <button type="button" onclick="generarIMEIsAleatorios()"
-                                    class="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm flex items-center">
-                                <i class="fas fa-magic mr-1"></i>Generar
-                            </button>
-                            <button type="button" onclick="limpiarIMEIs()"
-                                    class="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm flex items-center">
-                                <i class="fas fa-eraser mr-1"></i>Limpiar
-                            </button>
-                        </div>
-                    </div>
-                    <div id="imeiContainer" class="space-y-3"></div>
-                    <div class="mt-4 text-xs text-gray-500 flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                        <span><i class="fas fa-info-circle mr-1 text-blue-500"></i> Cada IMEI debe tener exactamente 15 dígitos</span>
-                        <span><i class="fas fa-level-down-alt mr-1 text-blue-500"></i> Enter avanza al siguiente campo</span>
-                    </div>
-                </div>
-
-                <!-- ── MODO PISTOLA ── -->
-                <div id="panel_pistola" class="hidden">
-                    <!-- Input principal de escaneo -->
-                    <div class="mb-4">
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                                <i class="fas fa-barcode text-purple-400 text-2xl"></i>
-                            </div>
-                            <input type="text" id="pistola_input"
-                                   class="w-full pl-14 pr-4 py-4 border-2 border-purple-300 rounded-xl focus:border-purple-600 focus:ring-4 focus:ring-purple-100 font-mono text-xl tracking-widest text-center transition"
-                                   placeholder="Escanear IMEI aquí..."
-                                   maxlength="15"
-                                   autocomplete="off"
-                                   oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                   onkeydown="pistolaManejarTecla(event)">
-                        </div>
-                        <p class="text-xs text-center text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Apunta la pistola a este campo y escanea — se registra automáticamente al recibir el Enter
-                        </p>
-                    </div>
-
-                    <!-- Contador y acciones -->
-                    <div class="flex items-center justify-between mb-3 px-1">
-                        <span class="text-sm font-semibold text-gray-700">
-                            IMEIs escaneados: <span id="pistola_count" class="text-purple-700">0</span>
-                        </span>
-                        <button type="button" onclick="pistolaBorrarUltimo()"
-                                class="text-xs text-red-500 hover:text-red-700 transition flex items-center gap-1">
-                            <i class="fas fa-undo"></i> Deshacer último
-                        </button>
-                    </div>
-
-                    <!-- Lista de IMEIs escaneados -->
-                    <div id="pistola_lista" class="space-y-1.5 max-h-72 overflow-y-auto pr-1"></div>
-
-                    <!-- Estado vacío -->
-                    <div id="pistola_vacio" class="py-10 text-center text-gray-400">
-                        <i class="fas fa-barcode text-5xl mb-3 block opacity-30"></i>
-                        <p class="text-sm">Aún no se han escaneado IMEIs</p>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Footer -->
-            <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                <button type="button" onclick="cerrarModalIMEI()"
-                        class="px-6 py-2 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-white transition">
-                    Cancelar
-                </button>
-                <button type="button" onclick="guardarIMEIs()"
-                        class="px-6 py-2 bg-gradient-to-r from-purple-700 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-500 transition shadow-md">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    Guardar IMEIs
-                </button>
-            </div>
-        </div>
-    </div>
 <script>
     
     // ============================================
@@ -930,8 +811,6 @@
     // ============================================
     let timeoutBusqueda;
     let contadorProductos = 0;
-    let imeisPorFila = {}; // { rowIndex: ['imei1', 'imei2', ...] }
-    let productoEnEdicion = null;
     let productosSeleccionadosIds = new Set();
     let categoriaActual = 'todos';
     let productosFiltrados = [];
@@ -1225,7 +1104,6 @@
             <td class="px-2 py-2">
                 <select name="detalles[${idx}][modelo_id]"
                         id="modelo_select_${idx}"
-                        onchange="actualizarTrasCambioModelo(${idx})"
                         class="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
                         disabled>
                     <option value="">— Modelo —</option>
@@ -1234,7 +1112,6 @@
             <td class="px-2 py-2">
                 <select name="detalles[${idx}][color_id]"
                         id="color_${idx}"
-                        onchange="actualizarVistaIMEI(${idx})"
                         class="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
                         disabled>
                     <option value="">No aplica</option>
@@ -1263,17 +1140,6 @@
                 </div>
             </td>
             <td class="px-2 py-2 font-semibold text-xs" id="subtotal_${idx}">${document.getElementById('tipo_moneda').value === 'USD' ? '$' : 'S/'} 0.00</td>
-            <td class="px-2 py-2">
-                <div id="imei_info_${idx}" class="hidden text-[10px] text-gray-500">
-                    <span id="imei_count_${idx}">0</span> IMEI(s)
-                </div>
-                <button type="button" onclick="gestionarIMEIs(${idx})"
-                        id="btn_imei_${idx}"
-                        class="text-blue-600 hover:text-blue-800 text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-                        disabled>
-                    <i class="fas fa-microchip mr-0.5"></i>IMEIs
-                </button>
-            </td>
             <td class="px-2 py-2 text-center">
                 <button type="button" onclick="eliminarProducto('${rowId}')"
                         class="text-red-600 hover:text-red-800 text-xs">
@@ -1311,7 +1177,6 @@
         const marcaSelect = document.getElementById(`marca_select_${index}`);
         const modeloSelect = document.getElementById(`modelo_select_${index}`);
         const colorSelect = document.getElementById(`color_${index}`);
-        const btnIMEI = document.getElementById(`btn_imei_${index}`);
 
         // Resetear dependientes
         marcaSelect.value = '';
@@ -1320,7 +1185,6 @@
         modeloSelect.disabled = true;
         colorSelect.value = '';
         colorSelect.disabled = true;
-        btnIMEI.disabled = true;
 
         // Limpiar selector de variante si existe
         const varianteContainer = document.getElementById(`variante_container_${index}`);
@@ -1420,9 +1284,7 @@
         if (!opt || !opt.value) return;
 
         const stock  = parseInt(opt.dataset.stock) || 0;
-        const tipo   = opt.dataset.tipo;
         const badge  = document.getElementById(`variante_stock_badge_${index}`);
-        const btnIMEI = document.getElementById(`btn_imei_${index}`);
 
         // Actualizar campo color_id oculto si existe
         const colorHidden = document.querySelector(`[name="detalles[${index}][color_id]"]`);
@@ -1434,22 +1296,15 @@
             badge.className = `text-xs mt-1 font-semibold ${stock > 0 ? 'text-green-600' : 'text-red-600'}`;
             badge.textContent = stock > 0 ? `✓ ${stock} en stock` : '✗ Sin stock';
         }
-
-        // Habilitar IMEIs si aplica
-        if (btnIMEI && tipo === 'serie') {
-            btnIMEI.disabled = !opt.value;
-        }
     }
 
     function cambiarMarca(index, preseleccionarModeloId = null) {
         const marcaSelect = document.getElementById(`marca_select_${index}`);
         const modeloSelect = document.getElementById(`modelo_select_${index}`);
         const colorSelect = document.getElementById(`color_${index}`);
-        const btnIMEI = document.getElementById(`btn_imei_${index}`);
 
         modeloSelect.innerHTML = '<option value="">— Modelo —</option>';
         modeloSelect.disabled = true;
-        btnIMEI.disabled = true;
 
         const marcaId = marcaSelect.value;
         if (!marcaId) return;
@@ -1479,38 +1334,8 @@
             });
     }
 
-    function actualizarTrasCambioModelo(index) {
-        const modeloSelect = document.getElementById(`modelo_select_${index}`);
-        const colorSelect = document.getElementById(`color_${index}`);
-        const btnIMEI = document.getElementById(`btn_imei_${index}`);
-        const productoSelect = document.getElementById(`producto_select_${index}`);
-        const producto = catalogoProductos.find(p => p.id == productoSelect.value);
-
-        if (!producto) return;
-
-        // El botón de IMEIs requiere tipo 'serie' + modelo seleccionado
-        if (producto.tipo_inventario === 'serie') {
-            btnIMEI.disabled = !modeloSelect.value;
-        }
-    }
-
-    function actualizarVistaIMEI(index) {
-        const colorSelect   = document.getElementById(`color_${index}`);
-        const btnIMEI       = document.getElementById(`btn_imei_${index}`);
-        const productoSelect = document.getElementById(`producto_select_${index}`);
-        const producto = catalogoProductos.find(p => p.id == productoSelect.value);
-
-        // Solo habilitar el botón IMEI si el producto es de tipo 'serie' y tiene modelo
-        if (producto && producto.tipo_inventario === 'serie') {
-            const modeloSelect = document.getElementById(`modelo_select_${index}`);
-            btnIMEI.disabled = !modeloSelect.value;
-        }
-        // Para productos regulares el botón queda siempre deshabilitado
-    }
-
     function actualizarCantidad(index) {
         calcularSubtotal(index);
-        actualizarInfoIMEI(index);
     }
     function actualizarCantidadProducto(productoId, cantidad) {
         if (productosSeleccionadosIds.has(productoId)) {
@@ -1881,9 +1706,7 @@
                                 <span class="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">
                                     ${p.categoria || 'Sin categoría'}
                                 </span>
-                                ${p.tipo_inventario === 'serie' ?
-                                    '<span class="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full"><i class="fas fa-microchip mr-1"></i>IMEI</span>' :
-                                    '<span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full"><i class="fas fa-boxes mr-1"></i>Stock</span>'}
+                                <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full"><i class="fas fa-boxes mr-1"></i>Stock</span>
                             </div>
                             <!-- NUEVO: Selector de cantidad -->
                             <div class="mt-2 flex items-center gap-2">
@@ -1989,9 +1812,7 @@
                                 <p class="text-xs text-gray-500">${p.marca || ''} ${p.modelo ? '· ' + p.modelo : ''}</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">${p.categoria || '—'}</span>
-                                    ${p.tipo_inventario === 'serie'
-                                        ? '<span class="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full"><i class="fas fa-microchip mr-1"></i>IMEI</span>'
-                                        : '<span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full"><i class="fas fa-boxes mr-1"></i>Stock</span>'}
+                                    <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full"><i class="fas fa-boxes mr-1"></i>Stock</span>
                                 </div>
                                 <div class="mt-2 flex items-center gap-2">
                                     <span class="text-xs text-gray-500">Cant.:</span>
@@ -2236,200 +2057,6 @@
         }
     }
 
-    // ============================================
-    // FUNCIONES DEL MODAL DE IMEIs
-    // ============================================
-    function gestionarIMEIs(index) {
-        const select        = document.getElementById(`producto_select_${index}`);
-        const modeloSelect  = document.getElementById(`modelo_select_${index}`);
-        const colorSelect   = document.getElementById(`color_${index}`);
-        const varianteSelect = document.getElementById(`variante_select_${index}`);
-        const cantidad      = parseInt(document.getElementById(`cantidad_${index}`).value) || 1;
-
-        if (!select.value) {
-            Swal.fire({ icon: 'warning', title: 'Atención', text: 'Primero seleccione un producto' });
-            return;
-        }
-
-        const producto = catalogoProductos.find(p => p.id == select.value);
-        let subtitulo = '';
-
-        // ── Producto CON variantes ────────────────────────────────────────
-        if (varianteSelect) {
-            if (!varianteSelect.value) {
-                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Primero seleccione una variante' });
-                return;
-            }
-            const opt = varianteSelect.selectedOptions[0];
-            subtitulo = opt.text.split('—')[0].trim();   // "Negro / 128GB" parte del label
-
-        // ── Producto SIN variantes (flujo clásico) ────────────────────────
-        } else {
-            if (!modeloSelect.value) {
-                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Primero seleccione un modelo' });
-                return;
-            }
-            const modeloNombre = modeloSelect.options[modeloSelect.selectedIndex].text;
-            const colorNombre  = colorSelect.value ? colorSelect.options[colorSelect.selectedIndex].text : '';
-            subtitulo = colorNombre ? `${modeloNombre} · ${colorNombre}` : modeloNombre;
-        }
-
-        document.getElementById('imeiModalTitle').innerHTML = `
-            <i class="fas fa-microchip mr-3"></i>
-            ${producto?.nombre || ''} · ${subtitulo}
-        `;
-
-        productoEnEdicion = index;
-        
-        const imeisGuardados = imeisPorFila[index] || [];
-        generarInputsIMEI(cantidad, imeisGuardados);
-        
-        document.getElementById('imeiModal').classList.remove('hidden');
-        document.getElementById('imeiModal').classList.add('flex');
-        actualizarContadorIMEI();
-    }
-
-    // ── Modo IMEI (manual / pistola) ─────────────────────────────────────────
-    let modoIMEIActual = 'manual';
-
-    function activarModoIMEI(modo) {
-        modoIMEIActual = modo;
-        document.getElementById('panel_manual').classList.toggle('hidden', modo !== 'manual');
-        document.getElementById('panel_pistola').classList.toggle('hidden', modo !== 'pistola');
-        document.getElementById('tab_manual').className  = modo === 'manual'
-            ? 'flex-1 py-2.5 text-sm font-medium text-purple-700 border-b-2 border-purple-600 bg-white transition'
-            : 'flex-1 py-2.5 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition';
-        document.getElementById('tab_pistola').className = modo === 'pistola'
-            ? 'flex-1 py-2.5 text-sm font-medium text-purple-700 border-b-2 border-purple-600 bg-white transition'
-            : 'flex-1 py-2.5 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition';
-        if (modo === 'pistola') {
-            pistolaRenderLista();
-            setTimeout(() => document.getElementById('pistola_input')?.focus(), 100);
-        }
-    }
-
-    // ── Pistola: lógica ───────────────────────────────────────────────────────
-    function pistolaManejarTecla(e) {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const input = document.getElementById('pistola_input');
-        const valor = input.value.trim();
-
-        if (valor.length !== 15) {
-            input.classList.add('border-red-400', 'bg-red-50');
-            setTimeout(() => input.classList.remove('border-red-400', 'bg-red-50'), 600);
-            return;
-        }
-
-        // Verificar duplicado
-        const lista = imeisPorFila[productoEnEdicion] || [];
-        if (lista.includes(valor)) {
-            Swal.fire({ icon: 'warning', title: 'IMEI duplicado', text: `${valor} ya fue escaneado.`, timer: 1800, showConfirmButton: false });
-            input.select();
-            return;
-        }
-
-        lista.push(valor);
-        imeisPorFila[productoEnEdicion] = lista;
-        input.value = '';
-        input.classList.add('border-green-400', 'bg-green-50');
-        setTimeout(() => input.classList.remove('border-green-400', 'bg-green-50'), 400);
-        pistolaRenderLista();
-        actualizarContadorIMEI();
-    }
-
-    function pistolaRenderLista() {
-        const lista  = imeisPorFila[productoEnEdicion] || [];
-        const div    = document.getElementById('pistola_lista');
-        const vacio  = document.getElementById('pistola_vacio');
-        const contEl = document.getElementById('pistola_count');
-        if (contEl) contEl.textContent = lista.length;
-
-        if (lista.length === 0) {
-            div.innerHTML = '';
-            vacio?.classList.remove('hidden');
-            return;
-        }
-        vacio?.classList.add('hidden');
-        div.innerHTML = lista.map((imei, i) => `
-            <div class="flex items-center justify-between px-3 py-2 rounded-lg ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'} border border-gray-100">
-                <div class="flex items-center gap-2">
-                    <span class="w-5 h-5 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">${i + 1}</span>
-                    <span class="font-mono text-sm text-gray-800 tracking-wider">${imei}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-check-circle text-green-500 text-sm"></i>
-                    <button type="button" onclick="pistolaEliminar(${i})"
-                            class="text-red-400 hover:text-red-600 transition text-xs">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>`).join('');
-    }
-
-    function pistolaEliminar(idx) {
-        const lista = imeisPorFila[productoEnEdicion] || [];
-        lista.splice(idx, 1);
-        imeisPorFila[productoEnEdicion] = lista;
-        pistolaRenderLista();
-        actualizarContadorIMEI();
-    }
-
-    function pistolaBorrarUltimo() {
-        const lista = imeisPorFila[productoEnEdicion] || [];
-        if (!lista.length) return;
-        lista.pop();
-        imeisPorFila[productoEnEdicion] = lista;
-        pistolaRenderLista();
-        actualizarContadorIMEI();
-    }
-
-    // ── Inputs manuales ───────────────────────────────────────────────────────
-    function generarInputsIMEI(cantidad, imeisGuardados = []) {
-        const container = document.getElementById('imeiContainer');
-        let html = '';
-
-        for (let i = 0; i < cantidad; i++) {
-            const valor = imeisGuardados[i] || '';
-            const esValido = valor.length === 15 ? 'border-green-500 bg-green-50' : '';
-
-            html += `
-                <div class="grid grid-cols-12 gap-3 items-center" id="imei_row_${i}">
-                    <div class="col-span-1 text-sm font-medium text-gray-600 text-center bg-gray-100 py-2 rounded-lg">
-                        ${i + 1}
-                    </div>
-                    <div class="col-span-11">
-                        <input type="text"
-                            class="imei-input w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 font-mono text-lg tracking-wider ${esValido}"
-                            placeholder="Ingrese IMEI de 15 dígitos"
-                            value="${valor}"
-                            maxlength="15"
-                            autocomplete="off"
-                            data-index="${i}"
-                            oninput="this.value = this.value.replace(/[^0-9]/g, ''); validarIMEIInput(this)"
-                            onkeydown="imeiManualTecla(event, ${i})">
-                    </div>
-                </div>`;
-        }
-
-        container.innerHTML = html;
-        actualizarContadorIMEI();
-    }
-
-    function imeiManualTecla(e, idx) {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const inputs = document.querySelectorAll('.imei-input');
-        const actual = inputs[idx];
-        if (actual?.value.length === 15) {
-            const siguiente = inputs[idx + 1];
-            if (siguiente) {
-                siguiente.focus();
-                siguiente.select();
-            }
-            // Si es el último y está lleno, el foco queda ahí (puede usar Tab o Guardar)
-        }
-    }
     function actualizarContadorUnidades() {
         const simplesTotal   = Object.values(cantidadesSeleccionadas).reduce((a, b) => a + b, 0);
         const variantesTotal = Object.values(variantesSeleccionadas).reduce((a, s) => a + (s.cantidad || 1), 0);
@@ -2504,296 +2131,13 @@
             const varianteSelect = document.getElementById(`variante_select_${index}`);
             if (varianteSelect) {
                 varianteSelect.value = varianteId;
-                seleccionarVariante(index);   // actualiza badge de stock y botón IMEI
+                seleccionarVariante(index);   // actualiza el badge de stock
             }
 
             const inputCantidad = document.getElementById(`cantidad_${index}`);
             if (inputCantidad) inputCantidad.value = 1;   // cada fila = 1 unidad
 
             calcularSubtotal(index);
-        }
-    }
-
-    function validarIMEIInput(input) {
-        const valor = input.value.trim();
-        if (valor.length === 15) {
-            input.classList.add('border-green-500', 'bg-green-50');
-            input.classList.remove('border-red-500', 'bg-red-50');
-        } else if (valor.length > 0) {
-            input.classList.remove('border-green-500', 'bg-green-50');
-            input.classList.add('border-red-500', 'bg-red-50');
-        } else {
-            input.classList.remove('border-red-500', 'bg-red-50', 'border-green-500', 'bg-green-50');
-        }
-        actualizarContadorIMEI();
-    }
-
-    function actualizarContadorIMEI() {
-        const inputs = document.querySelectorAll('.imei-input');
-        const total = inputs.length;
-        const validos = Array.from(inputs).filter(input => input.value.trim().length === 15).length;
-        
-        document.getElementById('imeiTotalCount').innerText = `${validos}/${total}`;
-    }
-
-    function guardarIMEIs() {
-        let imeis = [];
-
-        if (modoIMEIActual === 'pistola') {
-            // En modo pistola los IMEIs ya están en imeisPorFila
-            imeis = imeisPorFila[productoEnEdicion] || [];
-            if (imeis.length === 0) {
-                Swal.fire({ icon: 'warning', title: 'Sin IMEIs', text: 'Escanea al menos un IMEI.', confirmButtonColor: '#7c3aed' });
-                return;
-            }
-        } else {
-            // Modo manual: leer inputs
-            const inputs = document.querySelectorAll('.imei-input');
-            let valido = true;
-            let primerError = null;
-
-            inputs.forEach(input => {
-                const valor = input.value.trim();
-                if (valor.length !== 15) {
-                    input.classList.add('border-red-500', 'bg-red-50');
-                    valido = false;
-                    if (!primerError) primerError = input;
-                } else {
-                    input.classList.remove('border-red-500', 'bg-red-50');
-                    input.classList.add('border-green-500', 'bg-green-50');
-                    imeis.push(valor);
-                }
-            });
-
-            if (!valido) {
-                Swal.fire({ icon: 'error', title: 'Error de validación', text: 'Todos los IMEI deben tener exactamente 15 dígitos numéricos', confirmButtonColor: '#d33' });
-                if (primerError) primerError.focus();
-                return;
-            }
-        }
-
-        if (productoEnEdicion !== null) {
-            const idx = productoEnEdicion;
-
-            // Eliminar inputs ocultos anteriores
-            document.querySelectorAll(`[data-imei-row="${idx}"]`).forEach(el => el.remove());
-
-            // Guardar en objeto
-            imeisPorFila[idx] = imeis;
-
-            // Crear inputs ocultos con estructura correcta
-            imeis.forEach((imei, i) => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = `detalles[${idx}][imeis][${i}][codigo_imei]`;
-                input.setAttribute('data-imei-row', idx);
-                input.value = imei;
-                document.getElementById('compraForm').appendChild(input);
-            });
-
-            // Actualizar info en la tabla
-            actualizarInfoIMEI(idx);
-            
-            // CERRAR MODAL
-            cerrarModalIMEI();
-            
-            // MOSTRAR MENSAJE DE ÉXITO
-            Swal.fire({
-                icon: 'success',
-                title: '¡IMEIs guardados!',
-                text: `${imeis.length} IMEI(s) registrados correctamente`,
-                timer: 2000,
-                showConfirmButton: false,
-                position: 'center',
-                background: '#ffffff',
-                iconColor: '#10b981'
-            });
-        } else {
-            cerrarModalIMEI();
-        }
-    }
-
-    function generarIMEIsAleatorios() {
-        const inputs = document.querySelectorAll('.imei-input');
-        
-        inputs.forEach(input => {
-            let imei = '';
-            for (let i = 0; i < 14; i++) {
-                imei += Math.floor(Math.random() * 10);
-            }
-            
-            let suma = 0;
-            for (let i = 0; i < 14; i++) {
-                let digito = parseInt(imei[i]);
-                if (i % 2 === 0) {
-                    digito *= 2;
-                    if (digito > 9) digito -= 9;
-                }
-                suma += digito;
-            }
-            let verificador = (10 - (suma % 10)) % 10;
-            imei += verificador;
-            
-            input.value = imei;
-            validarIMEIInput(input);
-        });
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'IMEIs generados',
-            text: `${inputs.length} IMEI(s) generados aleatoriamente`,
-            timer: 1500,
-            showConfirmButton: false
-        });
-    }
-
-    function importarIMEIs() {
-        const inputs = document.querySelectorAll('.imei-input');
-        
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.txt,.csv';
-        fileInput.onchange = function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const contenido = e.target.result;
-                const lineas = contenido.split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0);
-                
-                let importados = 0;
-                lineas.forEach((linea, index) => {
-                    if (index < inputs.length) {
-                        const imei = linea.substring(0, 15);
-                        if (imei.length === 15 && /^\d+$/.test(imei)) {
-                            inputs[index].value = imei;
-                            validarIMEIInput(inputs[index]);
-                            importados++;
-                        }
-                    }
-                });
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Importación completada',
-                    text: `Se importaron ${importados} de ${Math.min(lineas.length, inputs.length)} IMEIs válidos`,
-                    confirmButtonColor: '#C9A500'
-                });
-            };
-            
-            reader.readAsText(file);
-        };
-        
-        fileInput.click();
-    }
-    function importarIMEIDesdeArchivo(index) {
-        // Crear input file oculto
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.txt,.csv';
-        
-        fileInput.onchange = function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const contenido = e.target.result;
-                const lineas = contenido.split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0);
-                
-                const inputs = document.querySelectorAll('.imei-input');
-                let importados = 0;
-                
-                lineas.forEach((linea, idx) => {
-                    if (idx < inputs.length) {
-                        const partes = linea.split(',');
-                        const imei = partes[0].trim().substring(0, 15);
-                        
-                        if (imei.length === 15 && /^\d+$/.test(imei)) {
-                            inputs[idx].value = imei;
-                            validarIMEIInput(inputs[idx]);
-                            importados++;
-                            
-                            // Si hay serie, guardarla (opcional)
-                            if (partes[1]) {
-                                // Aquí podrías guardar la serie si tienes campo para eso
-                            }
-                        }
-                    }
-                });
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Importación completada',
-                    text: `Se importaron ${importados} de ${inputs.length} IMEIs válidos`,
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-            };
-            
-            reader.readAsText(file);
-        };
-        
-        fileInput.click();
-    }
-
-    function limpiarIMEIs() {
-        Swal.fire({
-            title: '¿Limpiar todos?',
-            text: 'Esta acción eliminará todos los IMEI ingresados',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, limpiar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                document.querySelectorAll('.imei-input').forEach(input => {
-                    input.value = '';
-                    input.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50');
-                });
-                actualizarContadorIMEI();
-            }
-        });
-    }
-
-    function cerrarModalIMEI() {
-        document.getElementById('imeiModal').classList.add('hidden');
-        document.getElementById('imeiModal').classList.remove('flex');
-        productoEnEdicion = null;
-        activarModoIMEI('manual'); // resetear al abrir siguiente vez
-    }
-
-    function actualizarInfoIMEI(index) {
-        const infoDiv = document.getElementById(`imei_info_${index}`);
-        const countSpan = document.getElementById(`imei_count_${index}`);
-        const btnImei = document.getElementById(`btn_imei_${index}`);
-        const guardados = imeisPorFila[index] || [];
-
-        const cantidadInput = document.getElementById(`cantidad_${index}`);
-        const cantidad = cantidadInput ? (parseInt(cantidadInput.value) || 1) : 1;
-        const pendientes = cantidad - guardados.length;
-
-        if (guardados.length > 0 && pendientes <= 0) {
-            countSpan.innerText = guardados.length;
-            infoDiv.classList.remove('hidden');
-            btnImei.innerHTML = `<i class="fas fa-check-circle mr-1 text-green-600"></i>${guardados.length} IMEI(s)`;
-            btnImei.classList.remove('text-orange-600', 'font-medium');
-            btnImei.classList.add('text-green-700', 'font-medium');
-        } else if (guardados.length > 0 && pendientes > 0) {
-            countSpan.innerText = guardados.length;
-            infoDiv.classList.remove('hidden');
-            btnImei.innerHTML = `<i class="fas fa-exclamation-triangle mr-1 text-orange-500"></i>${guardados.length}/${cantidad} IMEIs`;
-            btnImei.classList.remove('text-green-700');
-            btnImei.classList.add('text-orange-600', 'font-medium');
-        } else {
-            infoDiv.classList.add('hidden');
-            btnImei.innerHTML = '<i class="fas fa-microchip mr-1"></i>IMEIs <span class="text-red-500 font-bold">*</span>';
-            btnImei.classList.remove('text-green-700', 'text-orange-600', 'font-medium');
         }
     }
 
@@ -2882,37 +2226,6 @@
                 return false;
             }
 
-            // Validar IMEIs completos para productos tipo serie
-            const filasSerie = [];
-            document.querySelectorAll('[id^="producto_select_"]').forEach(sel => {
-                if (!sel.value) return;
-                const opt = sel.selectedOptions[0];
-                if (!opt || opt.dataset.tipo !== 'serie') return;
-                const idx = sel.id.replace('producto_select_', '');
-                const cantidad = parseInt(document.getElementById(`cantidad_${idx}`)?.value) || 1;
-                const registrados = (imeisPorFila[idx] || []).length;
-                if (registrados < cantidad) {
-                    filasSerie.push({ nombre: opt.text.trim(), registrados, cantidad });
-                }
-            });
-
-            if (filasSerie.length > 0) {
-                e.preventDefault();
-                const lista = filasSerie.map(f =>
-                    `• ${f.nombre}: ${f.registrados}/${f.cantidad} IMEIs`
-                ).join('\n');
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'IMEIs incompletos',
-                    html: `<p class="text-gray-600 mb-2">Los siguientes productos requieren IMEIs:</p>
-                           <pre class="text-left text-sm bg-gray-50 rounded p-3">${lista}</pre>
-                           <p class="text-xs text-gray-400 mt-2">Haz clic en el botón <strong>IMEIs</strong> de cada fila para registrarlos.</p>`,
-                    confirmButtonColor: '#7c3aed',
-                    confirmButtonText: 'Entendido'
-                });
-                return false;
-            }
-
             return true; // Todo OK, se envía
         });
     });
@@ -2923,7 +2236,6 @@
 function abrirModalCrearProducto(terminoBusqueda) {
     document.getElementById('np_nombre').value = terminoBusqueda || '';
     document.getElementById('np_categoria').value = '';
-    document.getElementById('np_tipo').value = 'cantidad';
     const marcaSelect = document.getElementById('np_marca');
     marcaSelect.innerHTML = '<option value="">Seleccionar categoría primero...</option>';
     marcaSelect.disabled = true;
@@ -2933,15 +2245,11 @@ function abrirModalCrearProducto(terminoBusqueda) {
     document.getElementById('np_tiene_variantes').checked = false;
     document.getElementById('np_codigo_barras').value = '';
     document.getElementById('np_unidad_medida').value = '';
-    document.getElementById('np_dias_garantia').value = 365;
-    document.getElementById('np_tipo_garantia').value = 'proveedor';
-    document.getElementById('np_garantia_section').classList.add('hidden');
     document.getElementById('np_variantes_section').classList.add('hidden');
     document.getElementById('np_var_color').value = '';
     document.getElementById('np_var_capacidad').value = '';
     npVariantes = [];
     npRenderVariantes();
-    toggleModeloLabel();
 
     const modal = document.getElementById('modalCrearProducto');
     modal.classList.remove('hidden');
@@ -3019,19 +2327,6 @@ function npRenderVariantes() {
             </button>
         </div>`;
     }).join('');
-}
-
-function toggleModeloLabel() {
-    const tipo = document.getElementById('np_tipo')?.value;
-    const req  = document.getElementById('np_modelo_req_label');
-    const opt  = document.getElementById('np_modelo_opt_label');
-    if (tipo === 'serie') {
-        req?.classList.remove('hidden');
-        opt?.classList.add('hidden');
-    } else {
-        req?.classList.add('hidden');
-        opt?.classList.remove('hidden');
-    }
 }
 
 async function crearMarcaRapida() {
@@ -3199,28 +2494,15 @@ function cargarModelosNuevoProducto() {
         });
 }
 
-function toggleGarantiaSection() {
-    const tipo = document.getElementById('np_tipo').value;
-    const sec  = document.getElementById('np_garantia_section');
-    if (tipo === 'serie') {
-        sec.classList.remove('hidden');
-    } else {
-        sec.classList.add('hidden');
-    }
-}
-
 function guardarNuevoProducto() {
     const nombre          = document.getElementById('np_nombre').value.trim();
     const categoriaId     = document.getElementById('np_categoria').value;
     const marcaId         = document.getElementById('np_marca').value;
     const modeloId        = document.getElementById('np_modelo').value;
     const colorId         = document.getElementById('np_color').value;
-    const tipo            = document.getElementById('np_tipo').value;
     const tieneVariantes  = document.getElementById('np_tiene_variantes').checked;
     const codigoBarras    = document.getElementById('np_codigo_barras').value.trim();
     const unidadMedidaId  = document.getElementById('np_unidad_medida').value;
-    const diasGarantia    = document.getElementById('np_dias_garantia')?.value || 365;
-    const tipoGarantia    = document.getElementById('np_tipo_garantia')?.value || 'proveedor';
 
     if (!nombre) {
         Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Ingresa el nombre del producto.', confirmButtonColor: '#C9A500' });
@@ -3237,10 +2519,6 @@ function guardarNuevoProducto() {
     }
     if (!unidadMedidaId) {
         Swal.fire({ icon: 'warning', title: 'Falta la unidad de medida', text: 'Selecciona una unidad de medida.', confirmButtonColor: '#C9A500' });
-        return;
-    }
-    if (tipo === 'serie' && !modeloId) {
-        Swal.fire({ icon: 'warning', title: 'Falta el modelo', text: 'Para productos con IMEI el modelo es obligatorio.', confirmButtonColor: '#C9A500' });
         return;
     }
     if (tieneVariantes && npVariantes.length === 0) {
@@ -3265,12 +2543,9 @@ function guardarNuevoProducto() {
             modelo_id:        modeloId || null,
             color_id:         tieneVariantes ? null : (colorId || null),
             unidad_medida_id: unidadMedidaId,
-            tipo_inventario:  tipo,
             tiene_variantes:  tieneVariantes,
             variantes:        tieneVariantes ? npVariantes.map(v => ({ color_id: v.color_id || null, capacidad: v.capacidad || null })) : [],
             codigo_barras:    codigoBarras || null,
-            dias_garantia:    tipo === 'serie' ? parseInt(diasGarantia) : null,
-            tipo_garantia:    tipo === 'serie' ? tipoGarantia : null,
         }),
     })
     .then(r => r.json())
@@ -3293,7 +2568,6 @@ function guardarNuevoProducto() {
             marca:           data.marca,
             modelo_id:       data.modelo_id,
             modelo:          data.modelo,
-            requiere_imei:   data.requiere_imei,
             tiene_variantes: data.tiene_variantes || false,
             variantes:       data.variantes || [],
         });
@@ -3402,16 +2676,6 @@ function guardarNuevoProducto() {
                         @endforeach
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Tipo <span class="text-red-500">*</span>
-                    </label>
-                    <select id="np_tipo" onchange="toggleModeloLabel(); toggleGarantiaSection();"
-                            class="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100 transition">
-                        <option value="cantidad">Regular (stock)</option>
-                        <option value="serie">Serie (IMEI)</option>
-                    </select>
-                </div>
             </div>
 
             <!-- Marca -->
@@ -3436,8 +2700,7 @@ function guardarNuevoProducto() {
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                     Modelo
-                    <span id="np_modelo_req_label" class="text-red-500">*</span>
-                    <span id="np_modelo_opt_label" class="text-gray-400 text-xs font-normal hidden">(opcional)</span>
+                    <span class="text-gray-400 text-xs font-normal">(opcional)</span>
                 </label>
                 <div class="flex gap-2">
                     <select id="np_modelo"
@@ -3464,31 +2727,6 @@ function guardarNuevoProducto() {
                         <option value="{{ $u->id }}">{{ $u->nombre }} ({{ $u->abreviatura }})</option>
                     @endforeach
                 </select>
-            </div>
-
-            <!-- Garantía (solo serie/IMEI) -->
-            <div id="np_garantia_section" class="hidden">
-                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
-                    <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                        <i class="fas fa-shield-alt mr-1"></i>Garantía
-                    </p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Días de garantía</label>
-                            <input type="number" id="np_dias_garantia" value="365" min="0"
-                                   class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Tipo garantía</label>
-                            <select id="np_tipo_garantia"
-                                    class="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm transition">
-                                <option value="proveedor">Proveedor</option>
-                                <option value="tienda">Tienda</option>
-                                <option value="fabricante">Fabricante</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- ¿Tiene variantes? -->

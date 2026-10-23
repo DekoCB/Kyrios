@@ -23,7 +23,6 @@ use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\MovimientoInventarioController;
 use App\Http\Controllers\AlmacenController;
-use App\Http\Controllers\ImeiController;
 
 // ===================== NUEVOS MÓDULOS =====================
 use App\Http\Controllers\ProveedorController;
@@ -224,7 +223,6 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:Administrador,Almacenero')->group(function () {
             Route::get('/movimientos', [MovimientoInventarioController::class, 'index'])->name('movimientos.index');
             Route::get('/movimientos/create', [MovimientoInventarioController::class, 'create'])->name('movimientos.create');
-            Route::get('movimientos/imeis-disponibles', [MovimientoInventarioController::class, 'getImeisDisponibles'])->name('movimientos.imeis-disponibles');
             Route::post('/movimientos', [MovimientoInventarioController::class, 'store'])->name('movimientos.store');
             Route::get('/movimientos/{movimiento}', [MovimientoInventarioController::class, 'show'])->name('movimientos.show');
             Route::get('/api/stock-actual', [MovimientoInventarioController::class, 'getStockActual'])->name('movimientos.stock-actual');
@@ -239,36 +237,6 @@ Route::middleware('auth')->group(function () {
             Route::get('/almacenes/{almacen}/edit', [AlmacenController::class, 'edit'])->name('almacenes.edit');
             Route::put('/almacenes/{almacen}', [AlmacenController::class, 'update'])->name('almacenes.update');
             Route::delete('/almacenes/{almacen}', [AlmacenController::class, 'destroy'])->middleware('role:Administrador')->name('almacenes.destroy');
-        });
-
-        // GESTIÓN DE IMEIs
-       // GESTIÓN DE IMEIs
-        Route::middleware('role:Administrador,Almacenero')->group(function () {
-            Route::get('/imeis', [ImeiController::class, 'index'])->name('imeis.index');
-            Route::get('/imeis/create', [ImeiController::class, 'create'])->name('imeis.create');
-            Route::post('/imeis', [ImeiController::class, 'store'])->name('imeis.store');
-            Route::get('/imeis/{imei}', [ImeiController::class, 'show'])->name('imeis.show');
-            Route::get('/imeis/{imei}/edit', [ImeiController::class, 'edit'])->name('imeis.edit');
-            Route::put('/imeis/{imei}', [ImeiController::class, 'update'])->name('imeis.update');
-            Route::delete('/imeis/{imei}', [ImeiController::class, 'destroy'])->name('imeis.destroy');
-            
-            // 🔴 RUTAS API PARA AJAX
-            Route::get('/api/imeis-disponibles', [ImeiController::class, 'getImeisDisponibles'])->name('imeis.disponibles');
-            Route::get('/imeis/validar-imei', [ImeiController::class, 'validarImei'])->name('imeis.validar-imei');
-            Route::get('/imeis/generar-imei', [ImeiController::class, 'generarImei'])->name('imeis.generar-imei');
-            
-            // 🔴 RUTAS PARA QR
-            Route::get('/imeis/{imei}/qr', [ImeiController::class, 'mostrarQR'])->name('imeis.qr');
-            Route::get('/imeis/{imei}/qr/download', [ImeiController::class, 'descargarQR'])->name('imeis.qr.download');
-            Route::post('/imeis/{imei}/qr/regenerar', [ImeiController::class, 'regenerarQR'])->name('imeis.qr.regenerar'); // 🔴 ESTA FALTA
-            Route::get('/imeis/{imei}/qr/print', [ImeiController::class, 'imprimirQR'])->name('imeis.qr.print');
-            
-            // 🔴 RUTAS PARA ETIQUETAS
-            Route::get('/imeis/{imei}/etiqueta', [ImeiController::class, 'generarEtiqueta'])->name('imeis.etiqueta');
-            Route::post('/imeis/etiquetas-masivas', [ImeiController::class, 'generarEtiquetasMasivas'])->name('imeis.etiquetas-masivas');
-
-            // 🔴 RUTA PARA CAMBIAR ESTADO
-            Route::post('/imeis/{imei}/estado', [ImeiController::class, 'cambiarEstado'])->name('imeis.cambiar-estado');
         });
 
         // VARIANTES DE PRODUCTOS
@@ -354,14 +322,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{compra}/recalcular-prorrateo', [CompraController::class, 'recalcularProrrateo'])->name('recalcular-prorrateo');
         Route::delete('/{compra}', [CompraController::class, 'destroy'])->name('destroy');
         Route::delete('/{compra}/detalle/{detalle}', [CompraController::class, 'destroyDetalle'])->name('detalle.destroy');
-        Route::get('/{compra}/detalle/{detalle}/imeis', [CompraController::class, 'getImeis'])->name('detalle.imeis');
-        Route::post('/{compra}/detalle/{detalle}/imeis/bulk', [CompraController::class, 'storeBulkImeis'])->name('detalle.imeis.bulk');
-        Route::put('/{compra}/imei/{imei}', [CompraController::class, 'updateImei'])->name('imei.update');
-        Route::delete('/{compra}/imei/{imei}', [CompraController::class, 'destroyImei'])->name('imei.destroy');
 
-        // Rutas para importación de IMEI (AHORA ESTÁN EN EL LUGAR CORRECTO)
-        Route::get('/importar-imei', [CompraController::class, 'importarIMEI'])->name('importar-imei');
-        Route::post('/importar-imei/procesar', [CompraController::class, 'procesarImportacionIMEI'])->name('procesar-importacion');
     });
    // ========================================
     // MÓDULO DE CUENTAS POR PAGAR
@@ -430,7 +391,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [VentaController::class, 'index'])->name('index');
         Route::get('/create', [VentaController::class, 'create'])->name('create');
         Route::post('/', [VentaController::class, 'store'])->name('store');
-        Route::get('/api/imeis-disponibles', [VentaController::class, 'imeisDisponibles'])->name('imeis-disponibles');
         Route::get('/api/mis-pendientes', [VentaController::class, 'misPendientes'])->middleware('role:Vendedor')->name('mis-pendientes');
         Route::get('/api/dni/{dni}', [DniLookupController::class, 'buscar'])->name('dni.buscar');
         Route::get('/api/ruc/{ruc}', [TrasladoController::class, 'buscarRuc'])->name('ruc.buscar');
@@ -513,7 +473,6 @@ Route::middleware('auth')->group(function () {
             Route::get('/stock', [TrasladoController::class, 'stock'])->name('stock');
             Route::get('/create', [TrasladoController::class, 'create'])->name('create');
             Route::post('/', [TrasladoController::class, 'store'])->name('store');
-            Route::get('/imeis-disponibles', [TrasladoController::class, 'imeisDisponibles'])->name('imeis-disponibles');
             Route::get('/buscar-productos', [TrasladoController::class, 'buscarProductos'])->name('buscar-productos');
             Route::get('/buscar-destinatario', [TrasladoController::class, 'buscarDestinatario'])->name('buscar-destinatario');
             Route::get('/api/ruc/{ruc}', [TrasladoController::class, 'buscarRuc'])->name('api.ruc');
@@ -732,14 +691,6 @@ Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
     Route::get('/productos/{producto}/precios', [App\Http\Controllers\Api\ProductoController::class, 'obtenerPrecios'])
         ->name('productos.precios');
 
-    // Verificar disponibilidad de IMEI
-    Route::get('/imeis/verificar', [App\Http\Controllers\Api\ImeiController::class, 'verificarDisponibilidad'])
-        ->name('imeis.verificar');
-
-    // Obtener IMEIs disponibles para un producto
-    Route::get('/imeis/disponibles', [App\Http\Controllers\Api\ImeiController::class, 'disponibles'])
-        ->name('imeis.disponibles');
-
     // Obtener stock de producto por almacén
     Route::get('/productos/{producto}/stock', [App\Http\Controllers\Api\ProductoController::class, 'obtenerStock'])
         ->name('productos.stock');
@@ -775,13 +726,10 @@ Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
         Route::delete('/{variante}', [App\Http\Controllers\Api\VarianteController::class, 'destroy'])
             ->name('destroy');
 
-        // Stock e IMEIs de variante
+        // Stock de variante
         Route::get('/{variante}/stock', [App\Http\Controllers\Api\VarianteController::class, 'stock'])
             ->name('stock');
 
-        Route::get('/{variante}/imeis', [App\Http\Controllers\Api\VarianteController::class, 'imeis'])
-            ->name('imeis');
     });
 });
-
 

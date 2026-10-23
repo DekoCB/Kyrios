@@ -6,7 +6,6 @@ use App\Models\Compra;
 use App\Models\DetalleCompra;
 use App\Models\StockAlmacen;
 use App\Models\MovimientoInventario;
-use App\Models\Imei;
 use App\Models\Producto;
 use App\Models\ProductoVariante;
 use App\Models\Catalogo\Modelo;
@@ -77,27 +76,7 @@ class CompraService
                 // 3.2 Actualizar stock (variante o producto base)
                 $this->actualizarStock($productoBase, $compra, $detalle, $variante);
 
-                // 3.3 Registrar IMEIs si es serie/IMEI y re-sincronizar stock desde IMEI count
-                if ($productoBase->tipo_inventario === 'serie') {
-                    $this->registrarIMEIs($detalle, $productoBase, $compra, $variante, $detalleCompra);
-
-                    // Para productos serie la fuente de verdad es el conteo de IMEIs en_stock,
-                    // no StockAlmacen. Re-sincronizamos para corregir lo que actualizarStock() calculó.
-                    $imeiStock = \App\Models\Imei::where('producto_id', $productoBase->id)
-                        ->where('estado_imei', 'en_stock')
-                        ->count();
-                    $productoBase->update(['stock_actual' => $imeiStock]);
-
-                    if ($variante) {
-                        $varianteStock = \App\Models\Imei::where('producto_id', $productoBase->id)
-                            ->where('variante_id', $variante->id)
-                            ->where('estado_imei', 'en_stock')
-                            ->count();
-                        $variante->update(['stock_actual' => $varianteStock]);
-                    }
-                }
-
-                // 3.4 Registrar código de barras generado si existe
+                // 3.3 Registrar código de barras generado si existe
                 if (isset($detalle['codigo_barras']) && $detalle['codigo_barras']) {
                     $this->actualizarCodigoBarras($productoBase, $detalle['codigo_barras']);
                 }
@@ -251,32 +230,6 @@ class CompraService
                 throw new \Exception("El producto \"{$producto->nombre}\" con la misma variante está duplicado en el detalle");
             }
             $combinacionesVistas[] = $clave;
-
-            if ($producto->tipo_inventario === 'serie' && !empty($detalle['imeis'])) {
-                $this->validarIMEIsUnicos($detalle['imeis']);
-            }
-        }
-    }
-    
-    /**
-     * Validar que los IMEIs no existan ya en el sistema
-     */
-    private function validarIMEIsUnicos(array $imeis): void
-    {
-         // Extraer todos los códigos IMEI
-        $codigos = array_column($imeis, 'codigo_imei');
-        
-        // Buscar existentes en una sola consulta
-        $existentes = Imei::whereIn('codigo_imei', $codigos)
-            ->get(['codigo_imei', 'producto_id', 'estado_imei']);
-
-        if ($existentes->isNotEmpty()) {
-            $mensaje = "Los siguientes IMEI ya están registrados:\n";
-            foreach ($existentes as $imei) {
-                $producto = Producto::find($imei->producto_id);
-                $mensaje .= "- {$imei->codigo_imei} (Producto: {$producto->nombre}, Estado: {$imei->estado_imei})\n";
-            }
-            throw new \Exception($mensaje);
         }
     }
     
@@ -321,31 +274,6 @@ class CompraService
                 'producto'    => $producto->nombre,
                 'stock_actual'=> $stock->cantidad,
                 'stock_minimo'=> $producto->stock_minimo,
-            ]);
-        }
-    }
-    
-    /**
-     * Registrar IMEIs para productos celulares
-     */
-    private function registrarIMEIs(array $detalle, Producto $producto, Compra $compra, ?ProductoVariante $variante = null, ?\App\Models\DetalleCompra $detalleCompra = null): void
-    {
-        if (!isset($detalle['imeis']) || !is_array($detalle['imeis'])) {
-            return;
-        }
-
-        foreach ($detalle['imeis'] as $imeiData) {
-            Imei::create([
-                'codigo_imei'       => $imeiData['codigo_imei'],
-                'serie'             => $imeiData['serie'] ?? null,
-                'color_id'          => $detalle['color_id'] ?? ($variante?->color_id),
-                'producto_id'       => $producto->id,
-                'variante_id'       => $variante?->id,
-                'modelo_id'         => $detalle['modelo_id'] ?? null,
-                'almacen_id'        => $compra->almacen_id,
-                'compra_id'         => $compra->id,
-                'detalle_compra_id' => $detalleCompra?->id,
-                'estado_imei'       => 'en_stock',
             ]);
         }
     }
@@ -425,30 +353,16 @@ class CompraService
                 throw new \Exception('La compra ya está anulada.');
             }
 
-            // ── Guardia 1: IMEIs ya vendidos ────────────────────────────────
-            $imeisVendidos = Imei::where('compra_id', $compra->id)
-                ->where('estado_imei', Imei::ESTADO_VENDIDO)
-                ->count();
-
-            if ($imeisVendidos > 0) {
-                throw new \Exception(
-                    "No se puede anular esta compra: {$imeisVendidos} IMEI(s) ya fueron vendidos. " .
-                    "Gestione las devoluciones correspondientes antes de anular."
-                );
-            }
-
-            // ── Guardia 2: productos por cantidad ya consumidos parcialmente ─
+            // ── Guardia: productos ya consumidos parcialmente ────────────────
             foreach ($compra->detalles as $detalle) {
-                if ($detalle->producto->tipo_inventario !== 'serie') {
-                    $stockDisponible = StockAlmacen::cantidadEn($detalle->producto_id, $compra->almacen_id, $detalle->variante_id);
+                $stockDisponible = StockAlmacen::cantidadEn($detalle->producto_id, $compra->almacen_id, $detalle->variante_id);
 
-                    if ($stockDisponible < $detalle->cantidad) {
-                        throw new \Exception(
-                            "No se puede anular: «{$detalle->producto->nombre}» tiene {$stockDisponible} unidad(es) " .
-                            "disponibles pero la compra registró {$detalle->cantidad}. " .
-                            "Parte del stock ya fue vendida o trasladada."
-                        );
-                    }
+                if ($stockDisponible < $detalle->cantidad) {
+                    throw new \Exception(
+                        "No se puede anular: «{$detalle->producto->nombre}» tiene {$stockDisponible} unidad(es) " .
+                        "disponibles pero la compra registró {$detalle->cantidad}. " .
+                        "Parte del stock ya fue vendida o trasladada."
+                    );
                 }
             }
 
@@ -456,59 +370,36 @@ class CompraService
 
             // ── Revertir stock de cada detalle ───────────────────────────────
             foreach ($compra->detalles as $detalle) {
-                // Productos por cantidad
-                if ($detalle->producto->tipo_inventario !== 'serie') {
-                    $stock = StockAlmacen::where([
-                        'producto_id' => $detalle->producto_id,
-                        'almacen_id'  => $compra->almacen_id,
-                    ])->deVariante($detalle->variante_id)->first();
+                $stock = StockAlmacen::where([
+                    'producto_id' => $detalle->producto_id,
+                    'almacen_id'  => $compra->almacen_id,
+                ])->deVariante($detalle->variante_id)->first();
 
-                    if ($stock) {
-                        $stockAnterior = $stock->cantidad;
-                        $stock->decrement('cantidad', $detalle->cantidad);
+                if ($stock) {
+                    $stockAnterior = $stock->cantidad;
+                    $stock->decrement('cantidad', $detalle->cantidad);
 
-                        MovimientoInventario::create([
-                            'producto_id'          => $detalle->producto_id,
-                            'variante_id'          => $detalle->variante_id,
-                            'almacen_id'           => $compra->almacen_id,
-                            'user_id'              => auth()->id(),
-                            'tipo_movimiento'      => 'salida',
-                            'cantidad'             => $detalle->cantidad,
-                            'stock_anterior'       => $stockAnterior,
-                            'stock_nuevo'          => $stock->cantidad,
-                            'numero_factura'       => $compra->numero_factura,
-                            'documento_referencia' => 'ANUL-' . $compra->id,
-                            'motivo'               => $motivoTexto,
-                            'estado'               => 'completado',
-                        ]);
+                    MovimientoInventario::create([
+                        'producto_id'          => $detalle->producto_id,
+                        'variante_id'          => $detalle->variante_id,
+                        'almacen_id'           => $compra->almacen_id,
+                        'user_id'              => auth()->id(),
+                        'tipo_movimiento'      => 'salida',
+                        'cantidad'             => $detalle->cantidad,
+                        'stock_anterior'       => $stockAnterior,
+                        'stock_nuevo'          => $stock->cantidad,
+                        'numero_factura'       => $compra->numero_factura,
+                        'documento_referencia' => 'ANUL-' . $compra->id,
+                        'motivo'               => $motivoTexto,
+                        'estado'               => 'completado',
+                    ]);
 
-                        // Sincronizar stock: variante primero (sincroniza producto), o directo si no hay variante
-                        if ($detalle->variante_id && $detalle->variante) {
-                            $detalle->variante->decrementarStock($detalle->cantidad);
-                        } else {
-                            $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
-                            $detalle->producto->update(['stock_actual' => $totalStock]);
-                        }
-                    }
-                } else {
-                    // Productos tipo serie: solo marcar los IMEIs NO vendidos como devueltos
-                    Imei::where('compra_id', $compra->id)
-                        ->where('producto_id', $detalle->producto_id)
-                        ->whereNotIn('estado_imei', [Imei::ESTADO_VENDIDO, Imei::ESTADO_REEMPLAZADO])
-                        ->update(['estado_imei' => Imei::ESTADO_DEVUELTO]);
-
-                    // Recalcular stock del producto y variante desde conteo real de IMEIs en stock
-                    $totalStock = Imei::where('producto_id', $detalle->producto_id)
-                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                        ->count();
-                    $detalle->producto->update(['stock_actual' => $totalStock]);
-
+                    // Sincronizar stock: variante primero (sincroniza producto), o directo si no hay variante
                     if ($detalle->variante_id && $detalle->variante) {
-                        $varianteStock = Imei::where('producto_id', $detalle->producto_id)
-                            ->where('variante_id', $detalle->variante_id)
-                            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                            ->count();
-                        $detalle->variante->update(['stock_actual' => $varianteStock]);
+                        $detalle->variante->decrementarStock($detalle->cantidad);
+                    } else {
+                        $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
+                        $detalle->producto->update(['stock_actual' => $totalStock]);
                     }
                 }
             }
@@ -686,19 +577,6 @@ class CompraService
     public function eliminarDetalle(Compra $compra, DetalleCompra $detalle): void
     {
         DB::transaction(function () use ($compra, $detalle) {
-            // Verificar que no haya IMEIs vendidos
-            if ($detalle->producto->tipo_inventario === 'serie') {
-                $vendidos = Imei::where('detalle_compra_id', $detalle->id)
-                    ->where('estado_imei', Imei::ESTADO_VENDIDO)
-                    ->count();
-                if ($vendidos > 0) {
-                    throw new \Exception("No se puede eliminar: {$vendidos} IMEI(s) de este producto ya fueron vendidos.");
-                }
-                Imei::where('detalle_compra_id', $detalle->id)
-                    ->whereIn('estado_imei', [Imei::ESTADO_EN_STOCK, Imei::ESTADO_EN_TRANSITO, Imei::ESTADO_RESERVADO])
-                    ->delete();
-            }
-
             // Revertir stock en almacén
             $stock = StockAlmacen::where('producto_id', $detalle->producto_id)
                 ->where('almacen_id', $compra->almacen_id)
@@ -751,72 +629,6 @@ class CompraService
         });
     }
 
-    public function eliminarImei(Compra $compra, Imei $imei): void
-    {
-        DB::transaction(function () use ($compra, $imei) {
-            if ($imei->estado_imei === Imei::ESTADO_VENDIDO) {
-                throw new \Exception('No se puede eliminar un IMEI ya vendido.');
-            }
-
-            $detalle = $imei->detalle_compra_id
-                ? DetalleCompra::find($imei->detalle_compra_id)
-                : null;
-
-            // Revertir stock
-            $stock = StockAlmacen::where('producto_id', $imei->producto_id)
-                ->where('almacen_id', $compra->almacen_id)
-                ->deVariante($imei->variante_id)
-                ->first();
-            if ($stock && $stock->cantidad > 0) {
-                $stockAnterior = $stock->cantidad;
-                $stock->decrement('cantidad', 1);
-
-                $totalStock = StockAlmacen::where('producto_id', $imei->producto_id)->sum('cantidad');
-                $imei->producto->update(['stock_actual' => $totalStock]);
-
-                if ($imei->variante_id) {
-                    $imei->variante?->decrement('stock_actual', 1);
-                }
-
-                MovimientoInventario::create([
-                    'producto_id'          => $imei->producto_id,
-                    'almacen_id'           => $compra->almacen_id,
-                    'user_id'              => auth()->id(),
-                    'tipo_movimiento'      => 'salida',
-                    'cantidad'             => 1,
-                    'stock_anterior'       => $stockAnterior,
-                    'stock_nuevo'          => $stock->cantidad,
-                    'numero_factura'       => $compra->numero_factura,
-                    'documento_referencia' => 'DEL-IMEI-' . $imei->id,
-                    'motivo'               => "Eliminación de IMEI {$imei->codigo_imei} en compra #{$compra->id}",
-                    'estado'               => 'completado',
-                ]);
-            }
-
-            // Actualizar cantidad del detalle si existe
-            if ($detalle) {
-                $detalle->decrement('cantidad', 1);
-                $detalle->update(['subtotal' => $detalle->cantidad * $detalle->precio_unitario]);
-            }
-
-            $imei->delete();
-
-            // Recalcular totales de la compra
-            $compra->load('detalles');
-            $tipoOp  = $compra->tipo_operacion ?? '01';
-            $subtotal = $compra->detalles->sum('subtotal');
-            $igv      = $tipoOp === '01' ? round($subtotal * 0.18, 2) : 0;
-            $total    = round($subtotal + $igv, 2);
-            $compra->update(['subtotal' => $subtotal, 'igv' => $igv, 'total' => $total]);
-
-            if ($compra->cuentaPorPagar) {
-                $compra->cuentaPorPagar->update(['monto_total' => $total]);
-            }
-
-            Log::info('IMEI eliminado de compra', ['compra_id' => $compra->id, 'imei' => $imei->codigo_imei]);
-        });
-    }
-
     /**
      * Eliminar una compra (revierte stock si está registrada, luego elimina)
      */
@@ -838,9 +650,8 @@ class CompraService
                 $compra->cuentaPorPagar->delete();
             }
 
-            // Eliminar detalles e IMEIs
+            // Eliminar detalles
             $compra->detalles()->delete();
-            Imei::where('compra_id', $compra->id)->delete();
 
             // Eliminar la compra
             $compra->delete();
@@ -954,76 +765,4 @@ class CompraService
 
         return $nuevaVariante;
     }
-
-    /**
-     * Procesar IMEI desde archivo Excel/CSV
-     */
-public function procesarArchivoIMEI($archivo, int $productoId, int $cantidadEsperada): array
-{
-    $imeis = [];
-    $errores = [];
-    $linea = 1;
-    
-    try {
-        // Abrir archivo
-        $handle = fopen($archivo->getRealPath(), 'r');
-        
-        while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
-            $linea++;
-            
-            // Saltar encabezados si existen
-            if ($linea == 2 && preg_match('/imei|código|serial/i', $data[0])) {
-                continue;
-            }
-            
-            $codigoImei = trim($data[0] ?? '');
-            $serie = trim($data[1] ?? '');
-            
-            // Validar formato
-            if (empty($codigoImei)) {
-                $errores[] = "Línea {$linea}: IMEI vacío";
-                continue;
-            }
-            
-            if (!preg_match('/^\d{15}$/', $codigoImei)) {
-                $errores[] = "Línea {$linea}: IMEI '{$codigoImei}' no tiene 15 dígitos";
-                continue;
-            }
-            
-            $imeis[] = [
-                'codigo_imei' => $codigoImei,
-                'serie' => $serie ?: null,
-            ];
-        }
-        
-        fclose($handle);
-        
-        // Validar cantidad
-        if (count($imeis) != $cantidadEsperada) {
-            throw new \Exception("El archivo debe contener exactamente {$cantidadEsperada} IMEI(s). Se encontraron " . count($imeis));
-        }
-        
-        // Validar duplicados internos
-        $codigos = array_column($imeis, 'codigo_imei');
-        if (count($codigos) !== count(array_unique($codigos))) {
-            $duplicados = array_diff_assoc($codigos, array_unique($codigos));
-            throw new \Exception("Hay IMEI duplicados en el archivo: " . implode(', ', array_unique($duplicados)));
-        }
-        
-        // Validar contra base de datos
-        $existentes = Imei::whereIn('codigo_imei', $codigos)->pluck('codigo_imei')->toArray();
-        if (!empty($existentes)) {
-            throw new \Exception("Los siguientes IMEI ya existen: " . implode(', ', $existentes));
-        }
-        
-    } catch (\Exception $e) {
-        throw new \Exception("Error procesando archivo: " . $e->getMessage());
-    }
-    
-    return [
-        'success' => empty($errores),
-        'imeis' => $imeis,
-        'errores' => $errores
-    ];
-}
 }

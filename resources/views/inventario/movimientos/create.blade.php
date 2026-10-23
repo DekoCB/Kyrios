@@ -20,10 +20,9 @@ $catalogoJson = $productos->map(fn($p) => [
     'id'              => $p->id,
     'codigo'          => $p->codigo,
     'nombre'          => $p->nombre,
-    'tipo_inventario' => $p->tipo_inventario,
     'stock_actual'    => (int)($p->stock_actual ?? 0),
     'unidad'          => $p->unidadMedida?->abreviatura ?? 'UND',
-    'variantes'       => $p->tipo_inventario === 'serie' ? [] : $p->variantesActivas->map(fn ($v) => [
+    'variantes'       => $p->variantesActivas->map(fn ($v) => [
         'id'      => $v->id,
         'codigo'  => $v->codigo_kyrios ?? $v->sku,
         'detalle' => $v->nombre_completo,
@@ -43,7 +42,6 @@ $catalogoJson = $productos->map(fn($p) => [
          abierto: false,
          productoId: {{ old('producto_id') ? old('producto_id') : 'null' }},
          productoNombre: '',
-         productoTipo: '',
          productoStock: 0,
          variantes: [],
          varianteId: '{{ old('variante_id') }}',
@@ -52,12 +50,6 @@ $catalogoJson = $productos->map(fn($p) => [
 
          /* ── Almacenes ────────────────────────────── */
          almacenId: '{{ old('almacen_id', '') }}',
-
-         /* ── IMEIs ────────────────────────────────── */
-         imeis: [],
-         imeiId: '',
-         cargandoImeis: false,
-         imeiError: '',
 
          /* ── Otros campos ─────────────────────────── */
          cantidad: {{ old('cantidad', 1) }},
@@ -73,15 +65,12 @@ $catalogoJson = $productos->map(fn($p) => [
          errorGeneral: '',
 
          /* ── Getters ──────────────────────────────── */
-         get esCelular()      { return this.productoTipo === 'serie'; },
-         get esIngresoCelular(){ return this.tipoMovimiento === 'ingreso' && this.esCelular; },
          get labelAlmacen()   { return this.tipoMovimiento === 'ingreso' ? 'Almacén Destino' : 'Almacén Origen'; },
          get formularioValido() {
              if (!this.tipoMovimiento) return false;
              if (!this.productoId)     return false;
              if (!this.almacenId)      return false;
-             if (this.esCelular && !this.esIngresoCelular && !this.imeiId) return false;
-             if (!this.esCelular && this.cantidad < 1) return false;
+             if (this.cantidad < 1) return false;
              if (!this.motivoId) return false;
              return true;
          },
@@ -104,7 +93,6 @@ $catalogoJson = $productos->map(fn($p) => [
          seleccionar(p) {
              this.productoId    = p.id;
              this.productoNombre= p.nombre;
-             this.productoTipo  = p.tipo_inventario;
              this.productoStock = p.stock_actual;
              this.variantes     = p.variantes || [];
              this.varianteId    = this.variantes.length === 1 ? this.variantes[0].id : '';
@@ -112,75 +100,21 @@ $catalogoJson = $productos->map(fn($p) => [
              this.query         = p.nombre + ' [' + p.codigo + ']';
              this.abierto       = false;
              this.resultados    = [];
-             this.imeis         = [];
-             this.imeiId        = '';
-             this.imeiError     = '';
-             if (this.esCelular && this.almacenId && this.tipoMovimiento) {
-                 this.cargarImeis();
-             }
          },
 
          limpiarProducto() {
              this.productoId    = null;
              this.productoNombre= '';
-             this.productoTipo  = '';
              this.productoStock = 0;
              this.variantes     = [];
              this.varianteId    = '';
              this.query         = '';
              this.resultados    = [];
              this.abierto       = false;
-             this.imeis         = [];
-             this.imeiId        = '';
-             this.imeiError     = '';
          },
 
          onTipoChange() {
-             this.imeis     = [];
-             this.imeiId    = '';
-             this.imeiError = '';
              this.motivoId  = '';
-             if (this.esCelular && this.almacenId && this.tipoMovimiento) {
-                 this.cargarImeis();
-             }
-         },
-
-         onAlmacenChange() {
-             this.imeis     = [];
-             this.imeiId    = '';
-             this.imeiError = '';
-             if (this.esCelular && this.tipoMovimiento) {
-                 this.cargarImeis();
-             }
-         },
-
-         async cargarImeis() {
-             if (!this.productoId || !this.almacenId || !this.tipoMovimiento) return;
-             if (!this.esCelular) return;
-             if (this.tipoMovimiento === 'ingreso') {
-                 this.imeiError = 'Los ingresos de celulares se registran en el módulo de Compras.';
-                 return;
-             }
-             this.cargandoImeis = true;
-             this.imeiError     = '';
-             this.imeis         = [];
-             try {
-                 const url = '{{ route('inventario.movimientos.imeis-disponibles') }}'
-                     + '?producto_id=' + this.productoId
-                     + '&almacen_id='  + this.almacenId
-                     + '&tipo_movimiento=' + this.tipoMovimiento;
-                 const res  = await fetch(url);
-                 const data = await res.json();
-                 if (data.error) {
-                     this.imeiError = data.error;
-                 } else {
-                     this.imeis = data;
-                     if (data.length === 0) this.imeiError = 'Sin IMEIs disponibles para este movimiento en el almacén seleccionado.';
-                 }
-             } catch {
-                 this.imeiError = 'Error al cargar IMEIs. Intente de nuevo.';
-             }
-             this.cargandoImeis = false;
          },
 
          init() {
@@ -288,21 +222,6 @@ $catalogoJson = $productos->map(fn($p) => [
                             <p class="text-sm font-bold text-gray-900" x-text="productoNombre"></p>
                         </div>
                         <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-500">Tipo inventario</span>
-                            <span class="font-medium">
-                                <template x-if="esCelular">
-                                    <span class="text-blue-700 font-semibold">
-                                        <i class="fas fa-mobile-alt mr-1"></i> Celular (IMEI)
-                                    </span>
-                                </template>
-                                <template x-if="!esCelular">
-                                    <span class="text-gray-700">
-                                        <i class="fas fa-boxes mr-1"></i> Accesorio / cantidad
-                                    </span>
-                                </template>
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between text-sm">
                             <span class="text-gray-500">Stock global</span>
                             <span class="font-bold text-emerald-700"
                                   x-text="productoStock + ' ' + productoUnidad"></span>
@@ -321,7 +240,6 @@ $catalogoJson = $productos->map(fn($p) => [
                     </p>
                     <ul class="text-xs text-amber-700 space-y-1 list-disc list-inside">
                         <li>Los movimientos <strong>no se pueden eliminar</strong></li>
-                        <li>Para celulares, los <strong>ingresos</strong> se registran en el módulo de Compras</li>
                         <li>Las transferencias requieren número de guía de remisión</li>
                     </ul>
                 </div>
@@ -348,7 +266,7 @@ $catalogoJson = $productos->map(fn($p) => [
                                 Las transferencias se gestionan en el módulo de Traslados
                             </p>
                             <p class="text-sm text-gray-500 max-w-sm">
-                                Desde ahí puedes trasladar múltiples productos a la vez, asignar IMEIs específicos y hacer seguimiento hasta la confirmación de recepción.
+                                Desde ahí puedes trasladar múltiples productos a la vez y hacer seguimiento hasta la confirmación de recepción.
                             </p>
                         </div>
                         <a href="{{ route('traslados.create') }}"
@@ -410,8 +328,6 @@ $catalogoJson = $productos->map(fn($p) => [
                                                 <div class="text-right shrink-0 ml-3">
                                                     <span class="text-xs font-semibold text-emerald-700"
                                                           x-text="'Stock: ' + p.stock_actual + ' ' + p.unidad"></span>
-                                                    <span class="block text-[10px] text-gray-400"
-                                                          x-text="p.tipo_inventario === 'serie' ? '📱 IMEI' : '📦 Cantidad'"></span>
                                                 </div>
                                             </div>
                                         </button>
@@ -447,7 +363,7 @@ $catalogoJson = $productos->map(fn($p) => [
                                 <span x-text="tipoMovimiento ? labelAlmacen : 'Almacén'"></span>
                                 <span class="text-red-500">*</span>
                             </label>
-                            <select name="almacen_id" x-model="almacenId" @change="onAlmacenChange()"
+                            <select name="almacen_id" x-model="almacenId"
                                     class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">— Selecciona un almacén —</option>
                                 @if($almacenesCentral->isNotEmpty())
@@ -474,47 +390,8 @@ $catalogoJson = $productos->map(fn($p) => [
                             @enderror
                         </div>
 
-                        {{-- IMEI (solo celulares) --}}
-                        <div x-show="esCelular" x-cloak>
-                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                IMEI <span class="text-red-500">*</span>
-                            </label>
-
-                            {{-- Ingreso de celular = bloquear --}}
-                            <div x-show="esIngresoCelular"
-                                 class="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
-                                <i class="fas fa-info-circle shrink-0"></i>
-                                <span>Los ingresos de celulares se registran en el módulo de <strong>Compras</strong>.</span>
-                            </div>
-
-                            <div x-show="!esIngresoCelular">
-                                <div x-show="cargandoImeis" class="text-xs text-gray-400 py-2">
-                                    <i class="fas fa-spinner fa-spin mr-1"></i> Cargando IMEIs disponibles...
-                                </div>
-                                <div x-show="!cargandoImeis">
-                                    <select name="imei_id" x-model="imeiId"
-                                            :disabled="imeis.length === 0"
-                                            class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
-                                        <option value="">— Selecciona un IMEI —</option>
-                                        <template x-for="imei in imeis" :key="imei.id">
-                                            <option :value="imei.id"
-                                                    x-text="imei.codigo_imei + (imei.serie ? ' · ' + imei.serie : '') + (imei.color ? ' · ' + imei.color : '') + ' [' + imei.estado_imei + ']'">
-                                            </option>
-                                        </template>
-                                    </select>
-                                    <p x-show="imeiError" x-text="imeiError"
-                                       class="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg mt-1.5"></p>
-                                    <p x-show="!imeiError && imeis.length > 0" class="text-xs text-gray-400 mt-1"
-                                       x-text="imeis.length + ' IMEI(s) disponibles'"></p>
-                                </div>
-                            </div>
-                            @error('imei_id')
-                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        {{-- Cantidad (solo accesorios) --}}
-                        <div x-show="!esCelular" x-cloak>
+                        {{-- Cantidad --}}
+                        <div>
                             <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                                 Cantidad <span class="text-red-500">*</span>
                             </label>

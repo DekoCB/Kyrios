@@ -43,80 +43,6 @@
                         </div>
                     @endif
 
-                    <!-- SECCIÓN 1: TIPO DE INVENTARIO -->
-                    <div class="mb-8">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                            <i class="fas fa-mobile-alt mr-2 text-blue-900"></i>
-                            Tipo de Inventario
-                        </h3>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <!-- CANTIDAD -->
-                            <label class="cursor-pointer">
-                                <input type="radio" 
-                                        name="tipo_inventario" 
-                                        value="cantidad" 
-                                        id="tipo_cantidad"
-                                        class="peer hidden" 
-                                        {{ old('tipo_inventario', 'cantidad') == 'cantidad' ? 'checked' : '' }}
-                                        required>
-                                <div class="border-2 border-gray-300 rounded-lg p-6 text-center hover:border-green-500 peer-checked:border-green-500 peer-checked:bg-green-50 transition-all">
-                                    <i class="fas fa-boxes text-5xl text-green-600 mb-3"></i>
-                                    <p class="text-lg font-semibold text-gray-900">Stock por Cantidad</p>
-                                    <p class="text-sm text-gray-500 mt-2">Accesorios, repuestos, consumibles</p>
-                                </div>
-                            </label>
-
-                            <!-- SERIE/IMEI -->
-                            <label class="cursor-pointer">
-                                <input type="radio" 
-                                        name="tipo_inventario" 
-                                        value="serie" 
-                                        id="tipo_serie"
-                                        class="peer hidden" 
-                                        {{ old('tipo_inventario') == 'serie' ? 'checked' : '' }}>
-                                <div class="border-2 border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
-                                    <i class="fas fa-mobile-alt text-5xl text-blue-600 mb-3"></i>
-                                    <p class="text-lg font-semibold text-gray-900">Stock por Serie/IMEI</p>
-                                    <p class="text-sm text-gray-500 mt-2">Celulares, equipos con número único</p>
-                                </div>
-                            </label>
-                        </div>
-
-                        @error('tipo_inventario')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- SECCIÓN 1.1: GARANTÍA (SOLO PARA TIPO SERIE) -->
-                    <div id="garantiaSection" class="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200" style="display: none;">
-                        <h4 class="font-semibold text-blue-900 mb-3">
-                            <i class="fas fa-shield-alt mr-2"></i>
-                            Configuración de Garantía
-                        </h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="dias_garantia" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Días de Garantía
-                                </label>
-                                <input type="number" name="dias_garantia" id="dias_garantia" 
-                                       value="{{ old('dias_garantia', 365) }}" min="0"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="tipo_garantia" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Tipo de Garantía
-                                </label>
-                                <select name="tipo_garantia" id="tipo_garantia" 
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="proveedor">Proveedor</option>
-                                    <option value="tienda">Tienda</option>
-                                    <option value="fabricante">Fabricante</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- SECCIÓN KYRIOS: CODIFICACIÓN -->
                     <div class="mb-8" x-data="{
                             tipos: {{ \Illuminate\Support\Js::from($tiposProducto->mapWithKeys(fn ($t) => [$t->id => ['codigo' => $t->codigo, 'caso' => $t->caso_codigo]])) }},
@@ -240,13 +166,11 @@
                             <div>
                                 <label for="modelo_id" class="block text-sm font-medium text-gray-700 mb-2">
                                     Modelo
-                                    <span id="modeloRequeridoLabel" class="text-red-500">*</span>
-                                    <span id="modeloOpcionalLabel" class="text-gray-400 text-xs font-normal hidden">(opcional)</span>
+                                    <span class="text-gray-400 text-xs font-normal">(opcional)</span>
                                 </label>
                                 <div class="flex gap-2">
                                     <select name="modelo_id" id="modelo_id"
-                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            required>
+                                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                         <option value="">Primero seleccione una marca</option>
                                     </select>
                                     <button type="button" onclick="abrirModalModelo()"
@@ -510,12 +434,6 @@
 
                         </div>
 
-                        <div class="mt-4 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-lg">
-                            <p class="text-sm text-yellow-700">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                <strong>Nota:</strong> Para productos con stock por serie/IMEI, el stock se controlará mediante registros IMEI individuales.
-                            </p>
-                        </div>
                     </div>
 
                     @include('inventario.productos.partials.campos-producto-kyrios', ['producto' => null])
@@ -664,10 +582,6 @@
                             <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Unidad base</p>
                             <p id="prev-unidad" class="text-sm font-semibold text-gray-800"></p>
                         </div>
-                        <div id="prev-garantia-wrap" class="bg-blue-50 rounded-xl p-3 hidden">
-                            <p class="text-xs font-medium text-blue-400 uppercase tracking-wide mb-0.5">Garantía</p>
-                            <p id="prev-garantia" class="text-sm font-semibold text-blue-800"></p>
-                        </div>
                     </div>
 
                     <!-- Variantes -->
@@ -715,27 +629,6 @@
                     document.getElementById('imagePreviewContainer').classList.remove('hidden');
                 };
                 reader.readAsDataURL(file);
-            }
-        }
-
-        // Función para alternar campos según tipo de inventario
-        function toggleFieldsByType() {
-            const tipo = document.querySelector('input[name="tipo_inventario"]:checked')?.value;
-            const garantiaSection = document.getElementById('garantiaSection');
-            const modeloSelect = document.getElementById('modelo_id');
-            const modeloRequeridoLabel = document.getElementById('modeloRequeridoLabel');
-            const modeloOpcionalLabel = document.getElementById('modeloOpcionalLabel');
-
-            if (tipo === 'serie') {
-                garantiaSection?.style.setProperty('display', 'block');
-                if (modeloSelect) modeloSelect.required = true;
-                modeloRequeridoLabel?.classList.remove('hidden');
-                modeloOpcionalLabel?.classList.add('hidden');
-            } else {
-                garantiaSection?.style.setProperty('display', 'none');
-                if (modeloSelect) modeloSelect.required = false;
-                modeloRequeridoLabel?.classList.add('hidden');
-                modeloOpcionalLabel?.classList.remove('hidden');
             }
         }
 
@@ -821,14 +714,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar toggle de tipo inventario
-            toggleFieldsByType();
-            
-            // Event listeners para radios
-            document.querySelectorAll('input[name="tipo_inventario"]').forEach(radio => {
-                radio.addEventListener('change', toggleFieldsByType);
-            });
-
             // 🔴 Evento cambio de categoría
             const categoriaSelect = document.getElementById('categoria_id');
             const marcaSelect = document.getElementById('marca_id');
@@ -961,7 +846,6 @@
 
         function mostrarPrevProducto(form) {
             // ── Recoger valores ──────────────────────────────────────────
-            const tipo      = form.querySelector('input[name="tipo_inventario"]:checked')?.value || 'cantidad';
             const nombre    = form.querySelector('#nombre')?.value.trim() || '—';
             const codigo    = form.querySelector('#codigo_barras')?.value.trim() || '—';
             const stockMin  = form.querySelector('#stock_minimo')?.value || '0';
@@ -979,24 +863,13 @@
             const modelo      = modeloOpt?.value      ? modeloOpt.text      : '';
             const unidad      = unidadOpt?.value      ? unidadOpt.text      : '—';
 
-            const diasGar     = form.querySelector('#dias_garantia')?.value || '365';
-            const tipoGarOpt  = form.querySelector('#tipo_garantia')?.selectedOptions[0];
-            const tipoGar     = tipoGarOpt?.text || '';
-
             // ── Tipo: icono y badge ──────────────────────────────────────
             const icoEl   = document.getElementById('prev-tipo-icono');
             const badgeEl = document.getElementById('prev-tipo-badge');
-            if (tipo === 'serie') {
-                icoEl.className   = 'w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl bg-blue-100 text-blue-700';
-                icoEl.innerHTML   = '<i class="fas fa-mobile-alt"></i>';
-                badgeEl.className = 'inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full mt-1 bg-blue-100 text-blue-700';
-                badgeEl.innerHTML = '<i class="fas fa-microchip text-xs"></i> Stock por Serie / IMEI';
-            } else {
-                icoEl.className   = 'w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl bg-green-100 text-green-700';
-                icoEl.innerHTML   = '<i class="fas fa-boxes"></i>';
-                badgeEl.className = 'inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full mt-1 bg-green-100 text-green-700';
-                badgeEl.innerHTML = '<i class="fas fa-layer-group text-xs"></i> Stock por Cantidad';
-            }
+            icoEl.className   = 'w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl bg-green-100 text-green-700';
+            icoEl.innerHTML   = '<i class="fas fa-boxes"></i>';
+            badgeEl.className = 'inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full mt-1 bg-green-100 text-green-700';
+            badgeEl.innerHTML = '<i class="fas fa-layer-group text-xs"></i> Stock por Cantidad';
 
             // ── Nombre ───────────────────────────────────────────────────
             document.getElementById('prev-nombre').textContent = nombre;
@@ -1025,15 +898,6 @@
 
             // ── Unidad ───────────────────────────────────────────────────
             document.getElementById('prev-unidad').textContent = unidad;
-
-            // ── Garantía (solo serie) ────────────────────────────────────
-            const garWrap = document.getElementById('prev-garantia-wrap');
-            if (tipo === 'serie') {
-                garWrap.classList.remove('hidden');
-                document.getElementById('prev-garantia').textContent = `${diasGar} días — ${tipoGar}`;
-            } else {
-                garWrap.classList.add('hidden');
-            }
 
             // ── Imagen ───────────────────────────────────────────────────
             const imgPreviewSrc = document.getElementById('imagePreview')?.src;
@@ -1132,8 +996,7 @@
         document.getElementById('btnGenerarCodigo')?.addEventListener('click', function() {
             const btn = this;
             const codigoInput = document.getElementById('codigo_barras');
-            const tipo = document.querySelector('input[name="tipo_inventario"]:checked')?.value;
-            const tipoBarras = tipo === 'serie' ? 'celular' : 'accesorio';
+            const tipoBarras = 'accesorio';
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generando...';

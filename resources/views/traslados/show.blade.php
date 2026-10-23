@@ -59,7 +59,7 @@
 
                     <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
                         <i class="fas fa-exclamation-triangle mr-1"></i>
-                        Se revertira todo el stock: los IMEIs volveran a "En Stock" en el almacen origen y las cantidades de accesorios se devolveran.
+                        Se revertira todo el stock: las cantidades volveran al almacen origen.
                     </div>
 
                     <form action="{{ route('traslados.anular', $traslado) }}" method="POST">
@@ -201,30 +201,20 @@
         <div class="space-y-4">
 
             @foreach($todosProductos as $i => $mov)
-            @php
-                $esS = $mov->producto->tipo_inventario === 'serie';
-            @endphp
-
             <div class="bg-white rounded-xl shadow-md overflow-hidden">
 
                 {{-- Header producto --}}
-                <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100
-                    {{ $esS ? 'bg-purple-50' : 'bg-blue-50' }}">
+                <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-blue-50">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded
-                            {{ $esS ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700' }}">
-                            @if($esS)
-                                <i class="fas fa-barcode mr-1"></i>IMEI
-                            @else
-                                <i class="fas fa-box mr-1"></i>Accesorio
-                            @endif
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                            <i class="fas fa-box mr-1"></i>Producto
                         </span>
                         <span class="font-semibold text-gray-800">{{ $mov->producto->nombre }}</span>
                         <span class="font-mono text-xs text-gray-400">{{ $mov->producto->codigo }}</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-sm font-bold text-gray-700">
-                            {{ $mov->cantidad }} {{ $esS ? 'IMEI(s)' : 'unid.' }}
+                            {{ $mov->cantidad }} unid.
                         </span>
                         <span class="px-2 py-0.5 text-xs font-semibold rounded-full {{ $colores[$mov->estado] ?? 'bg-gray-100 text-gray-600' }}">
                             {{ ucfirst($mov->estado) }}
@@ -233,46 +223,6 @@
                 </div>
 
                 <div class="p-5">
-                    @if($esS)
-                        {{-- IMEIs de esta línea --}}
-                        @if($mov->imeisTrasladados->isEmpty())
-                            <p class="text-sm text-gray-400 italic">Sin IMEIs registrados.</p>
-                        @else
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1">
-                                <i class="fas fa-barcode text-purple-400"></i>
-                                IMEIs trasladados
-                                @if($mov->estado === 'confirmado')
-                                    <span class="text-green-600 normal-case font-normal">
-                                        — recibidos en {{ $mov->almacenDestino->nombre ?? 'destino' }}
-                                    </span>
-                                @else
-                                    <span class="text-indigo-600 normal-case font-normal">
-                                        — en tránsito hacia {{ $mov->almacenDestino->nombre ?? 'destino' }}
-                                    </span>
-                                @endif
-                            </p>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($mov->imeisTrasladados as $ti)
-                                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono
-                                        {{ $mov->estado === 'confirmado'
-                                            ? 'bg-green-50 border-green-200 text-green-800'
-                                            : 'bg-indigo-50 border-indigo-200 text-indigo-800' }}">
-                                        <i class="fas fa-barcode text-[10px] opacity-60"></i>
-                                        {{ $ti->imei->codigo_imei ?? '—' }}
-                                        @if($ti->imei?->serie)
-                                            <span class="opacity-60">· {{ $ti->imei->serie }}</span>
-                                        @endif
-                                        @if($mov->estado === 'confirmado')
-                                            <i class="fas fa-check text-[10px] text-green-600 ml-1"></i>
-                                        @else
-                                            <i class="fas fa-truck text-[10px] text-indigo-400 ml-1"></i>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-                    @else
-                        {{-- Accesorio --}}
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                             <div>
                                 <p class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Cantidad</p>
@@ -295,7 +245,6 @@
                             </div>
                             @endif
                         </div>
-                    @endif
                 </div>
             </div>
             @endforeach

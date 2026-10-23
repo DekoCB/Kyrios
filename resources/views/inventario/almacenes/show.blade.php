@@ -183,28 +183,24 @@
                             @foreach($stockDetalle as $item)
                             @php
                                 $stockBajo = $item['stock'] <= 3;
-                                $esSerie   = $item['es_serie'] ?? false;
-                                $unidad    = $esSerie ? 'IMEI' : ($item['producto']->unidadMedida?->abreviatura ?? 'UND');
+                                $unidad    = $item['producto']->unidadMedida?->abreviatura ?? 'UND';
                             @endphp
                             <tr class="hover:bg-gray-50/60 transition-colors">
                                 <td class="px-5 py-3">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-lg {{ $esSerie ? 'bg-purple-100' : 'bg-gray-100' }} flex items-center justify-center shrink-0 overflow-hidden">
+                                        <div class="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
                                             @if($item['producto']->imagen)
                                                 <img src="{{ $item['producto']->imagen_url }}"
                                                      alt="{{ $item['producto']->nombre }}"
                                                      class="w-full h-full object-cover">
                                             @else
-                                                <i class="fas {{ $esSerie ? 'fa-mobile-alt text-purple-400' : 'fa-box text-gray-400' }} text-sm"></i>
+                                                <i class="fas fa-box text-gray-400 text-sm"></i>
                                             @endif
                                         </div>
                                         <div>
                                             <p class="text-sm font-semibold text-gray-900">{{ $item['producto']->nombre }}</p>
                                             <div class="flex items-center gap-1.5 mt-0.5">
                                                 <span class="text-xs text-gray-400 font-mono">{{ $item['producto']->codigo }}</span>
-                                                @if($esSerie)
-                                                    <span class="text-[9px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded font-bold">IMEI</span>
-                                                @endif
                                             </div>
                                             @foreach(($item['variantes'] ?? collect()) as $v)
                                                 <p class="text-xs text-gray-500 mt-0.5">

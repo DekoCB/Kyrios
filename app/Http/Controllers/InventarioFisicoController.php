@@ -6,7 +6,6 @@ use App\Models\Almacen;
 use App\Models\Categoria;
 use App\Models\ConteoDetalle;
 use App\Models\ConteoInventario;
-use App\Models\Imei;
 use App\Models\Producto;
 use App\Models\StockAlmacen;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -343,7 +342,7 @@ class InventarioFisicoController extends Controller
             ->get();
 
         foreach ($stocksCantidad as $sa) {
-            if (!$sa->producto || $sa->producto->tipo_inventario === 'serie') {
+            if (!$sa->producto) {
                 continue;
             }
 
@@ -352,24 +351,6 @@ class InventarioFisicoController extends Controller
                 'producto_id'   => $sa->producto_id,
                 'variante_id'   => $sa->variante_id,
                 'stock_sistema' => max(0, (int) $sa->cantidad),
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ];
-        }
-
-        // Serie products: count IMEIs en_stock per product (per variant if variants exist)
-        $imeiCounts = Imei::where('almacen_id', $almacenId)
-            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-            ->selectRaw('producto_id, variante_id, COUNT(*) as cnt')
-            ->groupBy('producto_id', 'variante_id')
-            ->get();
-
-        foreach ($imeiCounts as $ic) {
-            $rows[] = [
-                'conteo_id'     => $conteo->id,
-                'producto_id'   => $ic->producto_id,
-                'variante_id'   => $ic->variante_id,
-                'stock_sistema' => (int) $ic->cnt,
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ];

@@ -131,9 +131,8 @@
                             </div>
                             <div>
                                 <p class="text-xs text-gray-400 uppercase tracking-wide">Tipo</p>
-                                <span class="px-2 py-0.5 rounded-full text-xs font-semibold
-                                    {{ $producto->tipo_inventario === 'serie' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
-                                    {{ $producto->tipo_inventario === 'serie' ? 'Serie/IMEI' : 'Cantidad' }}
+                                <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                    Cantidad
                                 </span>
                             </div>
                         </div>
@@ -159,15 +158,6 @@
                                 {{ $stockTotalReal }}
                                 <span class="text-sm font-normal text-gray-400">unidades</span>
                             </p>
-                            @if($producto->tipo_inventario === 'serie')
-                                <p class="text-xs text-indigo-500 mt-0.5">
-                                    <i class="fas fa-sim-card mr-1"></i>Unidades en stock
-                                </p>
-                                <a href="{{ route('inventario.imeis.index', ['producto_id' => $producto->id]) }}"
-                                   class="inline-flex items-center gap-1 mt-2 text-xs font-medium text-white bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 rounded-lg transition">
-                                    <i class="fas fa-list text-xs"></i> Ver todos los IMEIs
-                                </a>
-                            @endif
                         </div>
                     </div>
                 </div>
@@ -346,9 +336,7 @@
                                         {{-- Stock --}}
                                         <div class="text-right">
                                             @php
-                                                $stockVar = $producto->tipo_inventario === 'serie'
-                                                    ? ($stockRealPorVariante[$variante->id] ?? 0)
-                                                    : $variante->stock_actual;
+                                                $stockVar = $variante->stock_actual;
                                             @endphp
                                             <p class="text-lg font-bold {{ $stockVar <= $variante->stock_minimo ? 'text-red-600' : 'text-gray-900' }}">
                                                 {{ $stockVar }}
@@ -359,13 +347,6 @@
                                         </div>
 
                                         {{-- Acciones --}}
-                                        @if($producto->tipo_inventario === 'serie')
-                                            <a href="{{ route('inventario.imeis.index', ['producto_id' => $producto->id, 'variante_id' => $variante->id]) }}"
-                                               class="text-indigo-400 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition"
-                                               title="Ver IMEIs de esta variante">
-                                                <i class="fas fa-sim-card text-sm"></i>
-                                            </a>
-                                        @endif
                                         @if($variante->estado === 'activo')
                                             {{-- Editar --}}
                                             <button type="button"

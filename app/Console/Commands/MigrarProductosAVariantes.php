@@ -73,7 +73,6 @@ class MigrarProductosAVariantes extends Command
 
         $totalVariantesCreadas  = 0;
         $totalProductosInactivos = 0;
-        $totalIMEIsMovidos      = 0;
         $errores                = 0;
 
         // ── 2. Procesar cada grupo ───────────────────────────────────────────
@@ -103,7 +102,6 @@ class MigrarProductosAVariantes extends Command
                     $dryRun,
                     $totalVariantesCreadas,
                     $totalProductosInactivos,
-                    $totalIMEIsMovidos,
                     $errores
                 );
             }
@@ -133,7 +131,6 @@ class MigrarProductosAVariantes extends Command
             [
                 ['Variantes creadas',         $totalVariantesCreadas],
                 ['Productos desactivados',    $totalProductosInactivos],
-                ['IMEIs reasignados',         $totalIMEIsMovidos],
                 ['Errores',                   $errores],
             ]
         );
@@ -156,7 +153,6 @@ class MigrarProductosAVariantes extends Command
         bool $dryRun,
         int &$totalCreadas,
         int &$totalInactivos,
-        int &$totalIMEIs,
         int &$errores
     ): void {
         try {
@@ -174,7 +170,7 @@ class MigrarProductosAVariantes extends Command
                 $this->warn("      Variante ya existe (SKU: {$varianteExistente->sku}), omitiendo creación.");
             } else {
                 if (!$dryRun) {
-                    DB::transaction(function () use ($producto, $productoBase, &$totalCreadas, &$totalIMEIs) {
+                    DB::transaction(function () use ($producto, $productoBase, &$totalCreadas) {
 
                         // Crear la variante en el producto base
                         $variante = ProductoVariante::create([
@@ -191,14 +187,6 @@ class MigrarProductosAVariantes extends Command
                         ]);
 
                         $totalCreadas++;
-
-                        // Reasignar IMEIs del producto antiguo → nueva variante
-                        $imeisMovidos = DB::table('imeis')
-                            ->where('producto_id', $producto->id)
-                            ->whereNull('variante_id')
-                            ->update(['variante_id' => $variante->id]);
-
-                        $totalIMEIs += $imeisMovidos;
 
                         // Actualizar detalle_compras
                         DB::table('detalle_compras')
@@ -221,15 +209,6 @@ class MigrarProductosAVariantes extends Command
                 } else {
                     $this->line("      <fg=yellow>[DRY-RUN]</> Crearía variante SKU: {$sku} con stock {$producto->stock_actual}");
                     $totalCreadas++;
-
-                    $imeisCount = DB::table('imeis')
-                        ->where('producto_id', $producto->id)
-                        ->whereNull('variante_id')
-                        ->count();
-                    if ($imeisCount > 0) {
-                        $this->line("      <fg=yellow>[DRY-RUN]</> Reasignaría {$imeisCount} IMEI(s)");
-                        $totalIMEIs += $imeisCount;
-                    }
                 }
             }
 

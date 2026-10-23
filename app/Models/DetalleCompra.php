@@ -61,27 +61,5 @@ class DetalleCompra extends Model
         return $this->belongsTo(ProductoVariante::class, 'variante_id');
     }
 
-    public function imeis()
-    {
-        return $this->hasMany(Imei::class, 'detalle_compra_id');
-    }
 
-    public function getImeisConLegacyAttribute()
-    {
-        // IMEIs con detalle_compra_id correcto (compras nuevas)
-        $porDetalle = $this->imeis;
-
-        // IMEIs sin detalle_compra_id (compras anteriores al fix), filtrados por variante
-        $legacyQuery = \App\Models\Imei::where('compra_id', $this->compra_id)
-            ->where('producto_id', $this->producto_id)
-            ->whereNull('detalle_compra_id');
-
-        if ($this->variante_id) {
-            $legacyQuery->where('variante_id', $this->variante_id);
-        } else {
-            $legacyQuery->whereNull('variante_id');
-        }
-
-        return $porDetalle->merge($legacyQuery->get());
-    }
 }

@@ -7,7 +7,6 @@ use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\GuiaRemision;
 use App\Models\SerieComprobante;
-use App\Models\Imei;
 use App\Models\StockAlmacen;
 use App\Models\MovimientoInventario;
 use App\Models\CuentaPorCobrar;
@@ -160,17 +159,11 @@ class VentaService
                     'subtotal_con_igv'=> round($precioConIgv * $qty, 4),
                 ]);
 
-                // Si es producto con IMEI, marcar los IMEIs como vendidos
-                if (!empty($detalle['imeis'])) {
-                    $this->marcarImeisVendidos($detalle['imeis'], $venta->id, $detalleVenta->id);
-                }
-
                 // Descontar del stock
                 $this->descontarStock(
                     $detalle['producto_id'],
                     $datosVenta['almacen_id'],
                     $detalle['cantidad'],
-                    $detalle['imeis'] ?? [],
                     $detalle['variante_id'] ?? null
                 );
             }
@@ -778,70 +771,21 @@ class VentaService
     {
         $venta->load('detalles.producto');
         foreach ($venta->detalles as $detalle) {
-            $esSerie = $detalle->producto?->tipo_inventario === 'serie';
+            $stock = StockAlmacen::fila($detalle->producto_id, $venta->almacen_id, $detalle->variante_id);
 
-            // NOTA: detalle_ventas.imei_id nunca se llena al crear la venta (bug
-            // histórico), así que NO se puede usar para ubicar el IMEI vendido.
-            // En su lugar se busca por venta_id + producto_id (+ variante_id),
-            // tomando como máximo la cantidad de esta línea — así, si la venta
-            // tiene varias líneas del mismo producto, cada una reclama solo los
-            // IMEIs que le corresponden y no se pisan entre sí.
-            if ($esSerie) {
-                // Producto tipo "serie": el stock real vive en imeis (conteo por estado_imei),
-                // no en stock_almacen — esa tabla es solo para productos tipo "cantidad".
-                // Tocarla aquí para productos serie la contamina con filas que nadie
-                // mantiene y que reportes futuros podrían sumar por error.
-                $stockAnterior = Imei::where('producto_id', $detalle->producto_id)
-                    ->where('estado_imei', 'en_stock')
-                    ->count();
+            $stockAnterior = $stock->cantidad;
+            $stock->increment('cantidad', $detalle->cantidad);
+            $stockNuevo = $stock->cantidad;
 
-                $imeisVendidos = Imei::where('venta_id', $venta->id)
-                    ->where('producto_id', $detalle->producto_id)
-                    ->when($detalle->variante_id, fn($q) => $q->where('variante_id', $detalle->variante_id))
-                    ->where('estado_imei', 'vendido')
-                    ->limit($detalle->cantidad)
-                    ->pluck('id');
-
-                Imei::whereIn('id', $imeisVendidos)->update([
-                    'estado_imei' => 'en_stock',
-                    'venta_id'    => null,
-                    'fecha_venta' => null,
-                ]);
-
-                // Recontar desde la fuente real (imeis) en vez de incrementar/decrementar:
-                // así producto.stock_actual y producto_variante.stock_actual quedan exactos
-                // sin importar el estado previo de esas columnas (evita el arrastre de
-                // desincronizaciones de otros flujos).
-                $stockNuevo = Imei::where('producto_id', $detalle->producto_id)
-                    ->where('estado_imei', 'en_stock')
-                    ->count();
-                \App\Models\Producto::where('id', $detalle->producto_id)
-                    ->update(['stock_actual' => $stockNuevo]);
-
-                if ($detalle->variante_id) {
-                    $totalVariante = Imei::where('variante_id', $detalle->variante_id)
-                        ->where('estado_imei', 'en_stock')
-                        ->count();
-                    \App\Models\ProductoVariante::where('id', $detalle->variante_id)
-                        ->update(['stock_actual' => $totalVariante]);
-                }
+            // Igual que descontarStock() al vender: mantener sincronizados
+            // producto.stock_actual y producto_variante.stock_actual con el
+            // total real de stock_almacen, si no quedan desfasados tras cada
+            // anulación/eliminación/NC.
+            if ($detalle->variante_id) {
+                $detalle->variante?->incrementarStock($detalle->cantidad);
             } else {
-                $stock = StockAlmacen::fila($detalle->producto_id, $venta->almacen_id, $detalle->variante_id);
-
-                $stockAnterior = $stock->cantidad;
-                $stock->increment('cantidad', $detalle->cantidad);
-                $stockNuevo = $stock->cantidad;
-
-                // Igual que descontarStock() al vender: mantener sincronizados
-                // producto.stock_actual y producto_variante.stock_actual con el
-                // total real de stock_almacen, si no quedan desfasados tras cada
-                // anulación/eliminación/NC.
-                if ($detalle->variante_id) {
-                    $detalle->variante?->incrementarStock($detalle->cantidad);
-                } else {
-                    $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
-                    \App\Models\Producto::where('id', $detalle->producto_id)->update(['stock_actual' => $totalStock]);
-                }
+                $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
+                \App\Models\Producto::where('id', $detalle->producto_id)->update(['stock_actual' => $totalStock]);
             }
 
             MovimientoInventario::create([
@@ -911,12 +855,6 @@ class VentaService
     private function validarStockDisponible(array $detalles, int $almacenId)
     {
         foreach ($detalles as $detalle) {
-            // Productos serie/IMEI: el stock se controla por unidad individual
-            if (!empty($detalle['imeis'])) {
-                $this->validarImeisDisponibles($detalle['imeis'], $almacenId);
-                continue;
-            }
-
             $varianteId = !empty($detalle['variante_id']) ? (int) $detalle['variante_id'] : null;
             $stock = StockAlmacen::where('producto_id', $detalle['producto_id'])
                 ->where('almacen_id', $almacenId)
@@ -933,87 +871,32 @@ class VentaService
     }
 
     /**
-     * Validar que los IMEIs estén disponibles
-     */
-    private function validarImeisDisponibles(array $imeis, int $almacenId)
-    {
-        $codigosImei = array_column($imeis, 'codigo_imei');
-
-        $existentes = Imei::whereIn('codigo_imei', $codigosImei)
-            ->where('almacen_id', $almacenId)
-            ->where('estado_imei', 'en_stock')
-            ->get();
-
-        if ($existentes->count() !== count($codigosImei)) {
-            $encontrados = $existentes->pluck('codigo_imei')->toArray();
-            $faltantes   = array_diff($codigosImei, $encontrados);
-            throw new \Exception("Los siguientes IMEIs no están disponibles: " . implode(', ', $faltantes));
-        }
-    }
-
-    /**
-     * Marcar IMEIs como vendidos
-     */
-    private function marcarImeisVendidos(array $imeis, int $ventaId, int $detalleVentaId)
-    {
-        foreach ($imeis as $imeiData) {
-            Imei::where('codigo_imei', $imeiData['codigo_imei'])
-                ->update([
-                    'estado_imei' => 'vendido',
-                    'fecha_venta'  => now(),
-                    'venta_id'     => $ventaId,
-                ]);
-        }
-    }
-
-    /**
      * Descontar stock del almacén
      */
-    private function descontarStock(int $productoId, int $almacenId, int $cantidad, array $imeis = [], ?int $varianteId = null)
+    private function descontarStock(int $productoId, int $almacenId, int $cantidad, ?int $varianteId = null)
     {
         $producto      = \App\Models\Producto::find($productoId);
         $stockAnterior = 0;
         $stockNuevo    = 0;
 
-        if (!empty($imeis)) {
-            $stockNuevo    = Imei::where('producto_id', $productoId)
-                                 ->where('almacen_id', $almacenId)
-                                 ->where('estado_imei', 'en_stock')
-                                 ->count();
-            $stockAnterior = $stockNuevo + $cantidad;
+        $stock = StockAlmacen::where('producto_id', $productoId)
+            ->where('almacen_id', $almacenId)
+            ->deVariante($varianteId)
+            ->first();
 
-            $totalStock = Imei::where('producto_id', $productoId)
-                               ->where('estado_imei', 'en_stock')
-                               ->count();
+        if ($stock) {
+            $stockAnterior = $stock->cantidad;
+            $stock->decrement('cantidad', $cantidad);
+            $stockNuevo = $stock->cantidad;
+
+            $totalStock = StockAlmacen::where('producto_id', $productoId)->sum('cantidad');
             $producto->update(['stock_actual' => $totalStock]);
+        }
 
-            if ($varianteId) {
-                $stockVariante = Imei::where('variante_id', $varianteId)
-                                     ->where('estado_imei', 'en_stock')
-                                     ->count();
-                \App\Models\ProductoVariante::where('id', $varianteId)
-                    ->update(['stock_actual' => $stockVariante]);
-            }
-        } else {
-            $stock = StockAlmacen::where('producto_id', $productoId)
-                ->where('almacen_id', $almacenId)
-                ->deVariante($varianteId)
-                ->first();
-
-            if ($stock) {
-                $stockAnterior = $stock->cantidad;
-                $stock->decrement('cantidad', $cantidad);
-                $stockNuevo = $stock->cantidad;
-
-                $totalStock = StockAlmacen::where('producto_id', $productoId)->sum('cantidad');
-                $producto->update(['stock_actual' => $totalStock]);
-            }
-
-            if ($varianteId) {
-                $variante = \App\Models\ProductoVariante::find($varianteId);
-                if ($variante) {
-                    $variante->decrementarStock($cantidad);
-                }
+        if ($varianteId) {
+            $variante = \App\Models\ProductoVariante::find($varianteId);
+            if ($variante) {
+                $variante->decrementarStock($cantidad);
             }
         }
 
@@ -1028,7 +911,6 @@ class VentaService
             'stock_nuevo'     => $stockNuevo,
             'motivo'          => 'Venta',
             'estado'          => 'completado',
-            'imeis'           => !empty($imeis) ? json_encode($imeis) : null,
         ]);
     }
 

@@ -95,9 +95,6 @@ class MovimientoInventarioController extends Controller
         // =====================================================
         // FIX 1: Validación condicional según tipo de producto
         // =====================================================
-        $producto = Producto::find($request->producto_id);
-        $esCelular = $producto && $producto->tipo_inventario === 'serie';
-        
         $rules = [
             'producto_id' => 'required|exists:productos,id',
             'almacen_id' => 'required|exists:almacenes,id',
@@ -107,16 +104,8 @@ class MovimientoInventarioController extends Controller
             'almacen_destino_id' => 'nullable|exists:almacenes,id',
             'numero_guia' => 'nullable|string|max:50',
             'variante_id' => 'nullable|exists:producto_variantes,id',
+            'cantidad' => 'required|integer|min:1',
         ];
-        
-        // FIX 2: Si es celular, IMEI es obligatorio y cantidad no se valida como required
-        if ($esCelular) {
-            $rules['imei_id'] = 'required|exists:imeis,id';
-            $rules['cantidad'] = 'nullable|integer|min:1';
-        } else {
-            $rules['imei_id'] = 'nullable|exists:imeis,id';
-            $rules['cantidad'] = 'required|integer|min:1';
-        }
         
         // FIX 3: Almacén destino solo obligatorio en transferencias
         if ($request->tipo_movimiento === 'transferencia') {
@@ -132,7 +121,6 @@ class MovimientoInventarioController extends Controller
             'cantidad.min' => 'La cantidad debe ser mayor a 0.',
             'motivo_movimiento_id.required' => 'Debes seleccionar un motivo.',
             'motivo_movimiento_id.exists'   => 'El motivo seleccionado no es válido.',
-            'imei_id.required' => 'Debe seleccionar un IMEI para productos tipo celular.',
             'variante_id.exists' => 'La variante seleccionada no es válida.',
             'almacen_destino_id.required' => 'Debe seleccionar un almacén destino para transferencias.',
             'almacen_destino_id.different' => 'El almacén destino debe ser diferente al almacén origen.',
@@ -145,11 +133,10 @@ class MovimientoInventarioController extends Controller
             // Preparar datos para el modelo
             $datos = [
                 'producto_id' => $request->producto_id,
-                'variante_id' => $esCelular ? null : $request->variante_id,
+                'variante_id' => $request->variante_id,
                 'almacen_id' => $request->almacen_id,
                 'tipo_movimiento'      => $request->tipo_movimiento,
-                'imei_id'             => $request->imei_id,
-                'cantidad'            => $esCelular ? 1 : $request->cantidad,
+                'cantidad'            => $request->cantidad,
                 'motivo_movimiento_id'=> $request->motivo_movimiento_id,
                 'motivo'              => MotivoMovimiento::find($request->motivo_movimiento_id)?->nombre ?? '',
                 'observaciones'       => $request->observaciones,
@@ -211,68 +198,4 @@ class MovimientoInventarioController extends Controller
         ]);
     }
 
-    /**
-     * API: Obtener IMEIs disponibles de un producto en un almacén
-     */
-    public function getImeisDisponibles(Request $request)
-    {
-        try {
-            $productoId = $request->get('producto_id');
-            $almacenId = $request->get('almacen_id');
-            $tipoMovimiento = $request->get('tipo_movimiento', 'salida');
-            
-            if (!$productoId || !$almacenId) {
-                return response()->json(['error' => 'Faltan parámetros requeridos'], 400);
-            }
-            
-            $producto = Producto::find($productoId);
-            if (!$producto) {
-                return response()->json(['error' => 'Producto no encontrado'], 404);
-            }
-            
-            if ($producto->tipo_inventario !== 'serie') {
-                return response()->json(['error' => 'El producto seleccionado no es tipo celular'], 400);
-            }
-            
-            $query = \App\Models\Imei::where('producto_id', $productoId)
-                                    ->where('almacen_id', $almacenId);
-            
-            switch ($tipoMovimiento) {
-                case 'salida':
-                case 'transferencia':
-                case 'merma':
-                    $query->where('estado_imei', \App\Models\Imei::ESTADO_EN_STOCK);
-                    break;
-                case 'devolucion':
-                    $query->where('estado_imei', \App\Models\Imei::ESTADO_VENDIDO);
-                    break;
-                case 'ingreso':
-                    return response()->json(['error' => 'Los ingresos de celulares se registran en Compras'], 400);
-                case 'ajuste':
-                    break;
-                default:
-                    $query->where('estado_imei', \App\Models\Imei::ESTADO_EN_STOCK);
-                    break;
-            }
-
-            $imeis = $query->select('id', 'codigo_imei', 'serie', 'color', 'estado_imei')
-                            ->orderBy('codigo_imei')
-                            ->limit(200)
-                            ->get();
-            
-            return response()->json($imeis);
-            
-        } catch (\Exception $e) {
-            \Log::error('Error en getImeisDisponibles:', [
-                'message' => $e->getMessage(),
-                'producto_id' => $request->get('producto_id'),
-                'almacen_id' => $request->get('almacen_id'),
-            ]);
-            
-            return response()->json([
-                'error' => 'Error interno del servidor',
-                'message' => config('app.debug') ? $e->getMessage() : 'Error al cargar IMEIs'
-            ], 500);
-        }
-    }
 }

@@ -197,13 +197,6 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
         @php
             $precioFinal = $d->precio_unitario * $igvFactor;
             $totalFinal  = $d->subtotal * $igvFactor;
-            $imeisLinea  = $venta->imeis->filter(fn($imei) =>
-                $imei->producto_id == $d->producto_id &&
-                ($d->variante_id ? $imei->variante_id == $d->variante_id : true)
-            );
-            if ($imeisLinea->isEmpty() && $d->imei) {
-                $imeisLinea = collect([$d->imei]);
-            }
         @endphp
         <tr>
             <td class="center">{{ $i + 1 }}</td>
@@ -213,9 +206,6 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
                 @if($d->variante)
                     <br><span style="color:#555;font-size:7pt">{{ $d->variante->nombre_completo }} · {{ $d->variante->sku }}</span>
                 @endif
-                @foreach($imeisLinea as $imei)
-                    <br><span style="color:#555;font-size:7pt">Serie: {{ $imei->codigo_imei }}</span>
-                @endforeach
             </td>
             <td class="center">{{ $d->producto?->unidadMedida?->abreviatura ?? 'UND' }}</td>
             <td class="center">{{ $d->cantidad }}</td>

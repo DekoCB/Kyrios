@@ -63,10 +63,6 @@ class ProductoVariante extends Model
         return $this->belongsTo(Color::class);
     }
 
-    public function imeis()
-    {
-        return $this->hasMany(Imei::class, 'variante_id');
-    }
 
     public function detallesCompra()
     {

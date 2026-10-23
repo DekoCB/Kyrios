@@ -6,7 +6,6 @@ use App\Models\Almacen;
 use App\Models\Cliente;
 use App\Models\DetalleVenta;
 use App\Models\GuiaRemision;
-use App\Models\Imei;
 use App\Models\MovimientoInventario;
 use App\Models\StockAlmacen;
 use App\Models\Venta;
@@ -102,7 +101,6 @@ class DevolucionController extends Controller
             $ventas = Venta::with([
                     'detalles.producto',
                     'detalles.variante',
-                    'detalles.imei',
                     'detalles.movimientosDevolucion',
                 ])
                 ->where('cliente_id', $clienteId)
@@ -191,57 +189,17 @@ class DevolucionController extends Controller
                         'estado'               => 'confirmado',
                     ]);
 
-                    // Para productos tipo serie (IMEI): detalle_ventas.imei_id nunca se
-                    // llena al vender (bug histórico), así que no sirve para ubicar la
-                    // unidad física. Se busca por venta_id + producto_id (+ variante_id),
-                    // igual que en VentaService::revertirStock().
-                    $esSerie = $detalle->producto?->tipo_inventario === 'serie';
+                    // Para productos por cantidad
+                    StockAlmacen::obtenerOCrear($detalle->producto_id, $almacenId, $detalle->variante_id)
+                        ->incrementar($cantidad);
 
-                    if ($esSerie) {
-                        $imeisDevueltos = Imei::where('venta_id', $detalle->venta_id)
-                            ->where('producto_id', $detalle->producto_id)
-                            ->when($detalle->variante_id, fn($q) => $q->where('variante_id', $detalle->variante_id))
-                            ->where('estado_imei', Imei::ESTADO_VENDIDO)
-                            ->limit($cantidad)
-                            ->pluck('id');
-
-                        if ($imeisDevueltos->count() < $cantidad) {
-                            throw new \Exception(
-                                "No se encontraron {$cantidad} IMEI(s) vendidos de «{$detalle->producto?->nombre}» para devolver."
-                            );
-                        }
-
-                        Imei::whereIn('id', $imeisDevueltos)->update([
-                            'estado_imei' => Imei::ESTADO_EN_STOCK,
-                            'almacen_id'  => $almacenId,
-                            'venta_id'    => null,
-                            'fecha_venta' => null,
-                        ]);
-
-                        $totalStock = Imei::where('producto_id', $detalle->producto_id)
-                            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                            ->count();
-                        $detalle->producto->update(['stock_actual' => $totalStock]);
-
-                        if ($detalle->variante_id && $detalle->variante) {
-                            $varianteStock = Imei::where('producto_id', $detalle->producto_id)
-                                ->where('variante_id', $detalle->variante_id)
-                                ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                                ->count();
-                            $detalle->variante->update(['stock_actual' => $varianteStock]);
-                        }
+                    if ($detalle->variante) {
+                        $detalle->variante->incrementarStock($cantidad);
                     } else {
-                        // Para productos por cantidad
-                        StockAlmacen::obtenerOCrear($detalle->producto_id, $almacenId, $detalle->variante_id)
-                            ->incrementar($cantidad);
-
-                        if ($detalle->variante) {
-                            $detalle->variante->incrementarStock($cantidad);
-                        } else {
-                            $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
-                            $detalle->producto->update(['stock_actual' => $totalStock]);
-                        }
+                        $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
+                        $detalle->producto->update(['stock_actual' => $totalStock]);
                     }
+                
 
                     // Acumular el monto a devolver por venta (una devolución puede
                     // incluir líneas de varias ventas del mismo cliente).
@@ -345,7 +303,7 @@ class DevolucionController extends Controller
     }
 
     /**
-     * Anular una devolución: revierte el stock (y los IMEIs) que había
+     * Anular una devolución: revierte el stock que había
      * devuelto, revierte el egreso de caja que generó, y marca sus
      * movimientos como 'anulado' (no se borran, para no perder rastro
      * de auditoría). Si alguna unidad ya se volvió a vender/trasladar
@@ -390,63 +348,26 @@ class DevolucionController extends Controller
 
                 foreach ($grupo as $mov) {
                     $detalle = $mov->detalleVenta;
-                    $esSerie = $mov->producto?->tipo_inventario === 'serie';
+                    $stockAlm = StockAlmacen::where('producto_id', $mov->producto_id)
+                        ->where('almacen_id', $mov->almacen_id)
+                        ->deVariante($mov->variante_id)
+                        ->first();
 
-                    if ($esSerie) {
-                        // Igual que al registrar la devolución: no hay trazabilidad
-                        // por IMEI individual, así que se toman como máximo $cantidad
-                        // unidades que sigan en stock en ese almacén (no necesariamente
-                        // las mismas piezas físicas que se devolvieron).
-                        $imeisDisponibles = Imei::where('producto_id', $mov->producto_id)
-                            ->where('almacen_id', $mov->almacen_id)
-                            ->when($mov->variante_id, fn($q) => $q->where('variante_id', $mov->variante_id))
-                            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                            ->limit($mov->cantidad)
-                            ->pluck('id');
-
-                        if ($imeisDisponibles->count() < $mov->cantidad) {
-                            throw new \Exception(
-                                "No se puede anular: solo hay {$imeisDisponibles->count()} de {$mov->cantidad} unidad(es) de «{$mov->producto?->nombre}» " .
-                                "aún disponibles (parte ya se volvió a vender o trasladar)."
-                            );
-                        }
-
-                        Imei::whereIn('id', $imeisDisponibles)->update([
-                            'estado_imei' => Imei::ESTADO_VENDIDO,
-                            'venta_id'    => $detalle?->venta_id,
-                            'fecha_venta' => $detalle?->venta?->fecha ?? now(),
-                        ]);
-
-                        $totalStock = Imei::where('producto_id', $mov->producto_id)
-                            ->where('estado_imei', Imei::ESTADO_EN_STOCK)->count();
-                        $mov->producto->update(['stock_actual' => $totalStock]);
-
-                        if ($mov->variante_id && $mov->variante) {
-                            $varianteStock = Imei::where('variante_id', $mov->variante_id)
-                                ->where('estado_imei', Imei::ESTADO_EN_STOCK)->count();
-                            $mov->variante->update(['stock_actual' => $varianteStock]);
-                        }
-                    } else {
-                        $stockAlm = StockAlmacen::where('producto_id', $mov->producto_id)
-                            ->where('almacen_id', $mov->almacen_id)
-                            ->deVariante($mov->variante_id)
-                            ->first();
-
-                        if (!$stockAlm || $stockAlm->cantidad < $mov->cantidad) {
-                            throw new \Exception(
-                                "No se puede anular: el stock de «{$mov->producto?->nombre}» ya cambió y no queda suficiente para revertir."
-                            );
-                        }
-
-                        $stockAlm->decrement('cantidad', $mov->cantidad);
-
-                        if ($mov->variante) {
-                            $mov->variante->decrementarStock($mov->cantidad);
-                        } else {
-                            $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
-                            $mov->producto->update(['stock_actual' => $totalStock]);
-                        }
+                    if (!$stockAlm || $stockAlm->cantidad < $mov->cantidad) {
+                        throw new \Exception(
+                            "No se puede anular: el stock de «{$mov->producto?->nombre}» ya cambió y no queda suficiente para revertir."
+                        );
                     }
+
+                    $stockAlm->decrement('cantidad', $mov->cantidad);
+
+                    if ($mov->variante) {
+                        $mov->variante->decrementarStock($mov->cantidad);
+                    } else {
+                        $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
+                        $mov->producto->update(['stock_actual' => $totalStock]);
+                    }
+                
 
                     if ($detalle?->venta && $detalle->venta->estado_pago === 'pagado') {
                         $montosPorVenta[$detalle->venta_id] = ($montosPorVenta[$detalle->venta_id] ?? 0)

@@ -120,10 +120,6 @@ class EscanerService
                 $variante = ProductoVariante::with('producto')->lockForUpdate()->findOrFail($varianteId);
                 $producto = $variante->producto;
 
-                if ($producto->tipo_inventario === 'serie') {
-                    throw new \RuntimeException("{$producto->nombre} se controla por serie/IMEI y no puede recibirse por cantidad.");
-                }
-
                 // Stock por variante y almacén
                 $stock = StockAlmacen::fila($producto->id, $almacenId, $variante->id);
                 $anterior = $stock->cantidad;
@@ -174,10 +170,6 @@ class EscanerService
                 }
                 $variante = ProductoVariante::with('producto')->lockForUpdate()->findOrFail($varianteId);
                 $producto = $variante->producto;
-
-                if ($producto->tipo_inventario === 'serie') {
-                    throw new \RuntimeException("{$producto->nombre} se controla por serie/IMEI y no puede retirarse por cantidad.");
-                }
 
                 $stock = StockAlmacen::fila($producto->id, $almacenId, $variante->id);
                 $anterior = (int) $stock->cantidad;

@@ -125,13 +125,6 @@ class VarianteController extends Controller
      */
     public function destroy(ProductoVariante $variante): \Illuminate\Http\JsonResponse
     {
-        if ($variante->imeis()->where('estado_imei', 'en_stock')->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No se puede desactivar una variante con IMEIs en stock',
-            ], 422);
-        }
-
         $this->varianteService->desactivarVariante($variante);
 
         return response()->json([
@@ -146,42 +139,10 @@ class VarianteController extends Controller
      */
     public function stock(ProductoVariante $variante, Request $request): \Illuminate\Http\JsonResponse
     {
-        // Stock de IMEIs disponibles si el producto es de tipo serie
-        $imeiCount = null;
-        if ($variante->producto?->tipo_inventario === 'serie') {
-            $query = $variante->imeis()->where('estado_imei', 'en_stock');
-            if ($request->almacen_id) {
-                $query->where('almacen_id', $request->almacen_id);
-            }
-            $imeiCount = $query->count();
-        }
-
         return response()->json([
             'success'     => true,
             'stock_total' => $variante->stock_actual,
-            'imeis_disponibles' => $imeiCount,
         ]);
     }
 
-    /**
-     * GET /api/variantes/{variante}/imeis?almacen_id=X
-     * IMEIs disponibles de la variante en un almacén.
-     */
-    public function imeis(ProductoVariante $variante, Request $request): \Illuminate\Http\JsonResponse
-    {
-        $request->validate([
-            'almacen_id' => 'nullable|exists:almacenes,id',
-        ]);
-
-        $imeis = $variante->imeis()
-            ->where('estado_imei', 'en_stock')
-            ->when($request->almacen_id, fn($q) => $q->where('almacen_id', $request->almacen_id))
-            ->get(['id', 'codigo_imei', 'serie', 'estado_imei']);
-
-        return response()->json([
-            'success' => true,
-            'imeis'   => $imeis,
-            'total'   => $imeis->count(),
-        ]);
-    }
 }

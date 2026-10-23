@@ -318,20 +318,10 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <th style="width:48px; text-align:center">UNIDAD</th>
                 <th style="width:60px">CÓDIGO</th>
                 <th>DESCRIPCIÓN</th>
-                <th style="width:55px; text-align:center">SERIE / IMEI</th>
             </tr>
         </thead>
         <tbody>
             @foreach($venta->detalles as $i => $detalle)
-            @php
-                $imeisLinea = $venta->imeis->filter(fn($imei) =>
-                    $imei->producto_id == $detalle->producto_id &&
-                    ($detalle->variante_id ? $imei->variante_id == $detalle->variante_id : true)
-                );
-                if ($imeisLinea->isEmpty() && $detalle->imei) {
-                    $imeisLinea = collect([$detalle->imei]);
-                }
-            @endphp
             <tr>
                 <td style="text-align:center; font-weight:bold">{{ $detalle->cantidad }}</td>
                 <td style="text-align:center">{{ $detalle->producto?->unidadMedida?->abreviatura ?? 'UND' }}</td>
@@ -342,12 +332,6 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                         <span style="color:#44413A; font-size:6.5pt"> · {{ $detalle->variante->nombre_completo }}</span>
                     @endif
                 </td>
-                <td style="text-align:center; font-size:6.5pt; font-family:monospace; color:#555">
-                    @foreach($imeisLinea as $imei)
-                        {{ $imei->codigo_imei }}<br>
-                    @endforeach
-                    @if($imeisLinea->isEmpty()) — @endif
-                </td>
             </tr>
             @endforeach
         </tbody>
@@ -355,7 +339,6 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
             <tr>
                 <td style="text-align:center">{{ $venta->detalles->sum('cantidad') }}</td>
                 <td colspan="3" style="text-align:right; font-size:6.5pt; color:#555">Total unidades trasladadas</td>
-                <td></td>
             </tr>
         </tfoot>
     </table>

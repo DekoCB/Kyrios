@@ -302,30 +302,21 @@
                     </div>
                 </div>
 
-                {{-- IMEIs Registrados --}}
+                {{-- Unidades en stock --}}
                 <div class="bg-white rounded-xl shadow-lg p-6 hover-scale border-l-4 border-green-500">
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="text-sm text-gray-500 font-medium">IMEIs Registrados</p>
-                            <p class="stat-value text-gray-900">{{ number_format($imeis_totales) }}</p>
+                            <p class="text-sm text-gray-500 font-medium">Unidades en stock</p>
+                            <p class="stat-value text-gray-900">{{ number_format($stock_total) }}</p>
                             <div class="flex flex-wrap items-center mt-2 gap-1">
                                 <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                                    <i class="fas fa-check-circle mr-1"></i>{{ number_format($imeis_disponibles) }} disp.
-                                </span>
-                                <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                                    <i class="fas fa-times-circle mr-1"></i>{{ number_format($imeis_vendidos) }} vend.
+                                    <i class="fas fa-boxes mr-1"></i>todos los almacenes
                                 </span>
                             </div>
                         </div>
                         <div class="bg-green-100 p-3 rounded-lg">
-                            <i class="fas fa-microchip text-green-600 text-2xl"></i>
+                            <i class="fas fa-boxes text-green-600 text-2xl"></i>
                         </div>
-                    </div>
-                    <div class="mt-4 pt-3 border-t border-gray-100">
-                        <p class="text-xs text-gray-500">
-                            <i class="fas fa-plus-circle text-green-500 mr-1"></i>
-                            Últimos 7 días: <span class="font-semibold text-green-600">+{{ $imeis_nuevos_semana }} nuevos</span>
-                        </p>
                     </div>
                 </div>
 

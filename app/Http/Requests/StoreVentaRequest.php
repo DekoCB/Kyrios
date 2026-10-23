@@ -72,8 +72,6 @@ class StoreVentaRequest extends FormRequest
             'detalles.*.cantidad'            => 'required|integer|min:1',
             'detalles.*.precio_unitario'     => 'required|numeric|min:0.01',
             'detalles.*.incluye_igv'         => 'nullable|boolean',
-            'detalles.*.imeis'               => 'nullable|array',
-            'detalles.*.imeis.*.codigo_imei' => 'nullable|string',
         ];
     }
 

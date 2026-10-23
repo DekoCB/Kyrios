@@ -95,7 +95,7 @@
                                     <i class="fas fa-box-open mr-2"></i>Recibir Mercadería
                                 </a>
                                 <p class="text-xs text-gray-400 text-center -mt-1">
-                                    Te lleva a registrar la Compra real (factura, IMEIs, precios finales). El pedido pasará a "Recibido" automáticamente al guardarla.
+                                    Te lleva a registrar la Compra real (factura, precios finales). El pedido pasará a "Recibido" automáticamente al guardarla.
                                 </p>
                             @endif
 

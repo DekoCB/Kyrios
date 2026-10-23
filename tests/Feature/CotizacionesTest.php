@@ -157,15 +157,6 @@ class CotizacionesTest extends TestCase
         $this->assertSame(0, Cotizacion::count());
     }
 
-    public function test_un_producto_por_serie_no_se_cotiza_aqui(): void
-    {
-        $serie = Producto::create(['codigo' => 'CEL-1', 'nombre' => 'Celular', 'categoria_id' => $this->producto->categoria_id,
-            'tipo_inventario' => 'serie', 'stock_minimo' => 0, 'stock_maximo' => 5, 'estado' => 'activo']);
-
-        $this->expectException(\DomainException::class);
-        $this->crear(null, [['producto_id' => $serie->id, 'cantidad' => 1, 'precio_unitario' => 500]]);
-    }
-
     public function test_una_variante_de_otro_producto_se_rechaza(): void
     {
         $otro = Producto::create(['codigo' => 'KY-X', 'nombre' => 'Otro', 'categoria_id' => $this->producto->categoria_id,
@@ -402,15 +393,6 @@ class CotizacionesTest extends TestCase
 
         $this->getJson(route('cotizaciones.productos', ['q' => 'KY-LU2501-0002']))->assertJsonCount(1);
         $this->getJson(route('cotizaciones.productos', ['q' => 'R']))->assertExactJson([]);
-    }
-
-    public function test_la_busqueda_no_ofrece_productos_por_serie(): void
-    {
-        Producto::create(['codigo' => 'CEL-9', 'nombre' => 'Ring Celular', 'categoria_id' => $this->producto->categoria_id,
-            'tipo_inventario' => 'serie', 'stock_minimo' => 0, 'stock_maximo' => 5, 'estado' => 'activo']);
-
-        $codigos = collect($this->getJson(route('cotizaciones.productos', ['q' => 'Ring']))->json())->pluck('codigo');
-        $this->assertFalse($codigos->contains('CEL-9'));
     }
 
     public function test_la_busqueda_de_clientes(): void

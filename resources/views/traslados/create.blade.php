@@ -195,10 +195,6 @@
                                         Producto <span x-text="idx + 1"></span>
                                     </span>
                                     <div class="flex items-center gap-2">
-                                        <span x-show="producto.esSerie" x-cloak
-                                              class="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                                            <i class="fas fa-barcode"></i> IMEI
-                                        </span>
                                         <button type="button"
                                                 @click="eliminarProducto(idx)"
                                                 x-show="productos.length > 1"
@@ -222,8 +218,6 @@
                                             <i class="fas fa-check-circle text-blue-500 text-xs shrink-0"></i>
                                             <span class="flex-1 text-sm font-medium text-blue-800" x-text="producto.nombre"></span>
                                             <span class="text-[10px] text-blue-400 font-mono" x-text="producto.codigo"></span>
-                                            <span x-show="producto.esSerie"
-                                                  class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">IMEI</span>
                                             <button type="button" @click="limpiarProducto(idx)"
                                                     class="text-blue-300 hover:text-red-500 transition ml-1">
                                                 <i class="fas fa-times text-xs"></i>
@@ -259,22 +253,19 @@
                                                                 class="w-full text-left px-4 py-3 transition-colors disabled:cursor-not-allowed"
                                                                 :class="estaUsado(item.id, idx) ? 'bg-gray-50' : 'hover:bg-blue-50'">
                                                             <div class="flex items-center gap-2">
-                                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                                                     :class="item.es_serie ? 'bg-purple-100' : 'bg-blue-100'">
-                                                                    <i class="text-xs" :class="item.es_serie ? 'fas fa-mobile-alt text-purple-600' : 'fas fa-box text-blue-600'"></i>
+                                                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-blue-100">
+                                                                    <i class="fas fa-box text-xs text-blue-600"></i>
                                                                 </div>
                                                                 <div class="flex-1 min-w-0">
                                                                     <p class="text-sm font-semibold text-gray-800 truncate" x-text="item.nombre"></p>
                                                                     <div class="flex items-center gap-2 mt-0.5">
                                                                         <span class="text-[10px] font-mono text-gray-400" x-text="item.codigo"></span>
-                                                                        <span x-show="item.es_serie"
-                                                                              class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">IMEI</span>
                                                                     </div>
                                                                 </div>
                                                                 <div class="text-right shrink-0">
                                                                     <span class="text-xs font-bold px-2 py-1 rounded-lg"
                                                                           :class="item.stock_origen > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'"
-                                                                          x-text="item.stock_origen + (item.es_serie ? ' IMEI' : ' u.')"></span>
+                                                                          x-text="item.stock_origen + ' u.'"></span>
                                                                 </div>
                                                             </div>
                                                             <span x-show="estaUsado(item.id, idx)"
@@ -325,37 +316,19 @@
                                             <i class="fas fa-cubes mr-1"></i>
                                             Disponible:
                                             <strong x-text="producto.stockOrigen"></strong>
-                                            <span x-show="producto.esSerie"> IMEIs</span>
-                                            <span x-show="!producto.esSerie"> unid.</span>
+                                            <span> unid.</span>
                                         </span>
                                     </div>
 
-                                    {{-- ── VARIANTE SELECTOR (accesorio y serie con variantes) ── --}}
+                                    {{-- ── VARIANTE SELECTOR  ── --}}
                                     <div x-show="producto.productoId && producto.variantes.length > 0" x-cloak>
                                         <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
                                             <i class="fas fa-palette mr-1 text-pink-400"></i>
-                                            <span x-text="producto.esSerie ? 'Filtrar por variante' : 'Variante'"></span>
+                                            Variante
                                         </label>
 
                                         {{-- Tarjetas de variantes --}}
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                                            {{-- Opción "Todas" solo para serie --}}
-                                            <div x-show="producto.esSerie" x-cloak
-                                                 @click="producto.varianteId = null; producto.stockOrigen = producto.stockTotal ?? producto.stockOrigen"
-                                                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all"
-                                                 :class="!producto.varianteId ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200' : 'border-gray-200 hover:border-blue-300'">
-                                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center shrink-0">
-                                                    <i class="fas fa-layer-group text-[8px] text-gray-500"></i>
-                                                </div>
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="text-xs font-semibold text-gray-700">Todas las variantes</p>
-                                                    <p class="text-[10px] text-gray-400" x-text="producto.variantes.length + ' opciones'"></p>
-                                                </div>
-                                                <span class="text-xs font-bold px-1.5 py-0.5 rounded-full"
-                                                      :class="producto.stockOrigen > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'"
-                                                      x-text="producto.stockOrigen + ' disp.'"></span>
-                                            </div>
-
                                             <template x-for="v in producto.variantes" :key="v.id">
                                                 <div @click="seleccionarVariante(idx, v)"
                                                      class="flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition-all"
@@ -366,7 +339,7 @@
                                                     </template>
                                                     <template x-if="!v.color_hex">
                                                         <span class="w-6 h-6 rounded-full bg-gray-200 border-2 border-white shadow-sm shrink-0 flex items-center justify-center">
-                                                            <i class="fas fa-mobile-alt text-[8px] text-gray-400"></i>
+                                                            <i class="fas fa-box text-[8px] text-gray-400"></i>
                                                         </span>
                                                     </template>
                                                     <div class="flex-1 min-w-0">
@@ -375,16 +348,16 @@
                                                     </div>
                                                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
                                                           :class="v.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'"
-                                                          x-text="v.stock + (producto.esSerie ? ' IMEI' : ' u.')"></span>
+                                                          x-text="v.stock + ' u.'"></span>
                                                 </div>
                                             </template>
                                         </div>
 
-                                        <input type="hidden" :name="`productos[${idx}][variante_id]`" :value="varianteIdEnvioDe(idx) ?? ''">
+                                        <input type="hidden" :name="`productos[${idx}][variante_id]`" :value="producto.varianteId ?? ''">
                                     </div>
 
-                                    {{-- ── CANTIDAD (accesorio) ── --}}
-                                    <div x-show="producto.productoId && !producto.esSerie">
+                                    {{-- ── CANTIDAD ── --}}
+                                    <div x-show="producto.productoId">
                                         <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
                                             <i class="fas fa-hashtag mr-1 text-blue-400"></i>Cantidad *
                                         </label>
@@ -399,134 +372,6 @@
                                             <i class="fas fa-exclamation-triangle mr-1"></i>Supera el stock disponible.
                                         </p>
                                     </div>
-
-                                    {{-- ── IMEI PICKER ── --}}
-                                    <div x-show="producto.productoId && producto.esSerie" x-cloak>
-                                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
-                                            <i class="fas fa-barcode mr-1 text-purple-500"></i>IMEIs a trasladar *
-                                        </label>
-
-                                        {{-- Prompt si no hay almacén --}}
-                                        <div x-show="!almacenId"
-                                             class="text-xs text-gray-400 bg-gray-100 rounded-lg px-3 py-2">
-                                            <i class="fas fa-info-circle mr-1"></i>Seleccione almacén origen para ver los IMEIs.
-                                        </div>
-
-                                        <div x-show="almacenId" x-cloak>
-
-                                            {{-- Buscador + contador --}}
-                                            <div class="flex items-center gap-2 mb-2">
-                                                <div class="relative flex-1">
-                                                    <i class="fas fa-search absolute left-2.5 top-2.5 text-[10px] text-gray-400 pointer-events-none"></i>
-                                                    <input type="text"
-                                                           x-model="producto.imeiBusqueda"
-                                                           placeholder="Buscar IMEI o S/N..."
-                                                           class="w-full pl-7 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400">
-                                                </div>
-                                                <div class="shrink-0 text-xs bg-purple-50 border border-purple-200 text-purple-700 font-mono rounded-lg px-2.5 py-1.5">
-                                                    <span class="font-bold" x-text="producto.imeisSeleccionados.length"></span>
-                                                    /
-                                                    <span x-text="producto.imeisDisponibles.length"></span>
-                                                </div>
-                                            </div>
-
-                                            {{-- Loading --}}
-                                            <div x-show="producto.imeisLoading"
-                                                 class="py-4 text-center text-xs text-gray-400">
-                                                <i class="fas fa-spinner fa-spin mr-1"></i>Cargando IMEIs...
-                                            </div>
-
-                                            {{-- Sin IMEIs --}}
-                                            <div x-show="!producto.imeisLoading && producto.imeisDisponibles.length === 0" x-cloak
-                                                 class="py-4 text-center text-xs text-gray-400 bg-gray-50 border border-dashed border-gray-200 rounded-lg">
-                                                <i class="fas fa-box-open text-gray-300 text-xl block mb-1"></i>
-                                                Sin IMEIs disponibles en este almacén
-                                            </div>
-
-                                            {{-- Lista de IMEIs --}}
-                                            <div x-show="!producto.imeisLoading && producto.imeisDisponibles.length > 0" x-cloak
-                                                 class="border border-gray-200 rounded-lg overflow-hidden">
-
-                                                {{-- Toolbar: seleccionar todos --}}
-                                                <div class="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-100 sticky top-0">
-                                                    <button type="button"
-                                                            @click="seleccionarTodos(idx)"
-                                                            class="text-xs font-semibold text-purple-600 hover:text-purple-800 flex items-center gap-1">
-                                                        <i class="fas fa-check-double text-[10px]"></i>
-                                                        <span x-text="imeisFiltradosDe(idx).length > 0 && imeisFiltradosDe(idx).every(i => producto.imeisSeleccionados.includes(i.id))
-                                                            ? 'Deseleccionar todos' : 'Seleccionar todos'"></span>
-                                                    </button>
-                                                    <span class="text-[10px] text-gray-400"
-                                                          x-show="producto.imeiBusqueda" x-cloak
-                                                          x-text="imeisFiltradosDe(idx).length + ' resultado(s)'"></span>
-                                                </div>
-
-                                                <div class="max-h-44 overflow-y-auto divide-y divide-gray-100">
-                                                    <template x-for="imei in imeisFiltradosDe(idx)" :key="imei.id">
-                                                        <label :for="`imei-${producto._id}-${imei.id}`"
-                                                               class="flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors"
-                                                               :class="isSelected(idx, imei.id) ? 'bg-purple-50 hover:bg-purple-100' : 'hover:bg-gray-50'">
-                                                            <input type="checkbox"
-                                                                   :id="`imei-${producto._id}-${imei.id}`"
-                                                                   :checked="isSelected(idx, imei.id)"
-                                                                   @change="toggleImei(idx, imei.id)"
-                                                                   class="w-3.5 h-3.5 accent-purple-600 cursor-pointer shrink-0">
-                                                            <div class="flex-1 min-w-0">
-                                                                <span class="font-mono text-xs font-semibold"
-                                                                      :class="isSelected(idx, imei.id) ? 'text-purple-700' : 'text-gray-800'"
-                                                                      x-text="imei.codigo_imei"></span>
-                                                                <span x-show="imei.serie"
-                                                                      class="text-[10px] text-gray-400 ml-1.5 font-mono"
-                                                                      x-text="'S/N: ' + imei.serie"></span>
-                                                            </div>
-                                                            {{-- Etiqueta de variante: solo visible en "Todas las variantes",
-                                                                 para distinguir de un vistazo de qué color/variante es cada IMEI --}}
-                                                            <span x-show="!producto.varianteId && producto.variantes.length > 0"
-                                                                  x-cloak
-                                                                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border border-gray-200 bg-white text-gray-500 shrink-0">
-                                                                <span x-show="varianteDeImei(idx, imei)?.color_hex"
-                                                                      class="w-2 h-2 rounded-full shrink-0"
-                                                                      :style="'background-color:' + (varianteDeImei(idx, imei)?.color_hex ?? '#ccc')"></span>
-                                                                <span x-text="varianteDeImei(idx, imei)?.nombre ?? '—'"></span>
-                                                            </span>
-                                                            <span x-show="isSelected(idx, imei.id)"
-                                                                  class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold shrink-0">✓</span>
-                                                        </label>
-                                                    </template>
-                                                    <div x-show="producto.imeiBusqueda && imeisFiltradosDe(idx).length === 0" x-cloak
-                                                         class="px-3 py-3 text-center text-xs text-gray-400">
-                                                        Sin resultados para "<span x-text="producto.imeiBusqueda"></span>"
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {{-- Chips de seleccionados --}}
-                                            <div x-show="producto.imeisSeleccionados.length > 0" x-cloak
-                                                 class="mt-2 flex flex-wrap gap-1">
-                                                <template x-for="imeiId in producto.imeisSeleccionados" :key="imeiId">
-                                                    <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-800 text-[10px] font-mono px-2 py-1 rounded-lg border border-purple-200">
-                                                        <span x-show="producto.variantes.length > 0 && getVarianteDeImeiId(idx, imeiId)?.color_hex"
-                                                              class="w-2 h-2 rounded-full shrink-0"
-                                                              :style="'background-color:' + (getVarianteDeImeiId(idx, imeiId)?.color_hex ?? '#ccc')"></span>
-                                                        <span x-text="getImeiCodigo(idx, imeiId)"></span>
-                                                        <button type="button" @click="toggleImei(idx, imeiId)"
-                                                                class="text-purple-400 hover:text-red-500 ml-0.5 leading-none">
-                                                            <i class="fas fa-times text-[8px]"></i>
-                                                        </button>
-                                                    </span>
-                                                </template>
-                                            </div>
-
-                                        </div>{{-- /x-show almacenId --}}
-
-                                        {{-- Hidden inputs para IMEIs seleccionados --}}
-                                        <template x-for="imeiId in producto.imeisSeleccionados" :key="imeiId">
-                                            <input type="hidden"
-                                                   :name="`productos[${idx}][imei_ids][]`"
-                                                   :value="imeiId">
-                                        </template>
-
-                                    </div>{{-- /IMEI PICKER --}}
 
                                 </div>{{-- /p-4 --}}
                             </div>{{-- /border row --}}
@@ -546,8 +391,7 @@
                 <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-2 text-sm text-blue-800 mb-5">
                     <i class="fas fa-info-circle mt-0.5 text-blue-500 shrink-0"></i>
                     <span>
-                        El stock de <strong>accesorios</strong> se descuenta del origen al registrar.
-                        Los <strong>IMEIs</strong> se marcan «En Tránsito» hasta que el destino confirme la recepción.
+                        El stock se descuenta del origen al registrar el traslado y se acredita en el destino cuando confirme la recepción.
                     </span>
                 </div>
 
@@ -570,7 +414,6 @@
 
 <script>
 function trasladoForm() {
-    const imeisUrl           = '{{ route('traslados.imeis-disponibles') }}';
     const buscarProductosUrl = '{{ route('traslados.buscar-productos') }}';
     const guiaSeriesMap      = @json($guiaSeriesMap);
 
@@ -596,16 +439,11 @@ function trasladoForm() {
                 productoId:        '',
                 nombre:            '',
                 codigo:            '',
-                esSerie:           false,
                 stockOrigen:       null,
                 stockTotal:        null,
                 variantes:         [],
                 cantidad:          1,
                 varianteId:        null,
-                imeisDisponibles:  [],
-                imeisSeleccionados: [],
-                imeiBusqueda:      '',
-                imeisLoading:      false,
                 busqueda:          '',
                 resultados:        [],
                 buscando:          false,
@@ -681,20 +519,13 @@ function trasladoForm() {
             p.productoId         = item.id;
             p.nombre             = item.nombre;
             p.codigo             = item.codigo;
-            p.esSerie            = item.es_serie;
             p.stockOrigen        = item.stock_origen;
             p.stockTotal         = item.stock_origen;
             p.variantes          = item.variantes ?? [];
             p.varianteId         = null;
             p.cantidad           = 1;
-            p.imeisSeleccionados = [];
-            p.imeisDisponibles   = [];
-            p.imeiBusqueda       = '';
             p.resultados         = [];
             p.busqueda           = '';
-            if (p.esSerie && this.almacenId) {
-                this.cargarImeis(idx);
-            }
         },
 
         seleccionarVariante(idx, variante) {
@@ -706,11 +537,6 @@ function trasladoForm() {
             }
             p.varianteId = variante.id;
             p.stockOrigen = variante.stock;
-            // No se re-consulta ni se limpia imeisSeleccionados: los IMEIs de
-            // TODAS las variantes ya se cargaron una sola vez en cargarImeis()
-            // (cada uno trae su variante_id), así que cambiar el filtro solo
-            // cambia qué se ve en la lista — no borra lo ya marcado en otra
-            // variante, para poder combinar IMEIs de varios colores/variantes.
         },
 
         limpiarProducto(idx) {
@@ -718,122 +544,13 @@ function trasladoForm() {
             p.productoId         = '';
             p.nombre             = '';
             p.codigo             = '';
-            p.esSerie            = false;
             p.stockOrigen        = null;
             p.stockTotal         = null;
             p.variantes          = [];
             p.varianteId         = null;
             p.cantidad           = 1;
-            p.imeisSeleccionados = [];
-            p.imeisDisponibles   = [];
-            p.imeiBusqueda       = '';
             p.resultados         = [];
             p.busqueda           = '';
-        },
-
-        // ── IMEI carga y gestión ─────────────────────────────────────
-
-        async cargarImeis(idx) {
-            const p = this.productos[idx];
-            p.imeisLoading = true;
-            try {
-                // Sin variante_id: trae los IMEIs de TODAS las variantes de una
-                // sola vez (cada uno con su propio variante_id). El filtro por
-                // variante se aplica solo en el cliente (imeisFiltradosDe), así
-                // se puede seleccionar de varias variantes sin perder lo marcado.
-                const url  = `${imeisUrl}?producto_id=${p.productoId}&almacen_id=${this.almacenId}`;
-                const resp = await fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                });
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({}));
-                    throw new Error(err.error || `HTTP ${resp.status}`);
-                }
-                p.imeisDisponibles = await resp.json();
-            } catch (e) {
-                p.imeisDisponibles = [];
-                console.error('Error cargando IMEIs:', e.message);
-            } finally {
-                p.imeisLoading = false;
-            }
-        },
-
-        imeisFiltradosDe(idx) {
-            const p = this.productos[idx];
-            if (!p) return [];
-            let lista = p.varianteId
-                ? p.imeisDisponibles.filter(i => String(i.variante_id) === String(p.varianteId))
-                : p.imeisDisponibles;
-            const q = p.imeiBusqueda.trim().toLowerCase();
-            if (q) {
-                lista = lista.filter(i =>
-                    i.codigo_imei.toLowerCase().includes(q) ||
-                    (i.serie && i.serie.toLowerCase().includes(q))
-                );
-            }
-            return lista;
-        },
-
-        // Info de la variante (nombre / color) a la que pertenece un IMEI —
-        // se usa para distinguir visualmente los IMEIs cuando se ve "Todas
-        // las variantes" y hay seleccionados de más de un color/variante.
-        varianteDeImei(idx, imei) {
-            const p = this.productos[idx];
-            if (!p || !imei?.variante_id) return null;
-            return p.variantes.find(v => String(v.id) === String(imei.variante_id)) ?? null;
-        },
-
-        getVarianteDeImeiId(idx, imeiId) {
-            const imei = this.productos[idx]?.imeisDisponibles.find(i => i.id === imeiId);
-            return imei ? this.varianteDeImei(idx, imei) : null;
-        },
-
-        // El chip de filtro activo (producto.varianteId) ya no representa
-        // necesariamente la variante de TODOS los IMEIs marcados (ahora se
-        // puede mezclar). El valor que se envía al backend se calcula a partir
-        // de lo realmente seleccionado: si todos son de la misma variante se
-        // envía esa; si están mezclados se envía null (sin variante única).
-        varianteIdEnvioDe(idx) {
-            const p = this.productos[idx];
-            if (!p) return null;
-            if (!p.esSerie || p.imeisSeleccionados.length === 0) return p.varianteId ?? null;
-            const variantesUsadas = new Set(p.imeisSeleccionados.map(id => {
-                const imei = p.imeisDisponibles.find(i => i.id === id);
-                return String(imei?.variante_id ?? '');
-            }));
-            return variantesUsadas.size === 1 ? [...variantesUsadas][0] : null;
-        },
-
-        toggleImei(idx, id) {
-            const p   = this.productos[idx];
-            const pos = p.imeisSeleccionados.indexOf(id);
-            pos === -1 ? p.imeisSeleccionados.push(id) : p.imeisSeleccionados.splice(pos, 1);
-        },
-
-        isSelected(idx, id) {
-            return this.productos[idx]?.imeisSeleccionados.includes(id) ?? false;
-        },
-
-        seleccionarTodos(idx) {
-            const p        = this.productos[idx];
-            const filtrados = this.imeisFiltradosDe(idx);
-            const todos    = filtrados.every(i => p.imeisSeleccionados.includes(i.id));
-            if (todos) {
-                const fids = filtrados.map(i => i.id);
-                p.imeisSeleccionados = p.imeisSeleccionados.filter(id => !fids.includes(id));
-            } else {
-                filtrados.forEach(i => {
-                    if (!p.imeisSeleccionados.includes(i.id)) p.imeisSeleccionados.push(i.id);
-                });
-            }
-        },
-
-        getImeiCodigo(idx, id) {
-            const imei = this.productos[idx]?.imeisDisponibles.find(i => i.id === id);
-            return imei ? imei.codigo_imei : String(id);
         },
 
         // ── Validación global ────────────────────────────────────────
@@ -846,9 +563,7 @@ function trasladoForm() {
             return this.productos.every((p, idx) => {
                 if (!p.productoId)         return false;
                 if (this.esDuplicado(idx)) return false;
-                if (p.esSerie) return p.imeisSeleccionados.length > 0;
-                // Accesorio con variantes: al ser por cantidad (sin IMEI que lo
-                // identifique) sí se necesita fijar una única variante.
+                // Con variantes hay que fijar una única variante: el stock se lleva por variante.
                 if (p.variantes.length > 0 && !p.varianteId) return false;
                 return p.cantidad >= 1 && (p.stockOrigen === null || p.stockOrigen >= p.cantidad);
             });

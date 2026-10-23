@@ -72,7 +72,6 @@ class ProductoController extends Controller
                 'incluye_igv' => $precioInfo['incluye_igv'],
                 'stock_actual' => $stock,
                 'tipo_inventario' => $producto->tipo_inventario,
-                'requiere_imei' => $producto->tipo_inventario === 'serie',
                 'imagen' => $producto->imagen ? asset('storage/' . $producto->imagen) : null
             ]
         ]);

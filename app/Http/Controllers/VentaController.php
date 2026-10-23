@@ -10,7 +10,6 @@ use App\Models\Producto;
 use App\Models\ProductoVariante;
 use App\Models\Almacen;
 use App\Models\Categoria;
-use App\Models\Imei;
 use App\Models\StockAlmacen;
 use App\Models\Sucursal;
 use App\Models\CuentaPorCobrar;
@@ -127,38 +126,7 @@ class VentaController extends Controller
             ->groupBy('variante_id')
             ->map(fn($rows) => $rows->pluck('cantidad', 'almacen_id'));
 
-        // Stock por almacén para productos de serie (contar IMEIs en_stock) — nivel producto
-        $imeisPorAlmacen = Imei::whereIn('producto_id', $productos->pluck('id'))
-            ->where('estado_imei', 'en_stock')
-            ->selectRaw('producto_id, almacen_id, COUNT(*) as total')
-            ->groupBy('producto_id', 'almacen_id')
-            ->get()
-            ->groupBy('producto_id')
-            ->map(fn($rows) => $rows->pluck('total', 'almacen_id'));
-
-        // IMEIs por variante_id (registros recientes con variante asignada)
-        $imeisPorVarianteId = Imei::whereIn('producto_id', $productos->pluck('id'))
-            ->where('estado_imei', 'en_stock')
-            ->whereNotNull('variante_id')
-            ->selectRaw('variante_id, almacen_id, COUNT(*) as total')
-            ->groupBy('variante_id', 'almacen_id')
-            ->get()
-            ->groupBy('variante_id')
-            ->map(fn($rows) => $rows->pluck('total', 'almacen_id'));
-
-        // IMEIs sin variante_id: fallback por color (registros anteriores)
-        $imeisPorColor = Imei::whereIn('producto_id', $productos->pluck('id'))
-            ->where('estado_imei', 'en_stock')
-            ->whereNull('variante_id')
-            ->selectRaw('producto_id, color_id, almacen_id, COUNT(*) as total')
-            ->groupBy('producto_id', 'color_id', 'almacen_id')
-            ->get()
-            ->groupBy(fn($row) => $row->producto_id . '_' . $row->color_id)
-            ->map(fn($rows) => $rows->pluck('total', 'almacen_id'));
-
-        $productos = $productos->map(function($p) use ($stockPorAlmacen, $stockVariantePorAlmacen, $imeisPorAlmacen, $imeisPorVarianteId, $imeisPorColor) {
-            $esSerie = $p->tipo_inventario === 'serie';
-
+        $productos = $productos->map(function($p) use ($stockPorAlmacen, $stockVariantePorAlmacen) {
             // Separar precios por tipo
             $preciosRegulares  = $p->precios->where('tipo_precio', 'venta_regular');
             $preciosMayoristas = $p->precios->where('tipo_precio', 'venta_mayorista');
@@ -171,7 +139,7 @@ class VentaController extends Controller
             // Para incluye_igv usamos el primer precio activo (configuración global del producto)
             $precioActivo = $preciosRegulares->first();
 
-            $variantes = $p->variantesActivas->map(function($v) use ($esSerie, $imeisPorVarianteId, $imeisPorColor, $stockVariantePorAlmacen, $p, $preciosPorVariante, $preciosMayoristaPorVariante, $precioMayoristaBase) {
+            $variantes = $p->variantesActivas->map(function($v) use ($stockVariantePorAlmacen, $p, $preciosPorVariante, $preciosMayoristaPorVariante, $precioMayoristaBase) {
                 // 1) precio manual en el campo nuevo del variante (override), 2) Gestión de Precios, 3) null
                 $precioGestion   = $preciosPorVariante->get($v->id);
                 $precioMayorista = $preciosMayoristaPorVariante->get($v->id) ?? $precioMayoristaBase;
@@ -190,31 +158,15 @@ class VentaController extends Controller
                 'precio_venta'      => $precioVenta,
                 'precio_mayorista'  => $precioMayorista ? (float)$precioMayorista->precio : null,
                 'incluye_igv'       => $precioGestion ? (bool)$precioGestion->incluye_igv : null,
-                'stock_actual'      => $esSerie
-                    ? (function() use ($imeisPorVarianteId, $imeisPorColor, $v, $p) {
-                        $byVariante = $imeisPorVarianteId[$v->id] ?? collect();
-                        return $byVariante->isNotEmpty()
-                            ? (int)$byVariante->sum()
-                            : (int)($imeisPorColor[$p->id . '_' . $v->color_id] ?? collect())->sum();
-                    })()
-                    : (int)$v->stock_actual,
-                'stock_por_almacen' => $esSerie
-                    ? (function() use ($imeisPorVarianteId, $imeisPorColor, $v, $p) {
-                        $byVariante = $imeisPorVarianteId[$v->id] ?? collect();
-                        return $byVariante->isNotEmpty()
-                            ? $byVariante->toArray()
-                            : ($imeisPorColor[$p->id . '_' . $v->color_id] ?? collect())->toArray();
-                    })()
-                    // Por cantidad: stock de la variante en cada almacén (la pantalla de venta lo usa por tienda)
-                    : ($stockVariantePorAlmacen[$v->id] ?? collect())->toArray(),
+                'stock_actual'      => (int)$v->stock_actual,
+                // Stock de la variante en cada almacén (la pantalla de venta lo usa por tienda)
+                'stock_por_almacen' => ($stockVariantePorAlmacen[$v->id] ?? collect())->toArray(),
                 'nombre_completo'   => $v->nombre_completo,
                 'tiene_stock'       => $v->tieneStock(),
                 ];
             });
 
-            $stockMap = $p->tipo_inventario === 'serie'
-                ? ($imeisPorAlmacen[$p->id] ?? collect())->toArray()
-                : ($stockPorAlmacen[$p->id] ?? collect())->toArray();
+            $stockMap = ($stockPorAlmacen[$p->id] ?? collect())->toArray();
 
             return [
                 'id'               => $p->id,
@@ -224,8 +176,7 @@ class VentaController extends Controller
                 'categoria_id'     => $p->categoria_id,
                 'tipo_inventario'  => $p->tipo_inventario,
                 // Suma de $stockMap (live, por almacén) en vez de productos.stock_actual:
-                // esa columna se desincroniza en varios flujos (registro de IMEIs por compra,
-                // reversión de ventas, etc.) y así se garantiza que coincida con lo que se ve por tienda.
+                // esa columna puede desincronizarse en varios flujos (reversión de ventas, etc.) y así se garantiza que coincida con lo que se ve por tienda.
                 'stock_actual'     => (int) array_sum($stockMap),
                 'stock_por_almacen'=> $stockMap,  // {almacen_id: qty}
                 'precio_venta'     => (float) ($variantes->isNotEmpty()
@@ -368,14 +319,14 @@ class VentaController extends Controller
     {
         $venta->load('vendedor', 'confirmador', 'cliente', 'almacen', 'sucursal', 'serieComprobante',
             'detalles.producto.categoria', 'detalles.producto.unidadMedida', 'detalles.variante.color',
-            'detalles.imei', 'imeis', 'guiaRemision', 'cuentaPorCobrar.cuotas');
+            'guiaRemision', 'cuentaPorCobrar.cuotas');
 
         return view('ventas.show', compact('venta'));
     }
 
     public function guiaPdf(Venta $venta)
     {
-        $venta->load('cliente', 'almacen', 'detalles.producto.unidadMedida', 'detalles.variante', 'detalles.imei', 'imeis', 'guiaRemision');
+        $venta->load('cliente', 'almacen', 'detalles.producto.unidadMedida', 'detalles.variante', 'guiaRemision');
 
         $guia = $venta->guiaRemision;
 
@@ -403,7 +354,7 @@ class VentaController extends Controller
         $formato = $request->get('formato', 'a4'); // a4 | ticket
 
         $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',
-            'detalles.producto.unidadMedida', 'detalles.variante.color', 'detalles.imei', 'imeis');
+            'detalles.producto.unidadMedida', 'detalles.variante.color');
 
         $empresa  = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
         $sucursal = $venta->sucursal ?? Sucursal::where('almacen_id', $venta->almacen_id)->first();
@@ -438,7 +389,7 @@ class VentaController extends Controller
             ->firstOrFail();
 
         $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',
-            'detalles.producto.unidadMedida', 'detalles.variante.color', 'detalles.imei', 'imeis');
+            'detalles.producto.unidadMedida', 'detalles.variante.color');
 
         $empresa  = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
         $sucursal = $venta->sucursal ?? Sucursal::where('almacen_id', $venta->almacen_id)->first();
@@ -562,42 +513,6 @@ class VentaController extends Controller
         ])->values());
     }
 
-    public function imeisDisponibles(Request $request)
-    {
-        $productoId = $request->input('producto_id');
-        $almacenId  = $request->input('almacen_id');
-        $varianteId = $request->input('variante_id');
-
-        $base = Imei::where('producto_id', $productoId)
-            ->where('almacen_id', $almacenId)
-            ->where('estado_imei', 'en_stock');
-
-        if ($varianteId) {
-            // Verificar si hay IMEIs con variante_id asignado para esta variante
-            $tieneConVariante = (clone $base)->where('variante_id', $varianteId)->exists();
-
-            if ($tieneConVariante) {
-                // Filtrado estricto por variante_id
-                $base->where('variante_id', $varianteId);
-            } else {
-                // Fallback: filtrar por color_id de la variante (registros sin variante_id aún)
-                $variante = \App\Models\ProductoVariante::find($varianteId);
-                if ($variante?->color_id) {
-                    $base->where(function ($q) use ($varianteId, $variante) {
-                        $q->where('variante_id', $varianteId)
-                          ->orWhere(fn($s) => $s->whereNull('variante_id')->where('color_id', $variante->color_id));
-                    });
-                } else {
-                    // Sin color_id en la variante, filtrar solo por variante_id
-                    $base->where('variante_id', $varianteId);
-                }
-            }
-        }
-
-        return response()->json(
-            $base->get(['id', 'codigo_imei', 'color_id', 'variante_id'])
-        );
-    }
     public function editVenta(Venta $venta)
     {
         $ventanaMaxima = config('ventas.edit_window_hours', 24);

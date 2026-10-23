@@ -90,15 +90,9 @@
                             <div class="flex justify-between">
                                 <span class="text-sm font-medium text-gray-500">Tipo Inventario:</span>
                                 <span class="text-sm">
-                                    @if($producto->tipo_inventario === 'serie')
-                                        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                            <i class="fas fa-mobile-alt mr-1"></i> Serie/IMEI
-                                        </span>
-                                    @else
-                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                                            <i class="fas fa-boxes mr-1"></i> Cantidad
-                                        </span>
-                                    @endif
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                                        <i class="fas fa-boxes mr-1"></i> Cantidad
+                                    </span>
                                 </span>
                             </div>
                             
@@ -158,16 +152,6 @@
                                 <p class="text-xs text-gray-500">Unidad Medida</p>
                                 <p class="font-medium">{{ $producto->unidadMedida->nombre ?? 'N/A' }}</p>
                             </div>
-                            @if($producto->tipo_inventario === 'serie')
-                            <div>
-                                <p class="text-xs text-gray-500">Garantía</p>
-                                <p class="font-medium">{{ $producto->dias_garantia ?? 0 }} días</p>
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-500">Tipo Garantía</p>
-                                <p class="font-medium">{{ ucfirst($producto->tipo_garantia ?? 'N/A') }}</p>
-                            </div>
-                            @endif
                         </div>
                     </div>
                 </div>
@@ -257,10 +241,8 @@
                                 </div>
                             </div>
                             @php
-                                $stockVar = $producto->tipo_inventario === 'serie'
-                                    ? ($stockRealPorVariante[$variante->id] ?? 0)
-                                    : $variante->stock_actual;
-                                $labelVar = $producto->tipo_inventario === 'serie' ? 'imeis' : 'unt';
+                                $stockVar = $variante->stock_actual;
+                                $labelVar = 'unt';
                             @endphp
                             <span class="text-sm font-bold {{ $stockVar <= ($variante->stock_minimo ?? 0) ? 'text-red-600' : 'text-gray-800' }}">
                                 {{ $stockVar }} <span class="text-xs font-normal text-gray-400">{{ $labelVar }}</span>
@@ -281,15 +263,7 @@
                     </div>
                     <div class="p-6">
                         <div class="flex flex-wrap gap-3">
-                            @if($producto->tipo_inventario === 'serie')
-                                <a href="{{ route('inventario.imeis.index', ['producto_id' => $producto->id]) }}"
-                                   class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                                    <i class="fas fa-sim-card mr-2"></i>
-                                    Gestionar IMEIs
-                                </a>
-                            @endif
-
-                            @if($producto->tipo_inventario === 'serie' || $producto->variantesActivas->isNotEmpty())
+                            @if($producto->variantesActivas->isNotEmpty())
                                 <a href="{{ route('inventario.productos.variantes', $producto) }}"
                                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                                     <i class="fas fa-layer-group mr-2"></i>

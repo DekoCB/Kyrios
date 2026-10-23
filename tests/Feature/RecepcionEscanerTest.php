@@ -171,19 +171,4 @@ class RecepcionEscanerTest extends TestCase
         $this->assertDatabaseCount('stock_almacen', 0);
     }
 
-    public function test_un_producto_por_serie_no_se_recibe_por_cantidad_y_no_deja_nada_a_medias(): void
-    {
-        $serie = Producto::create(['codigo' => 'CEL-1', 'nombre' => 'Celular', 'categoria_id' => $this->producto->categoria_id,
-            'tipo_inventario' => 'serie', 'stock_minimo' => 0, 'stock_maximo' => 10, 'estado' => 'activo']);
-        $vs = ProductoVariante::create(['producto_id' => $serie->id, 'sku' => 'CEL-1-V', 'codigo_kyrios' => 'KY-LU0000-0099', 'estado' => 'activo']);
-
-        $this->postJson(route('inventario.recepcion.confirmar'), [
-            'almacen_id' => $this->almacen->id,
-            'lineas' => [['variante_id' => $this->v1->id, 'cantidad' => 3], ['variante_id' => $vs->id, 'cantidad' => 1]],
-        ])->assertStatus(422)->assertJson(['ok' => false]);
-
-        // La transacción se revierte completa: tampoco queda el ingreso de la variante válida
-        $this->assertSame(0, StockAlmacen::cantidadEn($this->producto->id, $this->almacen->id, $this->v1->id));
-        $this->assertDatabaseCount('movimientos_inventario', 0);
-    }
 }

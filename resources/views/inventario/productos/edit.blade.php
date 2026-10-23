@@ -26,15 +26,9 @@
                     <div>
                         <span class="font-medium text-gray-500">Tipo:</span>
                         <span class="block mt-1">
-                            @if($producto->tipo_inventario == 'serie')
-                                <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                    <i class="fas fa-mobile-alt mr-1"></i>Serie/IMEI
-                                </span>
-                            @else
-                                <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                    <i class="fas fa-boxes mr-1"></i>Cantidad
-                                </span>
-                            @endif
+                            <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                <i class="fas fa-boxes mr-1"></i>Cantidad
+                            </span>
                         </span>
                     </div>
                     <div>
@@ -72,63 +66,6 @@
                                 @endforeach
                             </ul>
                         </div>
-                    @endif
-
-                    <!-- TIPO DE INVENTARIO (solo lectura) -->
-                    <div class="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                @if($producto->tipo_inventario == 'serie')
-                                    <i class="fas fa-mobile-alt text-3xl text-blue-600 mr-3"></i>
-                                    <div>
-                                        <p class="font-semibold text-gray-900">Tipo: Stock por Serie/IMEI</p>
-                                        <p class="text-sm text-gray-500">El stock se controla por IMEI individual</p>
-                                    </div>
-                                @else
-                                    <i class="fas fa-boxes text-3xl text-green-600 mr-3"></i>
-                                    <div>
-                                        <p class="font-semibold text-gray-900">Tipo: Stock por Cantidad</p>
-                                        <p class="text-sm text-gray-500">El stock se controla numéricamente</p>
-                                    </div>
-                                @endif
-                            </div>
-                            <span class="text-xs text-gray-400">
-                                <i class="fas fa-lock mr-1"></i>No editable
-                            </span>
-                        </div>
-                        {{-- Campo oculto para que el tipo se envíe en el form --}}
-                        <input type="hidden" name="tipo_inventario" value="{{ $producto->tipo_inventario }}">
-                    </div>
-
-                    <!-- GARANTÍA (solo para Serie/IMEI) -->
-                    @if($producto->tipo_inventario == 'serie')
-                    <div class="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <h4 class="font-semibold text-blue-900 mb-3">
-                            <i class="fas fa-shield-alt mr-2"></i>
-                            Garantía
-                        </h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="dias_garantia" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Días de Garantía
-                                </label>
-                                <input type="number" name="dias_garantia" id="dias_garantia"
-                                       value="{{ old('dias_garantia', $producto->dias_garantia ?? 365) }}" min="0"
-                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="tipo_garantia" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Tipo de Garantía
-                                </label>
-                                <select name="tipo_garantia" id="tipo_garantia"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="proveedor" {{ old('tipo_garantia', $producto->tipo_garantia) == 'proveedor' ? 'selected' : '' }}>Proveedor</option>
-                                    <option value="tienda"    {{ old('tipo_garantia', $producto->tipo_garantia) == 'tienda'    ? 'selected' : '' }}>Tienda</option>
-                                    <option value="fabricante"{{ old('tipo_garantia', $producto->tipo_garantia) == 'fabricante'? 'selected' : '' }}>Fabricante</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
                     @endif
 
                     <!-- CODIFICACIÓN KYRIOS -->
@@ -240,15 +177,10 @@
                             <div>
                                 <label for="modelo_id" class="block text-sm font-medium text-gray-700 mb-2">
                                     Modelo
-                                    @if($producto->tipo_inventario == 'serie')
-                                        <span class="text-red-500">*</span>
-                                    @else
-                                        <span class="text-gray-400 text-xs font-normal">(opcional)</span>
-                                    @endif
+                                    <span class="text-gray-400 text-xs font-normal">(opcional)</span>
                                 </label>
                                 <select name="modelo_id" id="modelo_id"
-                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        {{ $producto->tipo_inventario == 'serie' ? 'required' : '' }}>
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                     <option value="">Cargando modelos...</option>
                                 </select>
                                 @error('modelo_id')
@@ -585,7 +517,7 @@
         document.getElementById('btnGenerarCodigo')?.addEventListener('click', function() {
             const btn = this;
             const codigoInput = document.getElementById('codigo_barras');
-            const tipoBarras = '{{ $producto->tipo_inventario === "serie" ? "celular" : "accesorio" }}';
+            const tipoBarras = 'accesorio';
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generando...';

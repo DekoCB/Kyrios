@@ -132,7 +132,6 @@ class VarianteService
                     'modelo_id'           => $producto->modelo_id,
                     'modelo'              => $producto->modelo?->nombre,
                     'unidad_medida'       => $producto->unidadMedida?->abreviatura ?? 'UND',
-                    'requiere_imei'       => $producto->tipo_inventario === 'serie',
                     'tiene_variantes'     => $variantes->isNotEmpty(),
                     'variantes'           => $variantes,
                     'ultimo_costo_compra' => $producto->ultimo_costo_compra ? (float) $producto->ultimo_costo_compra : null,

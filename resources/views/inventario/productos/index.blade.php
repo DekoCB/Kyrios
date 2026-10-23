@@ -152,14 +152,6 @@
                 <!-- Filtro por tipo de inventario y almacén -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Inventario</label>
-                        <select name="tipo_inventario" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="">Todos</option>
-                            <option value="cantidad" {{ request('tipo_inventario') == 'cantidad' ? 'selected' : '' }}>Stock por Cantidad</option>
-                            <option value="serie" {{ request('tipo_inventario') == 'serie' ? 'selected' : '' }}>Stock por Serie/IMEI</option>
-                        </select>
-                    </div>
-                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Sede / Sucursal</label>
                         <select name="almacen_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Todas las sedes</option>
@@ -279,7 +271,6 @@
                                     Stock total
                                 @endif
                             </th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tipo</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
                         </tr>
@@ -347,18 +338,12 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 @php
-                                    $esSerie = $producto->tipo_inventario === 'serie';
                                     if ($almacenFiltro) {
                                         // Stock de la sede seleccionada
-                                        if ($esSerie) {
-                                            $stockTotal = $producto->imeis_sede_count ?? 0;
-                                        } else {
-                                            $stockTotal = (int) $producto->stockAlmacenes->sum('cantidad');
-                                        }
+                                        $stockTotal = (int) $producto->stockAlmacenes->sum('cantidad');
                                     } else {
                                         // Stock global: si tiene variantes, sumar su stock (siempre al día,
-                                        // a diferencia de productos.stock_actual que puede desincronizarse
-                                        // para productos tipo "serie" — ver IMEIs registrados por compra).
+                                        // a diferencia de productos.stock_actual que puede desincronizarse).
                                         if ($producto->variantesActivas->count() > 0) {
                                             $stockTotal = $producto->variantesActivas->sum('stock_actual');
                                         } else {
@@ -385,17 +370,6 @@
                                             </span>
                                         @endforeach
                                     </div>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                @if($producto->tipo_inventario === 'serie')
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        <i class="fas fa-mobile-alt mr-1"></i> IMEI
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        <i class="fas fa-boxes mr-1"></i> Cantidad
-                                    </span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -427,20 +401,11 @@
                                     @endif
 
                                     <!-- Botón Gestionar Variantes -->
-                                    @if($producto->variantesActivas->count() > 0 || $producto->tipo_inventario === 'serie')
+                                    @if($producto->variantesActivas->count() > 0)
                                         <a href="{{ route('inventario.productos.variantes', $producto) }}"
                                            class="text-indigo-600 hover:text-indigo-900"
                                            title="Gestionar variantes{{ $producto->variantesActivas->count() > 0 ? ' (' . $producto->variantesActivas->count() . ')' : '' }}">
                                             <i class="fas fa-layer-group"></i>
-                                        </a>
-                                    @endif
-
-                                    <!-- Botón para gestionar IMEIs (solo para tipo serie) -->
-                                    @if($producto->tipo_inventario === 'serie')
-                                        <a href="{{ route('inventario.imeis.index', ['producto_id' => $producto->id]) }}"
-                                           class="text-purple-600 hover:text-purple-900"
-                                           title="Gestionar IMEIs">
-                                            <i class="fas fa-sim-card"></i>
                                         </a>
                                     @endif
 
@@ -473,7 +438,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-gray-500">
                                     <i class="fas fa-inbox text-6xl mb-4"></i>
                                     <p class="text-lg font-medium">No se encontraron productos</p>

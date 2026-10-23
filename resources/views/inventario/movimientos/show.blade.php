@@ -97,9 +97,6 @@
                     <div class="flex-1">
                         <p class="font-semibold text-gray-900">{{ $movimiento->producto->nombre }}</p>
                         <p class="text-xs text-gray-500 mt-0.5">Código: {{ $movimiento->producto->codigo }}</p>
-                        @if($movimiento->imei_id)
-                            <p class="text-xs text-gray-500 mt-0.5">IMEI ID: {{ $movimiento->imei_id }}</p>
-                        @endif
                     </div>
                 </div>
                 @else

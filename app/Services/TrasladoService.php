@@ -6,8 +6,6 @@ use App\Models\Almacen;
 use App\Models\MovimientoInventario;
 use App\Models\SerieComprobante;
 use App\Models\StockAlmacen;
-use App\Models\Imei;
-use App\Models\TrasladoImei;
 use App\Models\Producto;
 use Illuminate\Support\Facades\DB;
 
@@ -16,8 +14,7 @@ class TrasladoService
     /**
      * Crear un traslado con múltiples productos.
      *
-     * Para productos serie (IMEI): marca IMEIs como en_transito al crear.
-     * Para accesorios: registra la intención; el stock se mueve al confirmar.
+     * Descuenta el stock del origen al crear (reserva); se acredita al confirmar la recepción.
      *
      * @param array $datos  Incluye: almacen_id, almacen_destino_id, productos[],
      *                      numero_guia?, transportista?, observaciones?, user_id
@@ -55,90 +52,17 @@ class TrasladoService
             }
 
             foreach ($productos as $linea) {
-                $productoId = $linea['producto_id'];
-                $producto   = Producto::findOrFail($productoId);
-                $esSerie    = $producto->tipo_inventario === 'serie';
-
-                if ($esSerie) {
-                    $this->crearLineaImei($linea, $producto, $almacenOrigenId, $almacenDestinoId, $userId, $numeroGuia, $datos);
-                } else {
-                    $this->crearLineaAccesorio($linea, $producto, $almacenOrigenId, $almacenDestinoId, $userId, $numeroGuia, $datos);
-                }
+                $producto = Producto::findOrFail($linea['producto_id']);
+                $this->crearLinea($linea, $producto, $almacenOrigenId, $almacenDestinoId, $userId, $numeroGuia, $datos);
             }
 
             return $numeroGuia;
         });
     }
 
-    // ── Línea serie (IMEI) ──────────────────────────────────────────────────
+    // ── Línea (cantidad por variante) ──────────────────────────────────────────
 
-    private function crearLineaImei(array $linea, Producto $producto, int $origenId, int $destinoId, int $userId, string $guia, array $cabecera): void
-    {
-        $imeiIds = array_values(array_unique((array) ($linea['imei_ids'] ?? [])));
-        $cantidad = count($imeiIds);
-
-        if ($cantidad === 0) {
-            throw new \Exception("Producto «{$producto->nombre}»: debe seleccionar al menos un IMEI.");
-        }
-
-        // Validar que todos los IMEIs pertenecen al producto + almacén + en_stock
-        $validos = Imei::whereIn('id', $imeiIds)
-            ->where('producto_id', $producto->id)
-            ->where('almacen_id', $origenId)
-            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-            ->count();
-
-        if ($validos !== $cantidad) {
-            throw new \Exception(
-                "Producto «{$producto->nombre}»: uno o más IMEIs no están disponibles en el almacén origen o ya están en tránsito."
-            );
-        }
-
-        // Verificar que ningún IMEI esté en otro traslado pendiente (doble seguridad)
-        $enOtroTraslado = TrasladoImei::whereIn('imei_id', $imeiIds)
-            ->whereHas('movimiento', fn($q) => $q->where('estado', 'pendiente'))
-            ->exists();
-
-        if ($enOtroTraslado) {
-            throw new \Exception("Producto «{$producto->nombre}»: uno o más IMEIs ya están asignados a otro traslado pendiente.");
-        }
-
-        $stockAnterior = Imei::where('producto_id', $producto->id)
-            ->where('almacen_id', $origenId)
-            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-            ->count();
-
-        $movimiento = MovimientoInventario::create([
-            'producto_id'        => $producto->id,
-            'variante_id'        => $linea['variante_id'] ?? null,
-            'almacen_id'         => $origenId,
-            'almacen_destino_id' => $destinoId,
-            'user_id'            => $userId,
-            'tipo_movimiento'    => 'transferencia',
-            'cantidad'           => $cantidad,
-            'stock_anterior'     => $stockAnterior,
-            'stock_nuevo'        => $stockAnterior - $cantidad,
-            'numero_guia'        => $guia,
-            'fecha_traslado'     => now()->toDateString(),
-            'observaciones'      => $cabecera['observaciones'] ?? null,
-            'estado'             => 'pendiente',
-        ]);
-
-        // Registrar IMEIs del traslado y marcarlos en_transito
-        foreach ($imeiIds as $imeiId) {
-            TrasladoImei::create([
-                'movimiento_id' => $movimiento->id,
-                'imei_id'       => $imeiId,
-            ]);
-        }
-
-        Imei::whereIn('id', $imeiIds)
-            ->update(['estado_imei' => Imei::ESTADO_EN_TRANSITO]);
-    }
-
-    // ── Línea accesorio (cantidad) ──────────────────────────────────────────
-
-    private function crearLineaAccesorio(array $linea, Producto $producto, int $origenId, int $destinoId, int $userId, string $guia, array $cabecera): void
+    private function crearLinea(array $linea, Producto $producto, int $origenId, int $destinoId, int $userId, string $guia, array $cabecera): void
     {
         $cantidad = (int) ($linea['cantidad'] ?? 0);
 
@@ -205,12 +129,12 @@ class TrasladoService
 
             // Obtener todos los movimientos del mismo grupo (mismo numero_guia)
             $grupo = $representante->numero_guia
-                ? MovimientoInventario::with(['producto', 'imeisTrasladados'])
+                ? MovimientoInventario::with('producto')
                     ->where('numero_guia', $representante->numero_guia)
                     ->where('tipo_movimiento', 'transferencia')
                     ->where('estado', 'pendiente')
                     ->get()
-                : collect([$representante->load('imeisTrasladados')]);
+                : collect([$representante]);
 
             if ($grupo->isEmpty()) {
                 throw new \Exception('No se encontraron movimientos pendientes para este traslado.');
@@ -219,38 +143,13 @@ class TrasladoService
             $confirmadoEn = now();
 
             foreach ($grupo as $movimiento) {
-                $esSerie = $movimiento->producto->tipo_inventario === 'serie';
+                // Acreditar stock en destino (ya fue descontado en origen al crear)
+                $stockDestino = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_destino_id, $movimiento->variante_id);
+                $stockDestino->increment('cantidad', $movimiento->cantidad);
 
-                if ($esSerie) {
-                    // Mover IMEIs al almacén destino y devolverles en_stock
-                    $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
-
-                    if (empty($imeiIds)) {
-                        throw new \Exception(
-                            "Producto «{$movimiento->producto->nombre}»: no tiene IMEIs asignados. Contacte al administrador."
-                        );
-                    }
-
-                    Imei::whereIn('id', $imeiIds)->update([
-                        'almacen_id'  => $movimiento->almacen_destino_id,
-                        'estado_imei' => Imei::ESTADO_EN_STOCK,
-                    ]);
-
-                    // Recalcular stock_actual desde conteo real de IMEIs en_stock
-                    $totalStock = Imei::where('producto_id', $movimiento->producto_id)
-                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                        ->count();
-                    $movimiento->producto->update(['stock_actual' => $totalStock]);
-
-                } else {
-                    // Acreditar stock en destino (ya fue descontado en origen al crear)
-                    $stockDestino = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_destino_id, $movimiento->variante_id);
-                    $stockDestino->increment('cantidad', $movimiento->cantidad);
-
-                    // Sincronizar stock_actual con la suma real de todos los almacenes
-                    $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
-                    $movimiento->producto->update(['stock_actual' => $totalStock]);
-                }
+                // Sincronizar stock_actual con la suma real de todos los almacenes
+                $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
+                $movimiento->producto->update(['stock_actual' => $totalStock]);
 
                 $movimiento->update([
                     'estado'              => 'confirmado',
@@ -275,12 +174,12 @@ class TrasladoService
             }
 
             $grupo = $representante->numero_guia
-                ? MovimientoInventario::with(['producto', 'imeisTrasladados'])
+                ? MovimientoInventario::with('producto')
                     ->where('numero_guia', $representante->numero_guia)
                     ->where('tipo_movimiento', 'transferencia')
                     ->where('estado', 'pendiente')
                     ->get()
-                : collect([$representante->load('imeisTrasladados')]);
+                : collect([$representante]);
 
             if ($grupo->isEmpty()) {
                 throw new \Exception('No se encontraron movimientos pendientes para este traslado.');
@@ -289,27 +188,11 @@ class TrasladoService
             $observacionAnulacion = 'ANULADO' . ($motivo ? ": {$motivo}" : '') . ' — por ' . auth()->user()?->name . ' el ' . now()->format('d/m/Y H:i');
 
             foreach ($grupo as $movimiento) {
-                $esSerie = $movimiento->producto->tipo_inventario === 'serie';
+                $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
+                $stockOrigen->increment('cantidad', $movimiento->cantidad);
 
-                if ($esSerie) {
-                    $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
-                    if (!empty($imeiIds)) {
-                        Imei::whereIn('id', $imeiIds)
-                            ->where('estado_imei', Imei::ESTADO_EN_TRANSITO)
-                            ->update(['estado_imei' => Imei::ESTADO_EN_STOCK]);
-                    }
-
-                    $totalStock = Imei::where('producto_id', $movimiento->producto_id)
-                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                        ->count();
-                    $movimiento->producto->update(['stock_actual' => $totalStock]);
-                } else {
-                    $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
-                    $stockOrigen->increment('cantidad', $movimiento->cantidad);
-
-                    $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
-                    $movimiento->producto->update(['stock_actual' => $totalStock]);
-                }
+                $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
+                $movimiento->producto->update(['stock_actual' => $totalStock]);
 
                 $obsActual = $movimiento->observaciones;
                 $movimiento->update([
@@ -335,7 +218,7 @@ class TrasladoService
      * desaparezca de los listados.
      *
      * - pendiente: revierte la reserva en origen (igual que anularTraslado()).
-     * - confirmado: revierte trayendo el stock/IMEIs de vuelta desde el
+     * - confirmado: revierte trayendo el stock de vuelta desde el
      *   almacén destino hacia el origen. Si alguna unidad ya no está
      *   disponible en destino (se vendió, se trasladó de nuevo, etc.) se
      *   aborta con un error explícito — no se puede devolver lo que ya no
@@ -350,12 +233,12 @@ class TrasladoService
             $representante = MovimientoInventario::with('producto')->findOrFail($movimientoId);
 
             $grupo = $representante->numero_guia
-                ? MovimientoInventario::with(['producto', 'imeisTrasladados'])
+                ? MovimientoInventario::with('producto')
                     ->where('numero_guia', $representante->numero_guia)
                     ->where('tipo_movimiento', 'transferencia')
                     ->noEliminados()
                     ->get()
-                : collect([$representante->load('imeisTrasladados')]);
+                : collect([$representante]);
 
             if ($grupo->isEmpty()) {
                 throw new \Exception('No se encontraron movimientos para este traslado.');
@@ -369,31 +252,15 @@ class TrasladoService
                     continue;
                 }
 
-                $esSerie = $movimiento->producto->tipo_inventario === 'serie';
+                $stockDestino = StockAlmacen::where('producto_id', $movimiento->producto_id)
+                    ->where('almacen_id', $movimiento->almacen_destino_id)
+                    ->deVariante($movimiento->variante_id)
+                    ->first();
 
-                if ($esSerie) {
-                    $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
-                    $disponibles = Imei::whereIn('id', $imeiIds)
-                        ->where('almacen_id', $movimiento->almacen_destino_id)
-                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                        ->count();
-
-                    if ($disponibles !== count($imeiIds)) {
-                        throw new \Exception(
-                            "Producto «{$movimiento->producto->nombre}»: uno o más IMEIs ya no están disponibles en el almacén destino (vendidos o trasladados de nuevo). No se puede eliminar ni devolver el stock."
-                        );
-                    }
-                } else {
-                    $stockDestino = StockAlmacen::where('producto_id', $movimiento->producto_id)
-                        ->where('almacen_id', $movimiento->almacen_destino_id)
-                        ->deVariante($movimiento->variante_id)
-                        ->first();
-
-                    if (!$stockDestino || $stockDestino->cantidad < $movimiento->cantidad) {
-                        throw new \Exception(
-                            "Producto «{$movimiento->producto->nombre}»: no hay suficiente stock en el almacén destino para devolver (disponible: " . ($stockDestino->cantidad ?? 0) . "). Probablemente ya se vendió."
-                        );
-                    }
+                if (!$stockDestino || $stockDestino->cantidad < $movimiento->cantidad) {
+                    throw new \Exception(
+                        "Producto «{$movimiento->producto->nombre}»: no hay suficiente stock en el almacén destino para devolver (disponible: " . ($stockDestino->cantidad ?? 0) . "). Probablemente ya se vendió."
+                    );
                 }
             }
 
@@ -401,50 +268,25 @@ class TrasladoService
             $huboReversion = false;
 
             foreach ($grupo as $movimiento) {
-                $esSerie = $movimiento->producto->tipo_inventario === 'serie';
-
                 if ($movimiento->estado === 'pendiente') {
                     $huboReversion = true;
 
-                    if ($esSerie) {
-                        $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
-                        if (!empty($imeiIds)) {
-                            Imei::whereIn('id', $imeiIds)
-                                ->where('estado_imei', Imei::ESTADO_EN_TRANSITO)
-                                ->update(['estado_imei' => Imei::ESTADO_EN_STOCK]);
-                        }
-                    } else {
-                        $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
-                        $stockOrigen->increment('cantidad', $movimiento->cantidad);
-                    }
+                    $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
+                    $stockOrigen->increment('cantidad', $movimiento->cantidad);
                 } elseif ($movimiento->estado === 'confirmado') {
                     $huboReversion = true;
 
-                    if ($esSerie) {
-                        $imeiIds = $movimiento->imeisTrasladados->pluck('imei_id')->toArray();
-                        Imei::whereIn('id', $imeiIds)->update([
-                            'almacen_id'  => $movimiento->almacen_id,
-                            'estado_imei' => Imei::ESTADO_EN_STOCK,
-                        ]);
-                    } else {
-                        StockAlmacen::where('producto_id', $movimiento->producto_id)
-                            ->where('almacen_id', $movimiento->almacen_destino_id)
-                            ->deVariante($movimiento->variante_id)
-                            ->decrement('cantidad', $movimiento->cantidad);
+                    StockAlmacen::where('producto_id', $movimiento->producto_id)
+                        ->where('almacen_id', $movimiento->almacen_destino_id)
+                        ->deVariante($movimiento->variante_id)
+                        ->decrement('cantidad', $movimiento->cantidad);
 
-                        $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
-                        $stockOrigen->increment('cantidad', $movimiento->cantidad);
-                    }
+                    $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
+                    $stockOrigen->increment('cantidad', $movimiento->cantidad);
                 }
                 // estado === 'anulado': el stock ya se devolvió antes, no se toca.
 
-                if ($esSerie) {
-                    $totalStock = Imei::where('producto_id', $movimiento->producto_id)
-                        ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                        ->count();
-                } else {
-                    $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
-                }
+                $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
                 $movimiento->producto->update(['stock_actual' => $totalStock]);
             }
 

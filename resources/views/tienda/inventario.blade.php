@@ -131,8 +131,6 @@
                                     <span class="text-gray-700">{{ $fila->variante->nombre_completo }}</span>
                                 </div>
                                 <div class="text-[11px] text-gray-400">{{ $fila->variante->sku }}</div>
-                            @elseif($producto->es_serie)
-                                <span class="text-xs italic text-gray-400">Sin variante asignada</span>
                             @else
                                 <span class="text-gray-300">—</span>
                             @endif
@@ -147,16 +145,12 @@
                                 $stock = $fila->stocks[$almacen->id] ?? null;
                                 $cantidad = $stock ? $stock->cantidad : 0;
                                 $esMiTienda = $almacen->id == $tiendaActual->id;
-                                $esSerie = $producto->es_serie ?? false;
                             @endphp
                             <td class="px-3 py-4 text-center">
                                 @if($esMiTienda)
                                     @if($cantidad > 0)
                                         <span class="font-bold text-blue-600">
                                             {{ $cantidad }}
-                                            @if($esSerie)
-                                                <span class="text-[10px] font-normal text-purple-500 ml-0.5">IMEI</span>
-                                            @endif
                                         </span>
                                     @else
                                         <span class="font-bold text-red-400">0</span>

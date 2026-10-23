@@ -139,14 +139,6 @@ class SalidaEscanerTest extends TestCase
         $this->retirar([['variante_id' => $this->v1->id, 'cantidad' => 0]])->assertStatus(422)->assertJsonValidationErrors('lineas.0.cantidad');
     }
 
-    public function test_un_producto_por_serie_no_se_retira_por_cantidad(): void
-    {
-        $this->producto->update(['tipo_inventario' => 'serie']);
-
-        $this->retirar([['variante_id' => $this->v1->id, 'cantidad' => 1]])->assertStatus(422);
-        $this->assertSame(10, $this->stock($this->v1));
-    }
-
     public function test_entrada_y_salida_dejan_el_stock_cuadrado(): void
     {
         app(EscanerService::class)->recibir($this->almacen->id, [['variante_id' => $this->v1->id, 'cantidad' => 5]], $this->admin->id);

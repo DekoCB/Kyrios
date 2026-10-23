@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Categoria;
 use App\Models\Catalogo\Marca;
 use App\Models\DetalleCompra;
-use App\Models\Imei;
 use App\Models\MovimientoInventario;
 use App\Models\Producto;
 use App\Models\ProductoVariante;
@@ -76,16 +75,6 @@ class InventarioReportesController extends Controller
             ->pluck('cpp', 'producto_id')
             ->map(fn($v) => (float) $v);
 
-        // ── Pre-cargar stock de IMEIs por variante (para productos tipo 'serie')
-        // Si hay almacén seleccionado, filtrar solo los IMEIs de ese almacén
-        $imeisPorVariante = Imei::where('estado_imei', 'en_stock')
-            ->whereNotNull('variante_id')
-            ->when($almacenId, fn($q) => $q->where('almacen_id', $almacenId))
-            ->selectRaw('variante_id, COUNT(*) as total')
-            ->groupBy('variante_id')
-            ->pluck('total', 'variante_id')
-            ->map(fn($v) => (int) $v);
-
         $productos = Producto::where('estado', 'activo')
             ->with([
                 'categoria',
@@ -99,7 +88,7 @@ class InventarioReportesController extends Controller
             ->when($marcaId,     fn($q) => $q->where('marca_id', $marcaId))
             ->orderBy('nombre')
             ->get()
-            ->map(function ($p) use ($almacenId, $cppPorVariante, $cppPorProducto, $imeisPorVariante, $precioVentaPorVariante, $precioMayoristaPorVariante, $precioMayoristaPorProducto) {
+            ->map(function ($p) use ($almacenId, $cppPorVariante, $cppPorProducto, $precioVentaPorVariante, $precioMayoristaPorVariante, $precioMayoristaPorProducto) {
                 $preciosRegulares = $p->precios->where('tipo_precio', 'venta_regular');
                 $precioVentaBase  = (float) ($preciosRegulares->first()?->precio ?? 0);
                 $precioMayoristaBase = isset($precioMayoristaPorProducto[$p->id])
@@ -110,24 +99,15 @@ class InventarioReportesController extends Controller
                 if ($p->variantesActivas->isNotEmpty()) {
                     // ── Producto CON variantes: desglosar por variante ──────────────
                     $variantesData = $p->variantesActivas->map(function ($v) use (
-                        $almacenId, $cppPorVariante, $p, $precioVentaBase, $imeisPorVariante, $precioVentaPorVariante,
+                        $almacenId, $cppPorVariante, $p, $precioVentaBase, $precioVentaPorVariante,
                         $precioMayoristaPorVariante, $precioMayoristaBase
                     ) {
                         // Stock por variante
-                        if ($p->tipo_inventario === 'serie') {
-                            $stockDesdeImeis = (int) ($imeisPorVariante[$v->id] ?? 0);
-                            // Si hay filtro de almacén: usar solo el conteo de IMEIs de ese almacén.
-                            // Sin filtro: fallback al stock_actual si no hay IMEIs registrados.
-                            $stock = $almacenId
-                                ? $stockDesdeImeis
-                                : max($stockDesdeImeis, $v->stock_actual);
-                        } else {
-                            // Productos por cantidad: con almacén elegido, el stock de la variante en ese
-                            // almacén (stock_almacen guarda una fila por variante); sin filtro, el total.
-                            $stock = $almacenId
-                                ? \App\Models\StockAlmacen::cantidadEn($p->id, $almacenId, $v->id)
-                                : $v->stock_actual;
-                        }
+                        // Con almacén elegido, el stock de la variante en ese almacén (stock_almacen guarda
+                        // una fila por variante); sin filtro, el total.
+                        $stock = $almacenId
+                            ? \App\Models\StockAlmacen::cantidadEn($p->id, $almacenId, $v->id)
+                            : $v->stock_actual;
 
                         // CPP: fuente primaria = historial de compras por variante
                         //      fallback 1 = costo almacenado en la variante
@@ -170,16 +150,6 @@ class InventarioReportesController extends Controller
                     $utilMayorista = $variantesData->filter(fn($v) => $v['utilidad_mayorista'] !== null)->sum('utilidad_mayorista');
                     $tieneMayorista = $variantesData->contains(fn($v) => $v['precio_mayorista'] !== null);
 
-                    if ($stockTotal === 0 && $p->tipo_inventario === 'serie' && $p->stock_actual > 0) {
-                        $stockTotal    = $p->stock_actual;
-                        $valCompra     = $stockTotal * $cppProducto;
-                        $valVenta      = $stockTotal * $precioVentaBase;
-                        $utilidad      = $stockTotal * ($precioVentaBase - $cppProducto);
-                        $valMayorista  = $precioMayoristaBase !== null ? $stockTotal * $precioMayoristaBase : null;
-                        $utilMayorista = $precioMayoristaBase !== null ? $stockTotal * ($precioMayoristaBase - $cppProducto) : null;
-                        $tieneMayorista = $precioMayoristaBase !== null;
-                    }
-
                     return [
                         'id'                    => $p->id,
                         'nombre'                => $p->nombre,
@@ -204,15 +174,7 @@ class InventarioReportesController extends Controller
                 // ── Producto SIN variantes ──────────────────────────────────────────
                 $stock = $almacenId
                     ? $this->stockPorAlmacen($p, $almacenId)
-                    : ($p->tipo_inventario === 'serie'
-                        ? max(
-                            Imei::where('producto_id', $p->id)
-                                ->where('estado_imei', 'en_stock')
-                                ->when($almacenId, fn($q) => $q->where('almacen_id', $almacenId))
-                                ->count(),
-                            $p->stock_actual
-                        )
-                        : $p->stock_actual);
+                    : $p->stock_actual;
 
                 $cpp = $cppPorProducto[$p->id]
                     ?? (float) ($p->costo_promedio ?: $p->ultimo_costo_compra ?: 0);
@@ -265,13 +227,6 @@ class InventarioReportesController extends Controller
 
     private function stockPorAlmacen(Producto $p, int $almacenId): int
     {
-        if ($p->tipo_inventario === 'serie') {
-            return $p->imeis()
-                ->where('almacen_id', $almacenId)
-                ->where('estado_imei', 'en_stock')
-                ->count();
-        }
-
         // stock_almacen es la fuente de verdad (una fila por variante): se suman todas las del producto.
         return \App\Models\StockAlmacen::totalEn($p->id, $almacenId);
     }

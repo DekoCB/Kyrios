@@ -136,10 +136,6 @@ class Compra extends Model
         return $this->hasMany(DetalleCompra::class);
     }
 
-    public function imeis()
-    {
-        return $this->hasMany(Imei::class, 'compra_id');
-    }
 
     public function movimientos()
     {

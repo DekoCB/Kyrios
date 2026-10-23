@@ -142,7 +142,7 @@
 
                                             <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
                                                 <i class="fas fa-exclamation-triangle mr-1"></i>
-                                                Se revertirá todo el stock: los IMEIs volverán a "En Stock" en el almacén origen y las cantidades de accesorios se devolverán. La guía de remisión asociada quedará anulada.
+                                                Se revertirá todo el stock: las cantidades volverán al almacén origen. La guía de remisión asociada quedará anulada.
                                             </div>
 
                                             <form action="{{ route('traslados.anular', $primero) }}" method="POST">
@@ -197,7 +197,7 @@
                                                 @elseif($estado === 'anulado')
                                                     El stock de este traslado ya fue devuelto al anularse, así que no se vuelve a tocar. Solo desaparecerá de este listado; el registro se conserva internamente para auditoría.
                                                 @else
-                                                    Se intentará devolver al almacén origen todo el stock/IMEIs que siga en tránsito o en el almacén destino. Si alguna unidad ya se vendió o se movió de nuevo desde destino, la eliminación fallará con un aviso — no se puede devolver lo que ya no está ahí.
+                                                    Se intentará devolver al almacén origen todo el stock que siga en tránsito o en el almacén destino. Si alguna unidad ya se vendió o se movió de nuevo desde destino, la eliminación fallará con un aviso — no se puede devolver lo que ya no está ahí.
                                                 @endif
                                             </div>
 

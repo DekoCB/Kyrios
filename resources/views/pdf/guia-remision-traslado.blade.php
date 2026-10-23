@@ -274,29 +274,15 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <th style="width:48px; text-align:center">UNIDAD</th>
                 <th style="width:60px">CÓDIGO</th>
                 <th>DESCRIPCIÓN</th>
-                <th style="width:65px; text-align:center">SERIE / IMEI</th>
             </tr>
         </thead>
         <tbody>
             @foreach($todosProductos as $mov)
-            @php
-                $esSerie = $mov->producto?->tipo_inventario === 'serie';
-            @endphp
             <tr>
                 <td style="text-align:center; font-weight:bold">{{ $mov->cantidad }}</td>
                 <td style="text-align:center">{{ $mov->producto?->unidadMedida?->abreviatura ?? 'UND' }}</td>
                 <td style="font-family:monospace; font-size:6.5pt">{{ $mov->producto?->codigo ?? '—' }}</td>
                 <td><span style="font-weight:bold">{{ $mov->producto?->nombre ?? '—' }}</span></td>
-                <td style="text-align:center; font-size:6pt; font-family:monospace; color:#555">
-                    @if($esSerie)
-                        @foreach($mov->imeisTrasladados as $ti)
-                            {{ $ti->imei?->codigo_imei }}<br>
-                        @endforeach
-                        @if($mov->imeisTrasladados->isEmpty()) — @endif
-                    @else
-                        —
-                    @endif
-                </td>
             </tr>
             @endforeach
         </tbody>
@@ -304,7 +290,6 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
             <tr>
                 <td style="text-align:center">{{ $totalUnidades }}</td>
                 <td colspan="3" style="text-align:right; font-size:6.5pt; color:#555">Total unidades trasladadas</td>
-                <td></td>
             </tr>
         </tfoot>
     </table>

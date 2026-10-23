@@ -129,8 +129,6 @@ class GuiaRemisionController extends Controller
                 'productos.*.producto_id' => 'required|exists:productos,id',
                 'productos.*.variante_id' => 'nullable|exists:producto_variantes,id',
                 'productos.*.cantidad'    => 'nullable|integer|min:1',
-                'productos.*.imei_ids'    => 'nullable|array',
-                'productos.*.imei_ids.*'  => 'nullable|exists:imeis,id',
                 'productos.*.descripcion' => 'nullable|string|max:300',
             ];
         }
@@ -208,14 +206,6 @@ class GuiaRemisionController extends Controller
             'detalles.producto.unidadMedida', 'detalles.variante',
         ]);
 
-        // Los IMEIs no se guardan en guia_remision_detalles: se registran en el
-        // MovimientoInventario que se crea junto con la guía (mismo numero_guia),
-        // vía TrasladoImei. Se recuperan aquí para poder listarlos en el PDF.
-        $movimientosPorLinea = \App\Models\MovimientoInventario::where('numero_guia', $guia->numero_guia)
-            ->with('imeisTrasladados.imei')
-            ->get()
-            ->keyBy(fn($m) => $m->producto_id . '-' . ($m->variante_id ?? ''));
-
         $empresa = Empresa::first();
 
         $pdf = Pdf::setOptions([
@@ -223,7 +213,7 @@ class GuiaRemisionController extends Controller
             'isRemoteEnabled'      => true,
             'defaultFont'          => 'DejaVu Sans',
             'chroot'               => public_path(),
-        ])->loadView('pdf.guia-remision-modulo', compact('guia', 'empresa', 'movimientosPorLinea'));
+        ])->loadView('pdf.guia-remision-modulo', compact('guia', 'empresa'));
 
         $pdf->setPaper('A4', 'portrait');
 

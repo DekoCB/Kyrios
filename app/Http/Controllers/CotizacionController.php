@@ -312,7 +312,7 @@ class CotizacionController extends Controller
         }
 
         $variantes = ProductoVariante::activas()
-            ->whereHas('producto', fn ($p) => $p->where('estado', 'activo')->where('tipo_inventario', '!=', 'serie'))
+            ->whereHas('producto', fn ($p) => $p->where('estado', 'activo'))
             ->where(function ($w) use ($q) {
                 $w->where('codigo_kyrios', 'like', "%{$q}%")->orWhere('codigo_fabricante', 'like', "%{$q}%")->orWhere('codigo_excel', 'like', "%{$q}%")
                     ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', "%{$q}%")->orWhere('nombre_fabrica', 'like', "%{$q}%")
@@ -321,7 +321,7 @@ class CotizacionController extends Controller
             ->with(['producto:id,codigo,nombre,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal'])
             ->orderBy('producto_id')->limit(20)->get();
 
-        $sinVariantes = Producto::where('estado', 'activo')->where('tipo_inventario', 'cantidad')
+        $sinVariantes = Producto::where('estado', 'activo')
             ->whereDoesntHave('variantesActivas')
             ->where(fn ($w) => $w->where('nombre', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"))
             ->with('marca:id,nombre')->limit(10)->get();

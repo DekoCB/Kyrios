@@ -168,20 +168,12 @@ table.items th:last-child, table.items td:last-child { padding-right: 0; }
         @php
             $precioFinal = $d->precio_unitario * $igvFactor;
             $totalFinal  = $d->subtotal * $igvFactor;
-            $imeisLinea  = $venta->imeis->filter(fn($imei) =>
-                $imei->producto_id == $d->producto_id &&
-                ($d->variante_id ? $imei->variante_id == $d->variante_id : true)
-            );
-            if ($imeisLinea->isEmpty() && $d->imei) {
-                $imeisLinea = collect([$d->imei]);
-            }
         @endphp
         <tr>
             <td>{{ $d->producto?->codigo }}</td>
             <td>
                 {{ $d->producto?->nombre }}
                 @if($d->variante)<br><span style="font-size:6pt;color:#555">{{ $d->variante->nombre_completo }}</span>@endif
-                @foreach($imeisLinea as $imei)<br><span style="font-size:6pt;color:#555">S/N: {{ $imei->codigo_imei }}</span>@endforeach
             </td>
             <td class="c">{{ $d->cantidad }}</td>
             <td class="r">S/{{ number_format($precioFinal, 2) }}</td>

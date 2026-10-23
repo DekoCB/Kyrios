@@ -989,13 +989,6 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach($venta->detalles as $i => $detalle)
                         @php
-                            $imeisDetalle = $venta->imeis->filter(fn($imei) =>
-                                $imei->producto_id == $detalle->producto_id &&
-                                ($detalle->variante_id ? $imei->variante_id == $detalle->variante_id : true)
-                            );
-                            if ($imeisDetalle->isEmpty() && $detalle->imei) {
-                                $imeisDetalle = collect([$detalle->imei]);
-                            }
                             $precioFinal = round((float) ($detalle->precio_con_igv ?? $detalle->precio_unitario * 1.18), 2);
                             $totalFinal  = round((float) ($detalle->subtotal_con_igv ?? $detalle->subtotal * 1.18), 2);
                         @endphp
@@ -1016,14 +1009,6 @@
                                 @elseif($detalle->producto->categoria)
                                     <div class="text-xs text-gray-400 mt-0.5">{{ $detalle->producto->categoria->nombre }}</div>
                                 @endif
-                                @foreach($imeisDetalle as $imei)
-                                    <div class="mt-0.5">
-                                        <span class="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-mono">
-                                            <i class="fas fa-microchip" style="font-size:9px"></i>
-                                            {{ $imei->codigo_imei }}
-                                        </span>
-                                    </div>
-                                @endforeach
                             </td>
                             <td class="px-4 py-4 text-center text-sm text-gray-600">{{ $detalle->producto->unidadMedida?->abreviatura ?? 'UNID.' }}</td>
                             <td class="px-4 py-4 text-center font-bold text-gray-700">{{ $detalle->cantidad }}</td>

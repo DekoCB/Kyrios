@@ -24,7 +24,6 @@ class MovimientoInventario extends Model
     protected $fillable = [
         'producto_id',
         'almacen_id',
-        'imei_id',
         'user_id',
         'tipo_movimiento',
         'cantidad',
@@ -292,22 +291,12 @@ class MovimientoInventario extends Model
     {
         return $query->whereNull('eliminado_en');
     }
-      // NUEVA RELACIÓN: IMEI (legado - un solo IMEI)
     public function motivoMovimiento()
     {
         return $this->belongsTo(\App\Models\Catalogo\MotivoMovimiento::class, 'motivo_movimiento_id');
     }
 
-    public function imei()
-    {
-        return $this->belongsTo(Imei::class, 'imei_id');
-    }
 
-    // IMEIs seleccionados al confirmar el traslado (múltiples)
-    public function imeisTrasladados()
-    {
-        return $this->hasMany(TrasladoImei::class, 'movimiento_id');
-    }
     /**
      * Crear un movimiento de inventario y actualizar el stock del producto
      */
@@ -330,148 +319,6 @@ public static function registrarMovimiento($datos)
 
         $userId = $datos['user_id'] ?? auth()->id() ?? 1;
 
-        // SI ES SERIE/IMEI, manejar por IMEI
-        if ($producto->tipo_inventario === 'serie') {
-            \Log::info('📱 Procesando como SERIE/IMEI');
-            
-            if (!isset($datos['imei_id']) || !$datos['imei_id']) {
-                \Log::error('❌ ERROR: No se proporcionó IMEI');
-                throw new \Exception('Debe seleccionar un IMEI para productos tipo celular');
-            }
-            
-            $imei = \App\Models\Imei::findOrFail($datos['imei_id']);
-
-            \Log::info('📱 IMEI encontrado', [
-                'id' => $imei->id,
-                'codigo' => $imei->codigo_imei,
-                'estado_actual' => $imei->estado_imei,
-                'almacen_actual' => $imei->almacen_id
-            ]);
-
-            $stockAnteriorProducto = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->count();
-
-            // Validar y ejecutar acción según tipo de movimiento
-            switch ($datos['tipo_movimiento']) {
-                case 'salida':
-                case 'merma':
-                    \Log::info("🔴 Procesando {$datos['tipo_movimiento']}");
-
-                    if ($imei->estado_imei !== 'en_stock') {
-                        throw new \Exception("El IMEI no está en stock para {$datos['tipo_movimiento']}. Estado actual: {$imei->estado_imei}");
-                    }
-                    if ($imei->almacen_id != $datos['almacen_id']) {
-                        throw new \Exception('El IMEI no pertenece al almacén seleccionado');
-                    }
-
-                    $imei->update(['estado_imei' => 'vendido', 'almacen_id' => null]);
-                    \Log::info('✅ IMEI actualizado a vendido');
-                    break;
-
-                case 'transferencia':
-                    \Log::info('🟣 Procesando transferencia');
-
-                    if ($imei->almacen_id != $datos['almacen_id']) {
-                        throw new \Exception('El IMEI no pertenece al almacén de origen');
-                    }
-                    if ($imei->estado_imei !== 'en_stock') {
-                        throw new \Exception('El IMEI debe estar en stock para transferencia');
-                    }
-
-                    $imei->update(['almacen_id' => $datos['almacen_destino_id']]);
-                    \Log::info('✅ IMEI transferido al almacén destino', [
-                        'almacen_destino' => $datos['almacen_destino_id']
-                    ]);
-                    break;
-
-                case 'devolucion':
-                    \Log::info('🟠 Procesando devolución');
-
-                    if ($imei->estado_imei !== 'vendido') {
-                        throw new \Exception('Solo se pueden devolver IMEIs vendidos');
-                    }
-
-                    $imei->update([
-                        'estado_imei' => 'en_stock',
-                        'almacen_id' => $datos['almacen_id']
-                    ]);
-                    \Log::info('✅ IMEI devuelto y marcado como en stock');
-                    break;
-
-                case 'ajuste':
-                    \Log::info('🔵 Procesando ajuste');
-
-                    if (isset($datos['nuevo_estado'])) {
-                        $imei->update(['estado_imei' => $datos['nuevo_estado']]);
-                    }
-                    if (isset($datos['almacen_destino_id'])) {
-                        $imei->update(['almacen_id' => $datos['almacen_destino_id']]);
-                    }
-                    \Log::info('✅ Ajuste de IMEI completado');
-                    break;
-                    
-                case 'ingreso':
-                    \Log::error('❌ Intento de ingreso de celular rechazado');
-                    throw new \Exception('Los ingresos de celulares se registran en el módulo de Compras');
-                    
-                default:
-                    \Log::error('❌ Tipo de movimiento no soportado', [
-                        'tipo' => $datos['tipo_movimiento']
-                    ]);
-                    throw new \Exception('Tipo de movimiento no soportado para celulares');
-            }
-            
-            // Mantener producto.stock_actual / producto_variante.stock_actual sincronizados
-            // con el conteo real de IMEIs en_stock, sin importar qué transición ocurrió
-            // (salida/merma/transferencia/devolución/ajuste). Antes este método nunca
-            // tocaba estas columnas para productos serie.
-            $stockNuevoProducto = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->count();
-            $producto->update(['stock_actual' => $stockNuevoProducto]);
-
-            if ($imei->variante_id) {
-                $stockVariante = \App\Models\Imei::where('variante_id', $imei->variante_id)
-                    ->where('estado_imei', 'en_stock')
-                    ->count();
-                \App\Models\ProductoVariante::where('id', $imei->variante_id)
-                    ->update(['stock_actual' => $stockVariante]);
-            }
-
-            // 🔥 CREAR EL REGISTRO DEL MOVIMIENTO
-            \Log::info('💾 Creando registro de movimiento en BD...');
-
-            $movimientoData = [
-                'producto_id' => $datos['producto_id'],
-                'almacen_id' => $datos['almacen_id'],
-                'imei_id' => $datos['imei_id'],
-                'user_id' => $userId,
-                'tipo_movimiento' => $datos['tipo_movimiento'],
-                'cantidad' => 1,
-                'stock_anterior' => $stockAnteriorProducto,
-                'stock_nuevo' => $stockNuevoProducto,
-                'motivo' => $datos['motivo'] ?? null,
-                'observaciones' => $datos['observaciones'] ?? null,
-                'documento_referencia' => $datos['documento_referencia'] ?? null,
-                'almacen_destino_id' => $datos['almacen_destino_id'] ?? null,
-                'numero_guia' => $datos['numero_guia'] ?? null,
-            ];
-            
-            \Log::info('💾 Datos a guardar:', $movimientoData);
-            
-            $movimiento = self::create($movimientoData);
-            
-            \Log::info('✅ Movimiento creado exitosamente', [
-                'id' => $movimiento->id,
-                'tipo' => $movimiento->tipo_movimiento
-            ]);
-            
-            return $movimiento;
-        }
-        
-        // SI ES ACCESORIO, manejar por cantidad
-        \Log::info('📦 Procesando como ACCESORIO');
 
         // Fuente real de stock para productos "cantidad": stock_almacen por almacén.
         // producto.stock_actual es solo un espejo = SUM(stock_almacen.cantidad) de ese
@@ -553,42 +400,6 @@ public static function registrarMovimiento($datos)
 
         return $movimiento;
     });
-}
-/**
- * API: Obtener IMEIs disponibles de un producto en un almacén
- */
-public function getImeisDisponibles(Request $request)
-{
-    $productoId = $request->get('producto_id');
-    $almacenId = $request->get('almacen_id');
-    $tipoMovimiento = $request->get('tipo_movimiento');
-    
-    if (!$productoId || !$almacenId) {
-        return response()->json(['error' => 'Faltan parámetros'], 400);
-    }
-    
-    $query = \App\Models\Imei::where('producto_id', $productoId)
-                                ->where('almacen_id', $almacenId);
-    
-    // Filtrar según tipo de movimiento
-    switch ($tipoMovimiento) {
-        case 'salida':
-        case 'transferencia':
-        case 'merma':
-            $query->where('estado', 'disponible');
-            break;
-        case 'devolucion':
-            $query->where('estado', 'vendido');
-            break;
-        case 'ajuste':
-            // Mostrar todos
-            break;
-    }
-    
-    $imeis = $query->limit(100) // Limitar a 100 por rendimiento
-                    ->get(['id', 'codigo_imei', 'serie', 'color', 'estado']);
-    
-    return response()->json($imeis);
 }
     /**
      * Boot method para eventos del modelo

@@ -273,12 +273,6 @@
                                 </a>
                             </li>
                             <li>
-                                <a href="{{ route('inventario.imeis.index') }}"
-                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.imeis.*') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-mobile-alt mr-3 text-sm"></i>IMEIs
-                                </a>
-                            </li>
-                            <li>
                                 <a href="{{ route('inventario.movimientos.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.movimientos.*') ? 'bg-blue-600' : '' }}">
                                     <i class="fas fa-exchange-alt mr-3 text-sm"></i>Movimientos
@@ -539,12 +533,6 @@
                                 <a href="{{ route('inventario.almacenes.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.almacenes.*') ? 'bg-blue-600' : '' }}">
                                     <i class="fas fa-warehouse mr-3 text-sm"></i>Locales y Stock
-                                </a>
-                            </li>
-                            <li>
-                                <a href="{{ route('inventario.imeis.index') }}"
-                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('inventario.imeis.*') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-mobile-alt mr-3 text-sm"></i>IMEIs
                                 </a>
                             </li>
                             <li>

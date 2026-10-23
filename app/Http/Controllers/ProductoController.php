@@ -62,14 +62,10 @@ class ProductoController extends Controller
     {
         $almacenFiltroId = $request->filled('almacen_id') ? (int) $request->almacen_id : null;
 
-        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantesActivas.color', 'variantesActivas.imagenPrincipal'])
-            ->withCount(['imeisEnStock as imeis_en_stock_count']);
+        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantesActivas.color', 'variantesActivas.imagenPrincipal']);
 
         if ($almacenFiltroId) {
             $query->with(['stockAlmacenes' => fn($q) => $q->where('almacen_id', $almacenFiltroId)]);
-            $query->withCount(['imeis as imeis_sede_count' => fn($q) =>
-                $q->where('almacen_id', $almacenFiltroId)->where('estado_imei', 'en_stock')
-            ]);
         }
 
         // Filtro por búsqueda
@@ -110,15 +106,7 @@ class ProductoController extends Controller
         // Filtro por almacén
         if ($request->filled('almacen_id')) {
             $almId = $request->almacen_id;
-            $query->where(function ($q) use ($almId) {
-                $q->where(function ($q2) use ($almId) {
-                    $q2->where('tipo_inventario', '!=', 'serie')
-                       ->whereHas('stockAlmacenes', fn($sa) => $sa->where('almacen_id', $almId)->where('cantidad', '>', 0));
-                })->orWhere(function ($q2) use ($almId) {
-                    $q2->where('tipo_inventario', 'serie')
-                       ->whereHas('imeis', fn($i) => $i->where('almacen_id', $almId)->where('estado_imei', 'en_stock'));
-                });
-            });
+            $query->whereHas('stockAlmacenes', fn($sa) => $sa->where('almacen_id', $almId)->where('cantidad', '>', 0));
         }
 
         $productos = $query->orderBy('nombre')->paginate(15);
@@ -296,12 +284,7 @@ public function create()
         'color_id' => 'nullable|exists:colores,id',          // ✅ NUEVO
         'unidad_medida_id' => 'required|exists:unidades_medida,id', // Cambiado de 'unidad_medida'
         
-        // ✅ NUEVO: Tipo de inventario (reemplaza a tipo_producto)
-        'tipo_inventario' => 'required|in:cantidad,serie',   // cantidad = accesorio, serie = celular
-        
-        // ✅ NUEVO: Garantía (para celulares)
-        'dias_garantia' => 'required_if:tipo_inventario,serie|integer|min:0',
-        'tipo_garantia' => 'required_if:tipo_inventario,serie|in:proveedor,tienda,fabricante',
+        'tipo_inventario' => 'nullable|in:cantidad',
         
         // Códigos
         'codigo_barras' => 'nullable|string|max:50|unique:productos,codigo_barras',
@@ -342,8 +325,7 @@ public function create()
 
     // Generar código de barras si no se proporcionó
     if (empty($validated['codigo_barras'])) {
-        $tipoBarras = ($validated['tipo_inventario'] ?? 'cantidad') === 'serie' ? 'celular' : 'accesorio';
-        $validated['codigo_barras'] = $codigoBarrasService->generarCodigoUnico(null, $tipoBarras);
+        $validated['codigo_barras'] = $codigoBarrasService->generarCodigoUnico(null, 'accesorio');
     }
 
     // Manejar imagen
@@ -441,47 +423,11 @@ public function create()
             'movimientos' => fn($q) => $q->latest()->limit(10),
         ]);
 
-        // Para serie: siempre contar IMEIs reales en_stock (fuente de verdad)
-        // Para cantidad: usar stock_actual de variantes o del producto base
-        if ($producto->tipo_inventario === 'serie') {
-            $stockReal = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->count();
+        $stockReal = $producto->variantesActivas->isNotEmpty()
+            ? $producto->variantesActivas->sum('stock_actual')
+            : $producto->stock_actual;
 
-            // Stock real por variante: primero por variante_id, fallback por color_id
-            $porVarianteId = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->whereNotNull('variante_id')
-                ->selectRaw('variante_id, COUNT(*) as total')
-                ->groupBy('variante_id')
-                ->pluck('total', 'variante_id');
-
-            $porColorId = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->whereNull('variante_id')
-                ->selectRaw('color_id, COUNT(*) as total')
-                ->groupBy('color_id')
-                ->pluck('total', 'color_id');
-
-            $stockRealPorVariante = [];
-            foreach ($producto->variantesActivas as $v) {
-                if (isset($porVarianteId[$v->id])) {
-                    $stockRealPorVariante[$v->id] = $porVarianteId[$v->id];
-                } elseif ($v->color_id && isset($porColorId[$v->color_id])) {
-                    $stockRealPorVariante[$v->id] = $porColorId[$v->color_id];
-                } else {
-                    $stockRealPorVariante[$v->id] = 0;
-                }
-            }
-
-        } else {
-            $stockReal = $producto->variantesActivas->isNotEmpty()
-                ? $producto->variantesActivas->sum('stock_actual')
-                : $producto->stock_actual;
-            $stockRealPorVariante = [];
-        }
-
-        return view('inventario.productos.show', compact('producto', 'stockReal', 'stockRealPorVariante'));
+        return view('inventario.productos.show', compact('producto', 'stockReal'));
     }
 
     /**
@@ -550,12 +496,7 @@ public function create()
         'color_id' => 'nullable|exists:colores,id',
         'unidad_medida_id' => 'required|exists:unidades_medida,id',
         
-        // ✅ NUEVO: Tipo de inventario
-        'tipo_inventario' => 'required|in:cantidad,serie',
-        
-        // ✅ NUEVO: Garantía
-        'dias_garantia' => 'required_if:tipo_inventario,serie|integer|min:0',
-        'tipo_garantia' => 'required_if:tipo_inventario,serie|in:proveedor,tienda,fabricante',
+        'tipo_inventario' => 'nullable|in:cantidad',
         
         // Código de barras (único excepto este producto)
         'codigo_barras' => 'nullable|string|max:100|unique:productos,codigo_barras,' . $producto->id,
@@ -617,7 +558,6 @@ public function create()
     public function destroy(Producto $producto)
     {
         $tieneMovimientos = $producto->movimientos()->exists()
-            || $producto->imeis()->exists()
             || \App\Models\DetalleCompra::where('producto_id', $producto->id)->exists()
             || \App\Models\DetalleVenta::where('producto_id', $producto->id)->exists();
 
@@ -698,7 +638,7 @@ public function generarCodigoBarras(Request $request, CodigoBarrasService $codig
 {
     try {
         $request->validate([
-            'tipo' => 'nullable|in:celular,accesorio,otros'
+            'tipo' => 'nullable|in:accesorio,otros'
         ]);
 
         $tipo = $request->get('tipo', 'otros');
@@ -826,16 +766,9 @@ public function variantes(Producto $producto)
     $producto->load(['variantes.color', 'variantes.imagenes', 'marca', 'modelo', 'categoria', 'tipoProducto', 'tipoLuminaria']);
     $colores = Color::where('estado', 'activo')->orderBy('nombre')->get();
 
-    $stockRealPorVariante = collect();
     $stockTotalReal = $producto->stock_actual;
 
-    if ($producto->tipo_inventario === 'serie') {
-        foreach ($producto->variantes as $v) {
-            $stockRealPorVariante[$v->id] = $v->stock_actual;
-        }
-    }
-
-    return view('inventario.productos.variantes', compact('producto', 'colores', 'stockRealPorVariante', 'stockTotalReal'));
+    return view('inventario.productos.variantes', compact('producto', 'colores', 'stockTotalReal'));
 }
 
 /**
@@ -1062,76 +995,5 @@ public function asociarProveedor(Request $request, $productoId)
     ]);
     
     return response()->json(['success' => true]);
-}
-    /**
- * API: Obtener IMEIs disponibles de un producto en un almacén
- */
-public function getImeisDisponibles(Request $request)
-{
-    try {
-        $productoId = $request->get('producto_id');
-        $almacenId = $request->get('almacen_id');
-        $tipoMovimiento = $request->get('tipo_movimiento');
-        
-        // Log para debug
-        \Log::info('getImeisDisponibles llamado', [
-            'producto_id' => $productoId,
-            'almacen_id' => $almacenId,
-            'tipo_movimiento' => $tipoMovimiento
-        ]);
-        
-        if (!$productoId || !$almacenId) {
-            return response()->json(['error' => 'Faltan parámetros'], 400);
-        }
-        
-        // Verificar que el producto existe y es tipo celular
-        $producto = \App\Models\Producto::find($productoId);
-        if (!$producto) {
-            return response()->json(['error' => 'Producto no encontrado'], 404);
-        }
-        
-        if ($producto->tipo_inventario !== 'serie') {
-            return response()->json(['error' => 'El producto no es tipo serie/celular'], 400);
-        }
-
-        $query = \App\Models\Imei::where('producto_id', $productoId)
-                                  ->where('almacen_id', $almacenId);
-
-        // Filtrar según tipo de movimiento
-        switch ($tipoMovimiento) {
-            case 'salida':
-            case 'transferencia':
-            case 'merma':
-                $query->where('estado_imei', 'en_stock');
-                break;
-            case 'devolucion':
-                $query->where('estado_imei', 'vendido');
-                break;
-            case 'ajuste':
-                // Mostrar todos
-                break;
-            default:
-                $query->where('estado_imei', 'en_stock');
-                break;
-        }
-
-        $imeis = $query->limit(100)
-                       ->get(['id', 'codigo_imei', 'serie', 'color_id', 'estado_imei']);
-        
-        \Log::info('IMEIs encontrados', ['count' => $imeis->count()]);
-        
-        return response()->json($imeis);
-        
-    } catch (\Exception $e) {
-        \Log::error('Error en getImeisDisponibles', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'error' => 'Error interno del servidor',
-            'message' => $e->getMessage()
-        ], 500);
-    }
 }
 }

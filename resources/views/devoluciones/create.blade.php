@@ -228,7 +228,6 @@
                             @php
                                 $yaDevuelto  = $detalle->cantidad_devuelta;
                                 $disponible  = $detalle->cantidad_disponible;
-                                $esImei      = (bool) $detalle->imei_id;
                                 $oldVal      = old("cantidades.{$detalle->id}", 0);
                             @endphp
                             <tr class="{{ $disponible === 0 ? 'opacity-40 bg-gray-50' : 'hover:bg-orange-50' }} transition-colors"
@@ -239,11 +238,6 @@
                                     <span class="font-medium text-gray-900">{{ $detalle->producto?->nombre }}</span>
                                     @if($detalle->variante)
                                         <span class="text-xs text-indigo-600 ml-1 font-medium">{{ $detalle->variante->nombre_completo }}</span>
-                                    @endif
-                                    @if($detalle->imei)
-                                        <span class="block text-xs font-mono text-purple-600 mt-0.5">
-                                            <i class="fas fa-mobile-alt mr-1"></i>{{ $detalle->imei->codigo_imei }}
-                                        </span>
                                     @endif
                                     @if($disponible === 0)
                                         <span class="block text-xs text-green-600 font-medium mt-0.5">

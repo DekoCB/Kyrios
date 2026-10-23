@@ -13,7 +13,6 @@ class DetalleVenta extends Model
         'venta_id',
         'producto_id',
         'variante_id',
-        'imei_id',
         'cantidad',
         'precio_unitario',
         'precio_con_igv',
@@ -39,10 +38,6 @@ class DetalleVenta extends Model
         return $this->belongsTo(Producto::class);
     }
 
-    public function imei()
-    {
-        return $this->belongsTo(Imei::class);
-    }
 
     public function variante()
     {

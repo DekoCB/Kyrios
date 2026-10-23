@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Compra;
 use App\Models\DetalleCompra;
-use App\Models\Imei;
 use App\Models\Proveedor;
 use App\Models\Almacen;
 use App\Models\Sucursal;
@@ -175,15 +174,10 @@ class CompraController extends Controller
             'detalles.*.modelo_id' => 'nullable|exists:modelos,id',
             'detalles.*.color_id'  => 'nullable|exists:colores,id',
             'detalles.*.capacidad' => 'nullable|string|max:50',
-            'detalles.*.imeis' => 'nullable|array',
-            'detalles.*.imeis.*.codigo_imei' => 'required_with:detalles.*.imeis|string|size:15|distinct',
-            'detalles.*.imeis.*.serie' => 'nullable|string|max:50',
         ], [
             'numero_factura.unique' => 'Ya existe una compra con este número de factura para el proveedor seleccionado',
             'detalles.required' => 'Debe agregar al menos un producto',
             'detalles.*.precio_unitario.min' => 'El precio debe ser mayor a 0',
-            'detalles.*.imeis.*.codigo_imei.size' => 'El IMEI debe tener exactamente 15 dígitos',
-            'detalles.*.imeis.*.codigo_imei.distinct' => 'No puede haber IMEI duplicados en el mismo producto',
         ]);
 
         try {
@@ -355,7 +349,7 @@ class CompraController extends Controller
 
     public function show(Compra $compra)
     {
-        $compra->load(['proveedor', 'usuario', 'almacen', 'detalles.producto', 'detalles.variante.color', 'detalles.color', 'detalles.imeis']);
+        $compra->load(['proveedor', 'usuario', 'almacen', 'detalles.producto', 'detalles.variante.color', 'detalles.color']);
 
         return view('compras.show', compact('compra'));
     }
@@ -447,140 +441,6 @@ class CompraController extends Controller
         }
     }
 
-    public function getImeis(Compra $compra, DetalleCompra $detalle)
-    {
-        if ($detalle->compra_id !== $compra->id) {
-            return response()->json(['success' => false, 'message' => 'El detalle no pertenece a esta compra'], 422);
-        }
-        $imeis = Imei::where(function ($q) use ($compra, $detalle) {
-                $q->where('detalle_compra_id', $detalle->id)
-                  ->orWhere(function ($q2) use ($compra, $detalle) {
-                      $q2->where('compra_id', $compra->id)
-                         ->where('producto_id', $detalle->producto_id)
-                         ->whereNull('detalle_compra_id');
-                  });
-            })
-            ->get(['id', 'codigo_imei', 'serie', 'estado_imei']);
-
-        return response()->json(['success' => true, 'imeis' => $imeis]);
-    }
-
-    public function storeBulkImeis(Request $request, Compra $compra, DetalleCompra $detalle)
-    {
-        if ($detalle->compra_id !== $compra->id) {
-            return response()->json(['success' => false, 'message' => 'El detalle no pertenece a esta compra'], 422);
-        }
-
-        $request->validate([
-            'imeis'                  => 'required|array|min:1',
-            'imeis.*.codigo_imei'    => 'required|string|size:15|distinct|unique:imeis,codigo_imei',
-            'imeis.*.serie'          => 'nullable|string|max:50',
-        ], [
-            'imeis.*.codigo_imei.required' => 'El código IMEI es obligatorio.',
-            'imeis.*.codigo_imei.size'     => 'Cada IMEI debe tener exactamente 15 dígitos.',
-            'imeis.*.codigo_imei.distinct' => 'Hay IMEIs duplicados en la lista.',
-            'imeis.*.codigo_imei.unique'   => 'Uno o más IMEIs ya están registrados en el sistema.',
-        ]);
-
-        $yaRegistrados = Imei::where(function ($q) use ($compra, $detalle) {
-                $q->where('detalle_compra_id', $detalle->id)
-                  ->orWhere(function ($q2) use ($compra, $detalle) {
-                      $q2->where('compra_id', $compra->id)
-                         ->where('producto_id', $detalle->producto_id)
-                         ->whereNull('detalle_compra_id');
-                  });
-            })->count();
-
-        $pendientes = $detalle->cantidad - $yaRegistrados;
-
-        if (count($request->imeis) > $pendientes) {
-            return response()->json([
-                'success' => false,
-                'message' => "Solo puedes registrar {$pendientes} IMEI(s) más para este detalle (cantidad comprada: {$detalle->cantidad}).",
-            ], 422);
-        }
-
-        DB::transaction(function () use ($request, $compra, $detalle) {
-            foreach ($request->imeis as $imeiData) {
-                Imei::create([
-                    'codigo_imei'       => $imeiData['codigo_imei'],
-                    'serie'             => $imeiData['serie'] ?? null,
-                    'producto_id'       => $detalle->producto_id,
-                    'variante_id'       => $detalle->variante_id,
-                    'color_id'          => $detalle->color_id,
-                    'almacen_id'        => $compra->almacen_id,
-                    'compra_id'         => $compra->id,
-                    'detalle_compra_id' => $detalle->id,
-                    'estado_imei'       => 'en_stock',
-                ]);
-            }
-
-            // Recontar desde la fuente real (imeis) en vez de incrementar: mantiene
-            // producto.stock_actual / producto_variante.stock_actual exactos aunque
-            // esas columnas ya estuvieran desincronizadas por otro flujo.
-            $totalProducto = Imei::where('producto_id', $detalle->producto_id)
-                ->where('estado_imei', 'en_stock')
-                ->count();
-            Producto::where('id', $detalle->producto_id)
-                ->update(['stock_actual' => $totalProducto]);
-
-            if ($detalle->variante_id) {
-                $totalVariante = Imei::where('variante_id', $detalle->variante_id)
-                    ->where('estado_imei', 'en_stock')
-                    ->count();
-                ProductoVariante::where('id', $detalle->variante_id)
-                    ->update(['stock_actual' => $totalVariante]);
-            }
-        });
-
-        $totalAhora = Imei::where(function ($q) use ($compra, $detalle) {
-            $q->where('detalle_compra_id', $detalle->id)
-              ->orWhere(function ($q2) use ($compra, $detalle) {
-                  $q2->where('compra_id', $compra->id)
-                     ->where('producto_id', $detalle->producto_id)
-                     ->whereNull('detalle_compra_id');
-              });
-        })->count();
-
-        return response()->json([
-            'success'        => true,
-            'message'        => count($request->imeis) . ' IMEI(s) registrados correctamente.',
-            'registrados'    => $totalAhora,
-            'total_esperado' => $detalle->cantidad,
-        ]);
-    }
-
-    public function updateImei(Request $request, Compra $compra, Imei $imei)
-    {
-        if ($imei->compra_id !== $compra->id) {
-            return response()->json(['success' => false, 'message' => 'IMEI no pertenece a esta compra'], 422);
-        }
-        if ($imei->estado_imei === Imei::ESTADO_VENDIDO) {
-            return response()->json(['success' => false, 'message' => 'No se puede editar un IMEI ya vendido'], 422);
-        }
-        $request->validate([
-            'codigo_imei' => 'required|string|size:15|unique:imeis,codigo_imei,' . $imei->id,
-        ], [
-            'codigo_imei.size'   => 'El IMEI debe tener exactamente 15 dígitos.',
-            'codigo_imei.unique' => 'Este IMEI ya está registrado en el sistema.',
-        ]);
-        $imei->update(['codigo_imei' => $request->codigo_imei]);
-        return response()->json(['success' => true, 'message' => 'IMEI actualizado correctamente']);
-    }
-
-    public function destroyImei(Compra $compra, Imei $imei)
-    {
-        if ($imei->compra_id !== $compra->id) {
-            return response()->json(['success' => false, 'message' => 'IMEI no pertenece a esta compra'], 422);
-        }
-        try {
-            $this->compraService->eliminarImei($compra, $imei);
-            return response()->json(['success' => true, 'message' => 'IMEI eliminado y stock ajustado correctamente']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
-        }
-    }
-
     public function destroy(Compra $compra)
     {
         try {
@@ -601,61 +461,6 @@ class CompraController extends Controller
     }
 
 
-    /**
- * Mostrar vista de importación masiva de IMEI
- */
-public function importarIMEI(Request $request)
-{
-    $productoId = $request->get('producto_id');
-    $cantidad = $request->get('cantidad');
-    $producto = Producto::findOrFail($productoId);
-    
-    return view('compras.importar-imei', compact('producto', 'cantidad'));
-}
-
-    /**
-     * Procesar archivo de IMEI
-     */
-    public function procesarImportacionIMEI(Request $request, CompraService $compraService)
-    {
-        $request->validate([
-            'archivo' => 'required|file|mimes:csv,txt|max:2048',
-            'producto_id' => 'required|exists:productos,id',
-            'cantidad' => 'required|integer|min:1',
-            'index' => 'required|integer', // índice del producto en la compra
-            'color_id' => 'required|exists:colores,id',
-        ]);
-        
-        try {
-            $resultado = $compraService->procesarArchivoIMEI(
-                $request->file('archivo'),
-                $request->producto_id,
-                $request->cantidad
-            );
-            
-            if ($resultado['success']) {
-                // Devolver los IMEI procesados para agregarlos al formulario
-                return response()->json([
-                    'success' => true,
-                    'imeis' => $resultado['imeis'],
-                    'index' => $request->index,
-                    'color_id' => $request->color_id,
-                    'message' => 'IMEI procesados correctamente'
-                ]);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'errores' => $resultado['errores']
-                ], 422);
-            }
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
     public function imprimir(Compra $compra)
     {
         // Generar PDF de la compra
@@ -729,44 +534,9 @@ public function importarIMEI(Request $request)
             ->limit(20)
             ->get();
 
-        // Pre-calcular stock real de IMEIs para productos serie en un solo query
-        $productoIdsSerie = $productos->where('tipo_inventario', 'serie')->pluck('id');
-
-        $imeisPorVarianteId = collect();
-        $imeisPorColorId    = collect();
-
-        if ($productoIdsSerie->isNotEmpty()) {
-            $imeisPorVarianteId = \App\Models\Imei::whereIn('producto_id', $productoIdsSerie)
-                ->where('estado_imei', 'en_stock')
-                ->whereNotNull('variante_id')
-                ->selectRaw('variante_id, COUNT(*) as total')
-                ->groupBy('variante_id')
-                ->pluck('total', 'variante_id');
-
-            $imeisPorColorId = \App\Models\Imei::whereIn('producto_id', $productoIdsSerie)
-                ->where('estado_imei', 'en_stock')
-                ->whereNull('variante_id')
-                ->selectRaw('producto_id, color_id, COUNT(*) as total')
-                ->groupBy('producto_id', 'color_id')
-                ->get()
-                ->mapWithKeys(fn($r) => ["{$r->producto_id}_{$r->color_id}" => $r->total]);
-        }
-
-        $result = $productos->map(function($producto) use ($imeisPorVarianteId, $imeisPorColorId) {
-            $esSerie = $producto->tipo_inventario === 'serie';
-
-            $variantes = $producto->variantesActivas->map(function($v) use ($esSerie, $producto, $imeisPorVarianteId, $imeisPorColorId) {
-                if ($esSerie) {
-                    if (isset($imeisPorVarianteId[$v->id])) {
-                        $stock = (int)$imeisPorVarianteId[$v->id];
-                    } elseif ($v->color_id && isset($imeisPorColorId["{$producto->id}_{$v->color_id}"])) {
-                        $stock = (int)$imeisPorColorId["{$producto->id}_{$v->color_id}"];
-                    } else {
-                        $stock = 0;
-                    }
-                } else {
-                    $stock = (int)$v->stock_actual;
-                }
+        $result = $productos->map(function($producto) {
+            $variantes = $producto->variantesActivas->map(function($v) {
+                $stock = (int)$v->stock_actual;
 
                 return [
                     'id'              => $v->id,
@@ -814,14 +584,11 @@ public function importarIMEI(Request $request)
             'modelo_id'         => 'nullable|exists:modelos,id',
             'color_id'          => 'nullable|exists:colores,id',
             'unidad_medida_id'  => 'required|exists:unidades_medida,id',
-            'tipo_inventario'   => 'required|in:serie,cantidad',
             'tiene_variantes'         => 'boolean',
             'variantes'               => 'nullable|array',
             'variantes.*.color_id'    => 'nullable|exists:colores,id',
             'variantes.*.capacidad'   => 'nullable|string|max:100',
             'codigo_barras'           => 'nullable|string|max:100',
-            'dias_garantia'           => 'nullable|integer|min:0',
-            'tipo_garantia'           => 'nullable|in:proveedor,tienda,fabricante',
         ], [
             'nombre.required'          => 'El nombre del producto es obligatorio.',
             'categoria_id.required'    => 'Selecciona una categoría.',
@@ -838,10 +605,8 @@ public function importarIMEI(Request $request)
                 'modelo_id'        => $validated['modelo_id'] ?? null,
                 'color_id'         => $validated['color_id'] ?? null,
                 'unidad_medida_id' => $validated['unidad_medida_id'],
-                'tipo_inventario'  => $validated['tipo_inventario'],
+                'tipo_inventario'  => 'cantidad',
                 'codigo_barras'    => $validated['codigo_barras'] ?? null,
-                'dias_garantia'    => $validated['tipo_inventario'] === 'serie' ? ($validated['dias_garantia'] ?? 365) : null,
-                'tipo_garantia'    => $validated['tipo_inventario'] === 'serie' ? ($validated['tipo_garantia'] ?? 'proveedor') : null,
                 'estado'           => 'activo',
                 'stock_actual'     => 0,
                 'stock_minimo'     => 0,
@@ -889,7 +654,6 @@ public function importarIMEI(Request $request)
                 'modelo_id'       => $producto->modelo_id,
                 'color_id'        => $producto->color_id,
                 'codigo_barras'   => $producto->codigo_barras,
-                'requiere_imei'   => $producto->tipo_inventario === 'serie',
                 'tiene_variantes' => count($variantesCreadas) > 0,
                 'variantes'       => $variantesCreadas,
             ]);
@@ -911,39 +675,8 @@ public function getProductoDetalle($id)
         $producto = Producto::with(['marca', 'modelo', 'categoria', 'variantesActivas.color'])
             ->findOrFail($id);
 
-        $esSerie = $producto->tipo_inventario === 'serie';
-
-        $imeisPorVarianteId = collect();
-        $imeisPorColorId    = collect();
-
-        if ($esSerie) {
-            $imeisPorVarianteId = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->whereNotNull('variante_id')
-                ->selectRaw('variante_id, COUNT(*) as total')
-                ->groupBy('variante_id')
-                ->pluck('total', 'variante_id');
-
-            $imeisPorColorId = \App\Models\Imei::where('producto_id', $producto->id)
-                ->where('estado_imei', 'en_stock')
-                ->whereNull('variante_id')
-                ->selectRaw('color_id, COUNT(*) as total')
-                ->groupBy('color_id')
-                ->pluck('total', 'color_id');
-        }
-
-        $variantes = $producto->variantesActivas->map(function($v) use ($esSerie, $producto, $imeisPorVarianteId, $imeisPorColorId) {
-            if ($esSerie) {
-                if (isset($imeisPorVarianteId[$v->id])) {
-                    $stock = (int)$imeisPorVarianteId[$v->id];
-                } elseif ($v->color_id && isset($imeisPorColorId[$v->color_id])) {
-                    $stock = (int)$imeisPorColorId[$v->color_id];
-                } else {
-                    $stock = 0;
-                }
-            } else {
-                $stock = (int)$v->stock_actual;
-            }
+        $variantes = $producto->variantesActivas->map(function($v) {
+            $stock = (int)$v->stock_actual;
 
             return [
                 'id'              => $v->id,

@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Imei;
 use App\Models\Producto;
 use App\Models\ProductoVariante;
 use App\Models\StockAlmacen;
@@ -15,7 +14,7 @@ class ReconciliarStock extends Command
                             {--dry-run : Solo muestra divergencias sin corregirlas}
                             {--producto= : ID de un producto específico a verificar}';
 
-    protected $description = 'Detecta y corrige divergencias entre stock_actual (producto y variante) y los registros reales (StockAlmacen por variante / IMEIs)';
+    protected $description = 'Detecta y corrige divergencias entre stock_actual (producto y variante) y los registros reales (StockAlmacen por variante)';
 
     private int $divergenciasProductos  = 0;
     private int $divergenciasVariantes  = 0;
@@ -75,53 +74,9 @@ class ReconciliarStock extends Command
 
     private function reconciliarProducto(Producto $producto, bool $dryRun): void
     {
-        if ($producto->tipo_inventario === 'serie') {
-            $this->reconciliarSerie($producto, $dryRun);
-        } else {
-            $this->reconciliarCantidad($producto, $dryRun);
-        }
+        $this->reconciliarCantidad($producto, $dryRun);
     }
 
-    private function reconciliarSerie(Producto $producto, bool $dryRun): void
-    {
-        // Producto.stock_actual debe ser COUNT(Imei WHERE estado='en_stock')
-        $stockReal = Imei::where('producto_id', $producto->id)
-            ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-            ->count();
-
-        if ((int) $producto->stock_actual !== $stockReal) {
-            $this->divergenciasProductos++;
-            $this->reportarDivergencia(
-                "Producto [{$producto->id}] {$producto->nombre}",
-                "stock_actual={$producto->stock_actual}, IMEIs en_stock={$stockReal}"
-            );
-
-            if (!$dryRun) {
-                $producto->update(['stock_actual' => $stockReal]);
-                $this->correccionesProductos++;
-            }
-        }
-
-        // Variantes: stock_actual debe ser COUNT(Imei WHERE variante_id=X AND estado='en_stock')
-        foreach ($producto->variantes()->where('estado', 'activo')->get() as $variante) {
-            $stockVarianteReal = Imei::where('variante_id', $variante->id)
-                ->where('estado_imei', Imei::ESTADO_EN_STOCK)
-                ->count();
-
-            if ((int) $variante->stock_actual !== $stockVarianteReal) {
-                $this->divergenciasVariantes++;
-                $this->reportarDivergencia(
-                    "  Variante [{$variante->id}] {$variante->nombre_completo}",
-                    "stock_actual={$variante->stock_actual}, IMEIs en_stock={$stockVarianteReal}"
-                );
-
-                if (!$dryRun) {
-                    $variante->update(['stock_actual' => $stockVarianteReal]);
-                    $this->correccionesVariantes++;
-                }
-            }
-        }
-    }
 
     private function reconciliarCantidad(Producto $producto, bool $dryRun): void
     {

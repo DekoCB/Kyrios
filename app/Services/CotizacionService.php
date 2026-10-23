@@ -109,9 +109,6 @@ class CotizacionService
 
         foreach ($detalles as $d) {
             $producto = Producto::findOrFail($d['producto_id']);
-            if ($producto->tipo_inventario === 'serie') {
-                throw new \DomainException("«{$producto->nombre}» se vende por serie/IMEI: se cotiza y vende desde Ventas.");
-            }
 
             $variante = !empty($d['variante_id']) ? ProductoVariante::findOrFail($d['variante_id']) : null;
             if ($variante && $variante->producto_id !== $producto->id) {
