@@ -13,7 +13,7 @@
     <x-sidebar :role="auth()->user()->role->nombre" />
 
     <div class="md:ml-64 p-4 md:p-8">
-        <x-header :title="$cliente->nombre" :subtitle="$cliente->tipo_documento . ' ' . $cliente->numero_documento" />
+        <x-header :title="$cliente->nombre" :subtitle="$cliente->es_prospecto ? 'Prospecto — aún sin documento' : $cliente->tipo_documento . ' ' . $cliente->numero_documento" />
 
         @if(session('success'))
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded"><i class="fas fa-check-circle mr-2"></i>{{ session('success') }}</div>
@@ -66,10 +66,28 @@
                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $cliente->estado === 'activo' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700' }}">{{ ucfirst($cliente->estado) }}</span>
                 </div>
                 <dl class="space-y-2">
-                    <div><dt class="text-xs text-gray-400 uppercase">{{ $cliente->tipo_documento }}</dt><dd class="font-mono">{{ $cliente->numero_documento }}</dd></div>
+                    @if($cliente->es_prospecto)
+                        <div><dt class="text-xs text-gray-400 uppercase">Documento</dt><dd><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700">Prospecto</span> <span class="text-xs text-gray-500">completar al editar</span></dd></div>
+                    @else
+                        @php $fuente = $cliente->tipo_documento === 'RUC' ? 'SUNAT' : 'RENIEC'; @endphp
+                        <div><dt class="text-xs text-gray-400 uppercase">{{ $cliente->tipo_documento }}</dt><dd class="font-mono">{{ $cliente->numero_documento }}
+                            @if($cliente->verificacion === 'ok')<span class="ml-1 text-xs text-green-600 font-sans" title="Verificado en {{ $fuente }} el {{ $cliente->verificado_at?->format('d/m/Y') }}"><i class="fas fa-check-circle"></i> verificado</span>
+                            @elseif($cliente->verificacion === 'discrepancia')<span class="ml-1 text-xs text-amber-600 font-sans" title="El nombre difiere del registro oficial; revise las notas"><i class="fas fa-exclamation-triangle"></i> revisar nombre</span>
+                            @elseif($cliente->verificacion === 'no_encontrado')<span class="ml-1 text-xs text-red-600 font-sans" title="No figura en {{ $fuente }}"><i class="fas fa-times-circle"></i> no encontrado</span>@endif
+                        </dd></div>
+                    @endif
+                    @if($cliente->segmento)<div><dt class="text-xs text-gray-400 uppercase">Segmento</dt><dd>{{ \App\Models\Cliente::SEGMENTOS[$cliente->segmento] ?? $cliente->segmento }}@if($cliente->especialidad) · {{ $cliente->especialidad }}@endif</dd></div>@endif
+                    @if($cliente->empresa)<div><dt class="text-xs text-gray-400 uppercase">Empresa</dt><dd>{{ $cliente->empresa }}@if($cliente->cargo) <span class="text-gray-500">— {{ $cliente->cargo }}</span>@endif</dd></div>@elseif($cliente->cargo)<div><dt class="text-xs text-gray-400 uppercase">Cargo</dt><dd>{{ $cliente->cargo }}</dd></div>@endif
                     @if($cliente->contacto)<div><dt class="text-xs text-gray-400 uppercase">Contacto</dt><dd>{{ $cliente->contacto }}</dd></div>@endif
                     @if($cliente->telefono)<div><dt class="text-xs text-gray-400 uppercase">Teléfono</dt><dd><i class="fas fa-phone text-xs mr-1"></i>{{ $cliente->telefono }}</dd></div>@endif
+                    @if($cliente->telefono_fijo)<div><dt class="text-xs text-gray-400 uppercase">Teléfono fijo</dt><dd>{{ $cliente->telefono_fijo }}@if($cliente->anexo) <span class="text-gray-500">anexo {{ $cliente->anexo }}</span>@endif</dd></div>@endif
                     @if($cliente->email)<div><dt class="text-xs text-gray-400 uppercase">Correo</dt><dd class="break-all">{{ $cliente->email }}</dd></div>@endif
+                    @if($cliente->email_empresa)<div><dt class="text-xs text-gray-400 uppercase">Correo de la empresa</dt><dd class="break-all">{{ $cliente->email_empresa }}</dd></div>@endif
+                    @if($cliente->redes_sociales)<div><dt class="text-xs text-gray-400 uppercase">Redes</dt><dd class="break-all">{{ $cliente->redes_sociales }}</dd></div>@endif
+                    @if($cliente->fecha_cumpleanos)<div><dt class="text-xs text-gray-400 uppercase">Cumpleaños</dt><dd><i class="fas fa-birthday-cake text-xs mr-1"></i>{{ $cliente->fecha_cumpleanos->format('d/m') }}</dd></div>@endif
+                    @if($cliente->comision !== null)<div><dt class="text-xs text-gray-400 uppercase">Comisión pactada</dt><dd>{{ rtrim(rtrim(number_format((float) $cliente->comision, 2), '0'), '.') }}%</dd></div>@endif
+                    @if($cliente->preferencias)<div><dt class="text-xs text-gray-400 uppercase">Preferencias</dt><dd>{{ $cliente->preferencias }}</dd></div>@endif
+                    @if($cliente->asesor || $cliente->origen)<div><dt class="text-xs text-gray-400 uppercase">Atención</dt><dd>{{ collect([$cliente->asesor, $cliente->origen ? 'vía ' . $cliente->origen : null])->filter()->implode(' · ') }}</dd></div>@endif
                     @if($cliente->direccion)
                         <div><dt class="text-xs text-gray-400 uppercase">Dirección</dt>
                             <dd>{{ $cliente->direccion }}@if($cliente->distrito || $cliente->provincia || $cliente->departamento)<br><span class="text-gray-500">{{ collect([$cliente->distrito, $cliente->provincia, $cliente->departamento])->filter()->implode(', ') }}</span>@endif</dd></div>

@@ -23,6 +23,33 @@ class Cliente extends Model
         'email',
         'notas',
         'estado',
+        'segmento',
+        'especialidad',
+        'cargo',
+        'empresa',
+        'fecha_cumpleanos',
+        'telefono_fijo',
+        'anexo',
+        'email_empresa',
+        'redes_sociales',
+        'comision',
+        'preferencias',
+        'asesor',
+        'origen',
+        'verificacion',
+        'verificado_at',
+    ];
+
+    protected $casts = [
+        'fecha_cumpleanos' => 'date',
+        'verificado_at'    => 'datetime',
+        'comision'         => 'decimal:2',
+    ];
+
+    /** Segmentos de la base comercial. */
+    public const SEGMENTOS = [
+        'ARQ' => 'Arquitecto', 'ING' => 'Ingeniero', 'DIS' => 'Diseñador', 'DEC' => 'Decorador',
+        'PN' => 'Persona natural', 'PJ' => 'Persona jurídica', 'CF' => 'Cliente final', 'NEG' => 'Negocio',
     ];
 
     public function ventas()
@@ -58,8 +85,20 @@ class Cliente extends Model
                 ->orWhere('numero_documento', 'like', "%{$termino}%")
                 ->orWhere('telefono', 'like', "%{$termino}%")
                 ->orWhere('email', 'like', "%{$termino}%")
-                ->orWhere('contacto', 'like', "%{$termino}%");
+                ->orWhere('contacto', 'like', "%{$termino}%")
+                ->orWhere('empresa', 'like', "%{$termino}%");
         });
+    }
+
+    /** Contacto todavía sin documento: no se le puede emitir comprobante hasta completarlo. */
+    public function getEsProspectoAttribute(): bool
+    {
+        return $this->numero_documento === null || $this->numero_documento === '';
+    }
+
+    public function scopeProspectos($query)
+    {
+        return $query->whereNull('numero_documento');
     }
 
     /** Cliente con RUC (empresa o persona con negocio): puede recibir factura. */

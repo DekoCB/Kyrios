@@ -17,7 +17,7 @@
             title="Editar Cliente" 
             subtitle="Modifique los datos del cliente según sea necesario"
         />
-        <div class="max-w-2xl mx-auto">
+        <div class="max-w-3xl mx-auto">
             <div class="flex items-center mb-6">
                 <a href="{{ route('clientes.index') }}" class="text-blue-600 hover:text-blue-800 mr-4"><i class="fas fa-arrow-left"></i></a>
                 <h2 class="text-2xl font-bold text-gray-800">Editar Cliente</h2>
@@ -28,16 +28,17 @@
                     @csrf @method('PUT')
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento</label>
                             <select name="tipo_documento" class="w-full rounded-lg border-gray-300 shadow-sm">
+                                <option value="" {{ old('tipo_documento', $cliente->tipo_documento) ? '' : 'selected' }}>Sin documento (prospecto)</option>
                                 <option value="DNI" {{ old('tipo_documento', $cliente->tipo_documento) === 'DNI' ? 'selected' : '' }}>DNI</option>
                                 <option value="RUC" {{ old('tipo_documento', $cliente->tipo_documento) === 'RUC' ? 'selected' : '' }}>RUC</option>
                                 <option value="CE" {{ old('tipo_documento', $cliente->tipo_documento) === 'CE' ? 'selected' : '' }}>CE</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento *</label>
-                            <input type="text" name="numero_documento" maxlength="11" required
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento</label>
+                            <input type="text" name="numero_documento" maxlength="11" placeholder="Se completa cuando lo entregue"
                                    class="w-full rounded-lg border-gray-300 shadow-sm @error('numero_documento') border-red-500 @enderror"
                                    value="{{ old('numero_documento', $cliente->numero_documento) }}">
                             @error('numero_documento') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
@@ -98,6 +99,7 @@
                                 <option value="inactivo" {{ old('estado', $cliente->estado) === 'inactivo' ? 'selected' : '' }}>Inactivo</option>
                             </select>
                         </div>
+                        @include('clientes.partials.campos-comerciales', ['cliente' => $cliente])
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
                             <textarea name="notas" rows="3" maxlength="2000" class="w-full rounded-lg border-gray-300 shadow-sm" placeholder="Preferencias, condiciones acordadas, horarios de entrega…">{{ old('notas', $cliente->notas) }}</textarea>

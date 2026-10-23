@@ -23,12 +23,13 @@
         @endif
 
         {{-- Resumen --}}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             @foreach([
                 ['Clientes registrados', $stats['total'], 'fa-users', 'border-blue-500'],
                 ['Activos', $stats['activos'], 'fa-user-check', 'border-emerald-500'],
                 ['Empresas (RUC)', $stats['empresas'], 'fa-building', 'border-indigo-500'],
                 ['Personas (DNI / CE)', $stats['personas'], 'fa-user', 'border-amber-400'],
+                ['Prospectos (sin documento)', $stats['prospectos'], 'fa-user-clock', 'border-rose-400'],
             ] as [$titulo, $valor, $icono, $borde])
                 <div class="bg-white rounded-xl shadow-sm p-4 border-l-4 {{ $borde }}">
                     <p class="text-xs text-gray-500 uppercase tracking-wide"><i class="fas {{ $icono }} mr-1"></i>{{ $titulo }}</p>
@@ -38,7 +39,7 @@
         </div>
 
         {{-- Filtros --}}
-        <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div class="md:col-span-2">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
                 <input type="text" name="q" value="{{ request('q') }}" placeholder="Nombre, documento, teléfono, correo o contacto"
@@ -51,6 +52,16 @@
                     @foreach(['DNI', 'RUC', 'CE'] as $t)
                         <option value="{{ $t }}" @selected(request('tipo_documento') === $t)>{{ $t }}</option>
                     @endforeach
+                    <option value="SIN" @selected(request('tipo_documento') === 'SIN')>Sin documento (prospectos)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Segmento</label>
+                <select name="segmento" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">Todos</option>
+                    @foreach(\App\Models\Cliente::SEGMENTOS as $cod => $etiqueta)
+                        <option value="{{ $cod }}" @selected(request('segmento') === $cod)>{{ $etiqueta }}</option>
+                    @endforeach
                 </select>
             </div>
             <div>
@@ -61,7 +72,7 @@
                     <option value="inactivo" @selected(request('estado') === 'inactivo')>Inactivo</option>
                 </select>
             </div>
-            <div class="md:col-span-4 flex flex-wrap items-center justify-between gap-2">
+            <div class="md:col-span-5 flex flex-wrap items-center justify-between gap-2">
                 <a href="{{ route('clientes.index') }}" class="text-sm text-gray-500 hover:text-gray-800"><i class="fas fa-redo mr-1"></i>Limpiar</a>
                 <div class="flex flex-wrap gap-2">
                     <button class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-search mr-1"></i>Buscar</button>
@@ -94,12 +105,17 @@
                     @forelse($clientes as $cliente)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-sm whitespace-nowrap">
-                                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 mr-1">{{ $cliente->tipo_documento }}</span>
-                                <span class="font-mono">{{ $cliente->numero_documento }}</span>
+                                @if($cliente->es_prospecto)
+                                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700" title="Aún sin documento">Prospecto</span>
+                                @else
+                                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 mr-1">{{ $cliente->tipo_documento }}</span>
+                                    <span class="font-mono">{{ $cliente->numero_documento }}</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 text-sm">
                                 <a href="{{ route('clientes.show', $cliente) }}" class="font-medium text-gray-900 hover:text-blue-700">{{ $cliente->nombre }}</a>
                                 @if($cliente->contacto)<div class="text-xs text-gray-400">Contacto: {{ $cliente->contacto }}</div>@endif
+                                @if($cliente->segmento || $cliente->empresa)<div class="text-xs text-gray-400">{{ collect([$cliente->segmento, $cliente->empresa])->filter()->implode(' · ') }}</div>@endif
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500">
                                 @if($cliente->telefono)<div><i class="fas fa-phone text-xs mr-1"></i>{{ $cliente->telefono }}</div>@endif

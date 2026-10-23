@@ -18,7 +18,7 @@
             title="Registrar Nuevo Cliente"
             subtitle="Complete el formulario para agregar un nuevo cliente al sistema"
         />
-        <div class="max-w-2xl mx-auto">
+        <div class="max-w-3xl mx-auto">
             <div class="flex items-center mb-6">
                 <a href="{{ route('clientes.index') }}" class="text-blue-600 hover:text-blue-800 mr-4">
                     <i class="fas fa-arrow-left"></i>
@@ -104,17 +104,19 @@
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento *</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento</label>
                                 <select name="tipo_documento" x-model="tipoDocumento"
                                         class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
+                                    <option value="">Sin documento (prospecto)</option>
                                     <option value="DNI">DNI</option>
                                     <option value="RUC">RUC</option>
                                     <option value="CE">CE</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento *</label>
-                                <input type="text" name="numero_documento" x-model="numeroDocumento" maxlength="11" required
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento <span x-show="tipoDocumento" class="text-red-500">*</span></label>
+                                <input type="text" name="numero_documento" x-model="numeroDocumento" maxlength="11" :required="!!tipoDocumento" :disabled="!tipoDocumento"
+                                       placeholder="Se completa cuando lo entregue">
                                        class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200 @error('numero_documento') border-red-500 @enderror">
                                 @error('numero_documento') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
@@ -189,6 +191,7 @@
                                     <option value="inactivo">Inactivo</option>
                                 </select>
                             </div>
+                            @include('clientes.partials.campos-comerciales', ['cliente' => null])
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
                                 <textarea name="notas" rows="3" maxlength="2000"
@@ -228,7 +231,7 @@
         return {
             tipoBuscar:      'DNI',
             numeroBuscar:    '',
-            tipoDocumento:   '{{ old("tipo_documento", "DNI") }}',
+            tipoDocumento:   '{{ old("tipo_documento", $errors->any() ? "" : "DNI") }}',
             numeroDocumento: '{{ old("numero_documento") }}',
             nombre:          '{{ old("nombre") }}',
             direccion:       '{{ old("direccion") }}',

@@ -22,7 +22,9 @@ class ClienteController extends Controller
     {
         return Cliente::query()
             ->buscar($request->q)
-            ->when($request->filled('tipo_documento'), fn ($q) => $q->where('tipo_documento', $request->tipo_documento))
+            ->when($request->tipo_documento === 'SIN', fn ($q) => $q->whereNull('numero_documento'))
+            ->when($request->filled('tipo_documento') && $request->tipo_documento !== 'SIN', fn ($q) => $q->where('tipo_documento', $request->tipo_documento))
+            ->when($request->filled('segmento'), fn ($q) => $q->where('segmento', $request->segmento))
             ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->estado));
     }
 
@@ -39,7 +41,8 @@ class ClienteController extends Controller
             'total'    => Cliente::count(),
             'activos'  => Cliente::where('estado', 'activo')->count(),
             'empresas' => Cliente::where('tipo_documento', 'RUC')->count(),
-            'personas' => Cliente::where('tipo_documento', '!=', 'RUC')->count(),
+            'personas' => Cliente::whereIn('tipo_documento', ['DNI', 'CE'])->count(),
+            'prospectos' => Cliente::prospectos()->count(),
         ];
 
         $canCreate = in_array($this->rol(), ['Administrador', 'Vendedor', 'Tienda', 'Cajero'], true);
@@ -58,9 +61,10 @@ class ClienteController extends Controller
     private function reglas(?Cliente $cliente = null): array
     {
         return [
-            'tipo_documento'   => 'required|in:DNI,RUC,CE',
+            // Sin documento = prospecto; se completa cuando el cliente lo entregue.
+            'tipo_documento'   => 'nullable|required_with:numero_documento|in:DNI,RUC,CE',
             'numero_documento' => [
-                'required', 'string', 'max:11',
+                'nullable', 'required_with:tipo_documento', 'string', 'max:11',
                 Rule::unique('clientes', 'numero_documento')->ignore($cliente?->id),
                 function (string $atributo, $valor, \Closure $fallar) {
                     $tipo = request('tipo_documento');
@@ -84,6 +88,19 @@ class ClienteController extends Controller
             'email'        => 'nullable|email|max:255',
             'notas'        => 'nullable|string|max:2000',
             'estado'       => 'required|in:activo,inactivo',
+            'segmento'         => 'nullable|string|max:20',
+            'especialidad'     => 'nullable|string|max:150',
+            'cargo'            => 'nullable|string|max:120',
+            'empresa'          => 'nullable|string|max:190',
+            'fecha_cumpleanos' => 'nullable|date|before:today',
+            'telefono_fijo'    => 'nullable|string|max:30',
+            'anexo'            => 'nullable|string|max:15',
+            'email_empresa'    => 'nullable|email|max:255',
+            'redes_sociales'   => 'nullable|string|max:1000',
+            'comision'         => 'nullable|numeric|between:0,100',
+            'preferencias'     => 'nullable|string|max:1000',
+            'asesor'           => 'nullable|string|max:80',
+            'origen'           => 'nullable|string|max:150',
         ];
     }
 
@@ -92,6 +109,8 @@ class ClienteController extends Controller
         return [
             'numero_documento.unique' => 'Este documento ya está registrado',
             'nombre.required'         => 'El nombre es obligatorio',
+            'numero_documento.required_with' => 'Ingrese el número de documento o deje vacío el tipo para registrarlo como prospecto',
+            'tipo_documento.required_with'   => 'Elija el tipo de documento',
         ];
     }
 
@@ -179,12 +198,13 @@ class ClienteController extends Controller
         return response()->streamDownload(function () use ($clientes) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM: Excel respeta las tildes
-            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Contacto', 'Teléfono', 'Correo', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Estado', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
+            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
             $clientes->chunk(500, function ($lote) use ($out) {
                 foreach ($lote as $c) {
                     fputcsv($out, [
-                        $c->tipo_documento, $c->numero_documento, $c->nombre, $c->contacto, $c->telefono, $c->email,
-                        $c->direccion, $c->distrito, $c->provincia, $c->departamento, $c->estado,
+                        $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, $c->contacto, $c->cargo, $c->empresa,
+                        $c->telefono, $c->telefono_fijo, $c->email, $c->email_empresa,
+                        $c->direccion, $c->distrito, $c->provincia, $c->departamento, $c->fecha_cumpleanos?->format('d/m'), $c->asesor, $c->estado, $c->verificacion,
                         $c->ventas_count, number_format((float) $c->total_comprado, 2, '.', ''), $c->notas,
                     ], ';');
                 }
