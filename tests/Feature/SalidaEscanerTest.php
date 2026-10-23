@@ -7,6 +7,7 @@ use App\Models\Catalogo\MotivoMovimiento;
 use App\Models\Categoria;
 use App\Models\MovimientoInventario;
 use App\Models\Producto;
+use App\Models\ProductoImagen;
 use App\Models\ProductoVariante;
 use App\Models\Role;
 use App\Models\StockAlmacen;
@@ -153,5 +154,14 @@ class SalidaEscanerTest extends TestCase
 
         $this->assertSame(3, $this->stock($this->v1));
         $this->assertSame(3, $this->v1->fresh()->stock_actual);
+    }
+
+    public function test_la_ficha_del_producto_muestra_las_fotos_cargadas(): void
+    {
+        ProductoImagen::create(['producto_id' => $this->producto->id, 'variante_id' => $this->v1->id, 'ruta' => 'productos/1/foto-a.png', 'orden' => 1, 'es_principal' => true]);
+        ProductoImagen::create(['producto_id' => $this->producto->id, 'variante_id' => $this->v2->id, 'ruta' => 'productos/1/foto-b.png', 'orden' => 1, 'es_principal' => false]);
+
+        $this->get(route('inventario.productos.show', $this->producto))->assertOk()
+            ->assertSee('foto-a.png', false)->assertSee('foto-b.png', false);
     }
 }

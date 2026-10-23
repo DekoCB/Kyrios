@@ -338,6 +338,18 @@ class Producto extends Model
         return $this->hasMany(ProductoVariante::class);
     }
 
+    /** Fotos del producto (de todas sus variantes): primero las principales, luego por orden. */
+    public function imagenes()
+    {
+        return $this->hasMany(ProductoImagen::class)->orderByDesc('es_principal')->orderBy('orden')->orderBy('id');
+    }
+
+    /** URL de la foto principal: la primera de producto_imagenes o, si no hay, la imagen antigua del producto. */
+    public function getImagenPrincipalUrlAttribute(): ?string
+    {
+        return $this->imagenes->first()?->url ?? $this->imagen_url;
+    }
+
     public function variantesActivas()
     {
         return $this->hasMany(ProductoVariante::class)->where('estado', 'activo');

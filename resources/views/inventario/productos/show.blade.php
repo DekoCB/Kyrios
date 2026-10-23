@@ -45,17 +45,31 @@
             <!-- Columna izquierda: Imagen e información básica -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                    <!-- Imagen -->
-                    <div class="p-6 flex justify-center bg-gray-50 border-b">
-                        @if($producto->imagen)
-                            <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}" class="max-h-64 object-contain">
-                        @else
-                            <div class="h-48 w-48 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <!-- Imagen: foto principal + miniaturas de las fotos cargadas (hasta 6 por variante) -->
+                    @php
+                        $fotos = $producto->imagenes->map(fn ($i) => $i->url)->values();
+                        if ($fotos->isEmpty() && $producto->imagen_url) { $fotos = collect([$producto->imagen_url]); }
+                    @endphp
+                    <div class="p-6 bg-gray-50 border-b" x-data="{ fotos: @js($fotos), actual: 0, fallo: false }">
+                        <div class="flex justify-center">
+                            <template x-if="fotos.length && !fallo">
+                                <img :src="fotos[actual]" alt="{{ $producto->nombre }}" class="max-h-64 w-full object-contain" x-on:error="fallo = true">
+                            </template>
+                            <div x-show="!fotos.length || fallo" class="h-48 w-48 bg-gray-200 rounded-lg flex items-center justify-center" @if($fotos->isNotEmpty()) style="display:none" @endif>
                                 <i class="fas fa-box text-6xl text-gray-400"></i>
                             </div>
-                        @endif
+                        </div>
+                        <div x-show="fotos.length > 1" class="flex flex-wrap justify-center gap-2 mt-4 max-h-36 overflow-y-auto" style="display:none">
+                            <template x-for="(f, i) in fotos" :key="i">
+                                <button type="button" @click="actual = i; fallo = false"
+                                        :class="actual === i ? 'ring-2 ring-blue-500' : 'opacity-70 hover:opacity-100'"
+                                        class="h-14 w-14 rounded-lg overflow-hidden border border-gray-200 bg-white">
+                                    <img :src="f" alt="" class="h-full w-full object-cover" loading="lazy">
+                                </button>
+                            </template>
+                        </div>
                     </div>
-                    
+
                     <!-- Información básica -->
                     <div class="p-6">
                         <h2 class="text-xl font-bold text-gray-900 mb-4">{{ $producto->nombre }}</h2>
