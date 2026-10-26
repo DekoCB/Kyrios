@@ -22,8 +22,9 @@ return new class extends Migration
         Schema::table('stock_almacen', function (Blueprint $table) {
             $table->foreignId('variante_id')->nullable()->after('producto_id')
                 ->constrained('producto_variantes')->cascadeOnDelete();
-            // Los NULL no cuentan como iguales en un índice único: esta columna los convierte en 0
-            $table->unsignedBigInteger('variante_key')->storedAs('COALESCE(variante_id, 0)');
+            // Los NULL no cuentan como iguales en un índice único: esta columna los convierte en 0.
+            // Virtual (no almacenada): MySQL 8 no admite una columna almacenada sobre una FK con ON DELETE CASCADE.
+            $table->unsignedBigInteger('variante_key')->virtualAs('COALESCE(variante_id, 0)');
         });
 
         Schema::table('stock_almacen', function (Blueprint $table) {
