@@ -230,7 +230,7 @@
                             </label>
                         </div>
                         @unless($esRuc)
-                            <p class="text-xs text-gray-500 mt-2">La factura requiere un cliente con RUC; este cliente tiene {{ $cliente->tipo_documento }}.</p>
+                            <p class="text-xs text-gray-500 mt-2">La factura requiere un cliente con RUC; este cliente {{ $cliente->tipo_documento ? 'tiene ' . $cliente->tipo_documento : 'no tiene documento' }}.</p>
                         @endunless
                         <p x-show="tipo === 'nota_venta'" x-cloak class="text-xs text-gray-500 mt-2">Documento interno: no se envía a SUNAT.</p>
                     </div>

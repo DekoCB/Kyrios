@@ -13,6 +13,11 @@ class CuentaPorCobrarController extends Controller
 {
     public function index(Request $request)
     {
+        // Primero se actualizan los vencidos, para que la lista y los totales ya salgan al día.
+        CuentaPorCobrar::where('estado', 'vigente')
+            ->where('fecha_vencimiento_final', '<', now())
+            ->update(['estado' => 'vencido']);
+
         $query = CuentaPorCobrar::with('cliente', 'venta', 'usuario')
             ->orderByRaw("FIELD(estado, 'vencido', 'vigente', 'pagado', 'anulado')")
             ->orderBy('fecha_vencimiento_final');
@@ -33,11 +38,6 @@ class CuentaPorCobrarController extends Controller
 
         $cuentas = $query->paginate(15)->withQueryString();
 
-        // Actualizar estados vencidos automáticamente
-        CuentaPorCobrar::where('estado', 'vigente')
-            ->where('fecha_vencimiento_final', '<', now())
-            ->update(['estado' => 'vencido']);
-
         // Estadísticas
         $stats = [
             'total_pendiente'  => CuentaPorCobrar::activas()->sum(DB::raw('monto_total - monto_pagado')),
@@ -54,10 +54,9 @@ class CuentaPorCobrarController extends Controller
         return view('ventas.cuentas-por-cobrar.index', compact('cuentas', 'stats', 'clientes'));
     }
 
+    /** El detalle del crédito (cuotas, pagos y cobro) vive en la ficha de crédito de la venta. */
     public function show(CuentaPorCobrar $cuentaPorCobrar)
     {
-        $cuentaPorCobrar->load('cliente', 'venta.detalles.producto', 'cuotas', 'pagos.usuario');
-
-        return view('ventas.cuentas-por-cobrar.show', compact('cuentaPorCobrar'));
+        return redirect()->route('ventas.credito.show', $cuentaPorCobrar->venta_id);
     }
 }

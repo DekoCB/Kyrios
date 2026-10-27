@@ -115,7 +115,7 @@ class StoreVentaRequest extends FormRequest
             if ($cliente->tipo_documento !== 'RUC') {
                 $v->errors()->add(
                     'cliente_id',
-                    'Para emitir factura, el cliente debe tener RUC (actualmente tiene ' . $cliente->tipo_documento . ').'
+                    'Para emitir factura, el cliente debe tener RUC (actualmente ' . ($cliente->tipo_documento ? 'tiene ' . $cliente->tipo_documento : 'no tiene documento') . ').'
                 );
                 return;
             }

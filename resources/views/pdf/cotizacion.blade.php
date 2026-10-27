@@ -99,7 +99,7 @@ table.items tbody td.right  { text-align: right; }
 
 <div class="cliente-box">
     <div class="cliente-grid">
-        <div class="cliente-row"><div class="cliente-label">{{ $cliente->tipo_documento === 'RUC' ? 'R.U.C.' : $cliente->tipo_documento }}:</div><div class="cliente-val">{{ $cliente->numero_documento }}</div></div>
+        <div class="cliente-row"><div class="cliente-label">{{ $cliente->tipo_documento === 'RUC' ? 'R.U.C.' : ($cliente->tipo_documento ?? 'Doc.') }}:</div><div class="cliente-val">{{ $cliente->numero_documento ?? 'Sin documento' }}</div></div>
         <div class="cliente-row"><div class="cliente-label">{{ $cliente->tipo_documento === 'RUC' ? 'Razón social' : 'Cliente' }}:</div><div class="cliente-val">{{ $cliente->nombre }}</div></div>
         @if($cliente->direccion)
             <div class="cliente-row"><div class="cliente-label">Dirección:</div><div class="cliente-val">{{ $cliente->direccion }}</div></div>

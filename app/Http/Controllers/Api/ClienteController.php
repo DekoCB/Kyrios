@@ -20,10 +20,7 @@ class ClienteController extends Controller
 
         $documento = $request->documento;
 
-        $cliente = Cliente::where('numero_documento', $documento)
-            ->orWhere('ruc', $documento)
-            ->orWhere('dni', $documento)
-            ->first();
+        $cliente = Cliente::where('numero_documento', $documento)->first();
 
         if (!$cliente) {
             return response()->json([

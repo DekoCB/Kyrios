@@ -15,6 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // Pantalla de «sistema suspendido» (falta de pago). Se lee aquí para que funcione con config:cache.
+    'sistema_bloqueado' => filter_var(env('SISTEMA_BLOQUEADO', false), FILTER_VALIDATE_BOOLEAN),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

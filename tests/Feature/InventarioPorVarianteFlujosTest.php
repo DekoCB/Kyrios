@@ -84,6 +84,7 @@ class InventarioPorVarianteFlujosTest extends TestCase
     public function test_una_devolucion_vuelve_a_la_variante_vendida_y_se_puede_anular(): void
     {
         $venta = $this->vender($this->v1, 3);
+        $venta->update(['estado_pago' => 'pagado']); // solo se devuelven ventas pagadas
         $this->assertSame(7, $this->stock($this->v1, $this->a));
         $detalle = DetalleVenta::where('venta_id', $venta->id)->first();
 
@@ -106,6 +107,7 @@ class InventarioPorVarianteFlujosTest extends TestCase
     public function test_no_se_puede_devolver_mas_de_lo_vendido(): void
     {
         $venta = $this->vender($this->v1, 3);
+        $venta->update(['estado_pago' => 'pagado']); // solo se devuelven ventas pagadas
         $detalle = DetalleVenta::where('venta_id', $venta->id)->first();
 
         $this->post(route('devoluciones.store'), [

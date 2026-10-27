@@ -348,13 +348,17 @@ class SunatComprobanteService
 
     private function buildClient(Venta $venta): Client
     {
-        $tipoDoc = match (strtolower($venta->cliente?->tipo_documento ?? 'dni')) {
+        // Un cliente registrado sin documento (prospecto) va como «sin documento» (tipo 0, número «-»),
+        // no como DNI: un DNI inventado puede hacer que SUNAT rechace el comprobante.
+        $sinDocumento = $venta->cliente && blank($venta->cliente->numero_documento);
+
+        $tipoDoc = $sinDocumento ? '0' : match (strtolower($venta->cliente?->tipo_documento ?? 'dni')) {
             'ruc' => '6', 'dni' => '1', 'pasaporte' => '7', 'ce' => '4', default => '0',
         };
 
         $client = new Client();
         $client->setTipoDoc($tipoDoc)
-            ->setNumDoc($venta->cliente?->numero_documento ?? $venta->cliente?->documento ?? '00000000')
+            ->setNumDoc($sinDocumento ? '-' : ($venta->cliente?->numero_documento ?? $venta->cliente?->documento ?? '00000000'))
             ->setRznSocial($venta->cliente?->nombre ?? 'CLIENTE VARIOS');
 
         return $client;

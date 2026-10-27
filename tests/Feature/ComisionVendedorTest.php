@@ -359,6 +359,10 @@ class ComisionVendedorTest extends TestCase
             'No debería existir comisión mientras la venta sigue "pendiente".'
         );
 
+        // Quien confirma el cobro necesita su caja abierta (el cobro se registra ahí).
+        \App\Models\Caja::create(['user_id' => $this->admin->id, 'almacen_id' => $this->almacen->id, 'fecha' => now()->toDateString(),
+            'fecha_apertura' => now(), 'monto_inicial' => 0, 'estado' => 'abierta']);
+
         app(VentaService::class)->confirmarPago($venta->id, 'efectivo', $this->admin->id);
 
         $comision = ComisionDetalleVenta::where('detalle_venta_id', $detalle->id)->first();

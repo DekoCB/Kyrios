@@ -10,7 +10,7 @@ class CheckSistemaBloqueado
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (env('SISTEMA_BLOQUEADO', false) === true || env('SISTEMA_BLOQUEADO', 'false') === 'true') {
+        if (config('app.sistema_bloqueado')) {
             // Permitir rutas de auth y la propia vista de bloqueo
             if ($request->routeIs('sistema.bloqueado') || $request->routeIs('logout') || $request->routeIs('login')) {
                 return $next($request);

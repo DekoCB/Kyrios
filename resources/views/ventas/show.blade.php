@@ -178,7 +178,7 @@
                     default      => ucfirst($venta->tipo_comprobante),
                 };
 
-                $waMsg = "Hola {$venta->cliente->nombre}, le compartimos su comprobante de compra 🧾\n\n"
+                $waMsg = "Hola" . ($venta->cliente ? " {$venta->cliente->nombre}" : "") . ", le compartimos su comprobante de compra 🧾\n\n"
                        . "📄 *{$tipoDoc} {$venta->codigo}*\n"
                        . "📅 " . $venta->fecha->format('d/m/Y') . "\n"
                        . "💰 Total: S/ " . number_format($venta->total, 2) . "\n\n"
@@ -731,7 +731,7 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <dt class="text-sm text-gray-400">Documento</dt>
-                        <dd class="text-sm font-mono text-gray-700" x-text="cliente.tipo_documento + ' ' + cliente.numero_documento"></dd>
+                        <dd class="text-sm font-mono text-gray-700" x-text="cliente.numero_documento ? cliente.tipo_documento + ' ' + cliente.numero_documento : 'Sin documento'"></dd>
                     </div>
                     <template x-if="cliente.telefono">
                         <div class="flex justify-between items-center">

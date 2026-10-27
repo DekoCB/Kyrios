@@ -75,9 +75,11 @@ class TrasladoService
             throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante que va a trasladar.");
         }
 
+        // Bloqueo de la fila: dos traslados simultáneos no pueden usar la misma existencia
         $stockOrigen = StockAlmacen::where('producto_id', $producto->id)
             ->where('almacen_id', $origenId)
             ->deVariante($varianteId)
+            ->lockForUpdate()
             ->first();
 
         if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
@@ -107,9 +109,19 @@ class TrasladoService
         // Descontar stock en origen inmediatamente (reserva)
         $stockOrigen->decrement('cantidad', $cantidad);
 
-        // Sincronizar stock_actual del producto con la suma real de almacenes
-        $totalStock = StockAlmacen::where('producto_id', $producto->id)->sum('cantidad');
-        $producto->update(['stock_actual' => $totalStock]);
+        // Sincronizar stock_actual del producto y de la variante con la suma real de almacenes
+        $this->sincronizarStock($producto->id, $varianteId);
+    }
+
+    /** stock_actual del producto y de la variante = suma de sus filas en stock_almacen. */
+    private function sincronizarStock(int $productoId, ?int $varianteId): void
+    {
+        Producto::where('id', $productoId)->update(['stock_actual' => StockAlmacen::where('producto_id', $productoId)->sum('cantidad')]);
+
+        if ($varianteId) {
+            \App\Models\ProductoVariante::where('id', $varianteId)
+                ->update(['stock_actual' => StockAlmacen::where('variante_id', $varianteId)->sum('cantidad')]);
+        }
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -148,8 +160,7 @@ class TrasladoService
                 $stockDestino->increment('cantidad', $movimiento->cantidad);
 
                 // Sincronizar stock_actual con la suma real de todos los almacenes
-                $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
-                $movimiento->producto->update(['stock_actual' => $totalStock]);
+                $this->sincronizarStock($movimiento->producto_id, $movimiento->variante_id);
 
                 $movimiento->update([
                     'estado'              => 'confirmado',
@@ -191,8 +202,7 @@ class TrasladoService
                 $stockOrigen = StockAlmacen::fila($movimiento->producto_id, $movimiento->almacen_id, $movimiento->variante_id);
                 $stockOrigen->increment('cantidad', $movimiento->cantidad);
 
-                $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
-                $movimiento->producto->update(['stock_actual' => $totalStock]);
+                $this->sincronizarStock($movimiento->producto_id, $movimiento->variante_id);
 
                 $obsActual = $movimiento->observaciones;
                 $movimiento->update([
@@ -286,8 +296,7 @@ class TrasladoService
                 }
                 // estado === 'anulado': el stock ya se devolvió antes, no se toca.
 
-                $totalStock = StockAlmacen::where('producto_id', $movimiento->producto_id)->sum('cantidad');
-                $movimiento->producto->update(['stock_actual' => $totalStock]);
+                $this->sincronizarStock($movimiento->producto_id, $movimiento->variante_id);
             }
 
             if ($huboReversion && $representante->numero_guia) {

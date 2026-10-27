@@ -89,7 +89,7 @@ class CodigoBarrasService
             'codigo' => $producto->codigo_barras ?? $this->generarCodigoUnico($producto),
             'precio' => $producto->precio_venta ?? 0,
             'stock' => $producto->stock_actual ?? 0,
-            'url' => route('productos.show', $producto),
+            'url' => route('inventario.productos.show', $producto),
         ];
         
         // Aquí podrías usar una librería como simplesoftwareio/simple-qrcode

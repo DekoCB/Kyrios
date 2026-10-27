@@ -238,7 +238,7 @@ class SucursalController extends Controller
         $validated = $request->validate([
             'nombre'    => 'required|string|max:150',
             'direccion' => 'nullable|string|max:300',
-            'telefono'  => 'nullable|string|max:20',
+            'telefono'  => 'nullable|string|max:15',
         ]);
 
         $almacen = Almacen::create([

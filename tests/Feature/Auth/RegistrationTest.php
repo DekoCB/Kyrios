@@ -17,7 +17,10 @@ class RegistrationTest extends TestCase
 
     private function claveMaestra(): string
     {
-        return env('MASTER_PASSWORD', 'ImportMaster2024');
+        // Sin valor por defecto en el sistema: cada test fija su propia clave maestra.
+        config(['auth.master_password' => 'Clave-Maestra-Prueba']);
+
+        return 'Clave-Maestra-Prueba';
     }
 
     public function test_el_registro_pide_la_clave_maestra_primero(): void

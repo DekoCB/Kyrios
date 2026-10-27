@@ -112,4 +112,17 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Contraseña maestra
+    |--------------------------------------------------------------------------
+    |
+    | Protege el registro de usuarios y el restablecimiento directo de contraseñas.
+    | Se lee aquí (y no con env() en el código) para que funcione con config:cache.
+    | Sin valor configurado, esas pantallas quedan cerradas.
+    |
+    */
+
+    'master_password' => env('MASTER_PASSWORD'),
+
 ];

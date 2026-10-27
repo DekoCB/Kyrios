@@ -568,11 +568,24 @@ public function create()
                 ->with('info', 'El producto tiene movimientos registrados y fue desactivado. Puedes reactivarlo desde la sección de productos inactivos.');
         }
 
-        // Sin movimientos: borrado físico
+        // Sin movimientos: borrado físico. Si algo más lo referencia (pedido, cotización, guía de remisión)
+        // la base lo impide: en ese caso se desactiva en vez de fallar con un error.
+        try {
+            $producto->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+            $producto->update(['estado' => 'inactivo']);
+
+            return redirect()
+                ->route('inventario.productos.index')
+                ->with('info', 'El producto está en pedidos, cotizaciones o guías y fue desactivado. Puedes reactivarlo desde la sección de productos inactivos.');
+        }
+
         if ($producto->imagen) {
             Storage::disk('public')->delete($producto->imagen);
         }
-        $producto->delete();
 
         return redirect()
             ->route('inventario.productos.index')
@@ -958,19 +971,6 @@ public function destroyVariante(ProductoVariante $variante, VarianteService $var
     }
 }
 
-/**
- * Mostrar productos de un proveedor específico
- */
-public function productosPorProveedor($proveedorId)
-{
-    $proveedor = \App\Models\Proveedor::findOrFail($proveedorId);
-    
-    $productos = Producto::whereHas('proveedores', function($q) use ($proveedorId) {
-        $q->where('proveedor_id', $proveedorId);
-    })->with(['marca', 'modelo', 'color'])->get();
-    
-    return view('proveedores.productos', compact('proveedor', 'productos'));
-}
 
 /**
  * Asociar producto a proveedor

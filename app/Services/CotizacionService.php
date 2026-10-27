@@ -292,7 +292,7 @@ class CotizacionService
             return;
         }
         if ($cliente->tipo_documento !== 'RUC') {
-            throw new \DomainException("Para emitir factura, el cliente debe tener RUC (actualmente tiene {$cliente->tipo_documento}).");
+            throw new \DomainException('Para emitir factura, el cliente debe tener RUC (actualmente ' . ($cliente->tipo_documento ? "tiene {$cliente->tipo_documento}" : 'no tiene documento') . ').');
         }
         if (strlen($cliente->numero_documento) !== 11) {
             throw new \DomainException('Para emitir factura, el RUC debe tener exactamente 11 dígitos.');

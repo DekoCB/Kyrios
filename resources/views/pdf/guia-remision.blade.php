@@ -224,7 +224,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                         <div class="tr">
                             <div class="td" style="width:28%">
                                 <div class="fl">Tipo Doc.</div>
-                                <div class="fv">{{ strtoupper($venta->cliente?->tipo_documento ?? 'DNI') }}</div>
+                                <div class="fv">{{ $venta->cliente && !$venta->cliente->tipo_documento ? 'SIN DOC.' : strtoupper($venta->cliente?->tipo_documento ?? 'DNI') }}</div>
                             </div>
                             <div class="td">
                                 <div class="fl">Nro. Documento</div>

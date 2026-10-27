@@ -159,7 +159,7 @@
                             @forelse($productos as $prod)
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-4 py-3">
-                                        <a href="{{ route('productos.show', $prod['id']) }}"
+                                        <a href="{{ route('inventario.productos.show', $prod['id']) }}"
                                            class="text-sm font-semibold text-blue-600 hover:underline">
                                             {{ $prod['nombre'] }}
                                         </a>

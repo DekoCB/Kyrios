@@ -461,12 +461,6 @@ class CompraController extends Controller
     }
 
 
-    public function imprimir(Compra $compra)
-    {
-        // Generar PDF de la compra
-        $pdf = \PDF::loadView('compras.pdf', compact('compra'));
-        return $pdf->download('compra-' . $compra->numero_factura . '.pdf');
-    }
 
     public function anular(Request $request, Compra $compra)
     {

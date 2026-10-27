@@ -255,6 +255,8 @@ class GuiaRemisionModalidadTest extends TestCase
     public function test_devolucion_con_guia_publico_no_guarda_datos_de_conductor(): void
     {
         $venta = $this->crearVentaSinPago();
+        // Solo se devuelven ventas pagadas (la pantalla de devoluciones no ofrece otras).
+        $venta->update(['estado_pago' => 'pagado']);
 
         $response = $this->post(route('devoluciones.store'), [
             'cliente_id' => $this->cliente->id,

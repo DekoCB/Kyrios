@@ -23,7 +23,7 @@
                     <p class="font-semibold">Tienes una caja del {{ $cajaAtrasada->fecha->format('d/m/Y') }} sin cerrar.</p>
                     <p class="text-xs text-red-600 mt-0.5">Ciérrala antes de continuar operando.</p>
                 </div>
-                <a href="{{ route('cajas.show', $cajaAtrasada) }}"
+                <a href="{{ route('caja.actual') }}"
                    class="ml-auto px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition">
                     Ver Caja
                 </a>

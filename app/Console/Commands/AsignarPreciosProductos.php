@@ -84,7 +84,6 @@ class AsignarPreciosProductos extends Command
                             'producto_id' => $producto->id,
                             'tipo_precio' => 'venta_regular',
                             'precio'      => $precio,
-                            'moneda'      => 'PEN',
                             'activo'      => true,
                             'prioridad'   => 0,
                             'creado_por'  => 1, // admin por defecto

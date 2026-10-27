@@ -20,11 +20,22 @@ class TiendaController extends Controller
         $this->middleware('role:Tienda');
     }
 
+    /** Un usuario Tienda sin almacén no puede ver ni pedir stock: se le avisa en vez de fallar. */
+    private function sinAlmacen()
+    {
+        return redirect()->route('tienda.dashboard')
+            ->with('error', 'Tu usuario no tiene un almacén asignado. Pide al administrador que te asigne uno.');
+    }
+
     /**
      * Ver inventario de todas las tiendas/almacenes
      */
     public function inventario(Request $request)
     {
+        if (!auth()->user()->almacen_id) {
+            return $this->sinAlmacen();
+        }
+
         $tiendaActual = auth()->user()->almacen_id;
         
         $query = Producto::with(['categoria', 'marca', 'modelo', 'variantesActivas.color']);
@@ -95,6 +106,10 @@ class TiendaController extends Controller
      */
     public function solicitudes(Request $request)
     {
+        if (!auth()->user()->almacen_id) {
+            return $this->sinAlmacen();
+        }
+
         $tiendaActual = auth()->user()->almacen_id;
 
         $query = MovimientoInventario::with(['producto', 'variante.color', 'almacen', 'almacenDestino', 'usuario'])
@@ -123,6 +138,13 @@ class TiendaController extends Controller
             'cantidad' => 'required|integer|min:1',
             'motivo' => 'nullable|string|max:255',
         ]);
+
+        if (!auth()->user()->almacen_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tu usuario no tiene un almacén asignado. Pide al administrador que te asigne uno.',
+            ], 422);
+        }
 
         try {
             // Verificar que el almacén origen sea diferente al destino

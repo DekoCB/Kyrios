@@ -178,13 +178,14 @@ class AdminCajaController extends Controller
             'metodo_pago'   => 'efectivo',
         ]);
 
-        $caja->update([
-            'estado'               => 'cerrada',
-            'fecha_cierre'         => now(),
-            'monto_real_cierre'    => $caja->monto_final,
-            'diferencia_cierre'    => 0,
-            'observaciones_cierre' => '[FORZADO por ' . auth()->user()->name . '] ' . $request->observaciones,
-        ]);
+        // Se cierra con el efectivo esperado (monto_final también suma Yape, Plin y transferencias,
+        // que no están en el cajón), por el mismo camino que el cierre manual y el automático.
+        $esperado = $this->cajaService->getArqueo($caja->load('movimientos'))['saldo_esperado'];
+        $this->cajaService->cerrarCaja(
+            $caja->id,
+            $esperado,
+            '[FORZADO por ' . auth()->user()->name . '] ' . $request->observaciones
+        );
 
         return redirect()->route('admin.cajas.show', $caja)->with('success', 'Caja cerrada forzosamente.');
     }
@@ -199,18 +200,11 @@ class AdminCajaController extends Controller
         $monto = abs((float) $request->monto_ajuste);
         $tipo  = (float) $request->monto_ajuste >= 0 ? 'ingreso' : 'egreso';
 
-        MovimientoCaja::create([
-            'caja_id'       => $caja->id,
-            'user_id'       => auth()->id(),
-            'tipo'          => $tipo,
-            'monto'         => $monto,
-            'concepto'      => 'AJUSTE ADMINISTRATIVO: ' . $request->motivo_ajuste,
-            'metodo_pago'   => 'efectivo',
-        ]);
-
-        if ($caja->estado === 'cerrada') {
-            $caja->update(['diferencia_cierre' => ($caja->diferencia_cierre ?? 0) + (float) $request->monto_ajuste]);
-        }
+        // Actualiza también monto_final y, en una caja cerrada, recalcula la diferencia del cierre
+        // a partir del arqueo (un ingreso sube lo esperado, así que la diferencia baja).
+        $this->cajaService->registrarCorreccion(
+            $caja, $tipo, $monto, 'AJUSTE ADMINISTRATIVO: ' . $request->motivo_ajuste, null, 'efectivo'
+        );
 
         return back()->with('success', 'Ajuste de S/ ' . number_format($monto, 2) . ' registrado.');
     }

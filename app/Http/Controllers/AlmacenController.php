@@ -139,7 +139,9 @@ class AlmacenController extends Controller
      */
     public function edit(Almacen $almacen)
     {
-        return view('inventario.almacenes.edit', compact('almacen'));
+        $usuarios = User::with('role')->where('estado', 'activo')->orderBy('name')->get();
+
+        return view('inventario.almacenes.edit', compact('almacen', 'usuarios'));
     }
 
     /**
@@ -152,7 +154,14 @@ class AlmacenController extends Controller
             'direccion' => 'nullable|string|max:255',
             'telefono'  => 'nullable|string|max:20',
             'estado'    => 'required|in:activo,inactivo',
+            'encargado_id' => 'nullable|exists:users,id',
+            'tipo'      => 'nullable|in:principal,deposito,temporal',
         ]);
+
+        // Un almacén vinculado a una sucursal es de tipo tienda y su tipo no se edita
+        if ($almacen->sucursal_id) {
+            unset($validated['tipo']);
+        }
 
         $almacen->update($validated);
 

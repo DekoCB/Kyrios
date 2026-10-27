@@ -54,11 +54,14 @@ class UnidadMedidaController extends Controller
             'abreviatura' => 'required|string|max:10|unique:unidades_medida',
             'tipo' => 'required|in:unidad,masa,volumen,longitud,empaque'
         ]);
-        
+
+        // El formulario rápido usa «masa» y «empaque»; la columna `categoria` admite peso y otros.
+        $categoria = ['masa' => 'peso', 'empaque' => 'otros'][$request->tipo] ?? $request->tipo;
+
         $unidad = UnidadMedida::create([
             'nombre' => $request->nombre,
             'abreviatura' => $request->abreviatura,
-            'tipo' => $request->tipo,
+            'categoria' => $categoria,
             'estado' => 'activo'
         ]);
         

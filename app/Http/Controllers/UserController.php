@@ -53,12 +53,12 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'dni' => 'nullable|string|max:20|unique:users',
+            'dni' => 'nullable|string|digits:8|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'role_id' => 'required|exists:roles,id',
             'almacen_id' => 'nullable|exists:almacenes,id',
             'estado' => 'required|in:activo,inactivo',
-            'telefono' => 'nullable|string|max:20',
+            'telefono' => 'nullable|string|max:15',
             'direccion' => 'nullable|string|max:255',
         ]);
 
@@ -114,14 +114,22 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'dni' => 'nullable|string|max:20|unique:users,dni,' . $user->id,
+            'dni' => 'nullable|string|digits:8|unique:users,dni,' . $user->id,
             'role_id' => 'required|exists:roles,id',
             'almacen_id' => 'nullable|exists:almacenes,id',
             'estado' => 'required|in:activo,inactivo',
-            'telefono' => 'nullable|string|max:20',
+            'telefono' => 'nullable|string|max:15',
             'direccion' => 'nullable|string|max:255',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
+
+        // Un administrador no puede quitarse a sí mismo el acceso (se quedaría fuera del sistema).
+        if ($user->id === auth()->id()) {
+            $rolAdmin = Role::where('nombre', 'Administrador')->value('id');
+            if ($validated['estado'] !== 'activo' || (int) $validated['role_id'] !== (int) $rolAdmin) {
+                return back()->withInput()->with('error', 'No puedes desactivarte ni cambiar tu propio rol.');
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -167,9 +175,13 @@ class UserController extends Controller
             return redirect()
                 ->route('users.index')
                 ->with('success', 'Usuario eliminado exitosamente.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            // Tiene cajas, ventas u otros registros a su nombre: se conserva el historial.
+            return back()->with('error', 'No se puede eliminar: el usuario tiene registros a su nombre. Márquelo como inactivo desde «Editar».');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
+            return back()->with('error', 'No se pudo eliminar el usuario.');
         }
     }
 }

@@ -52,7 +52,6 @@ class CategoriaController extends Controller
     {
         $validated = $request->validate([
             'nombre' => 'required|string|max:100|unique:categorias,nombre',
-            'descripcion' => 'nullable|string',
             'imagen' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'estado' => 'required|in:activo,inactivo',
         ], [
@@ -105,7 +104,6 @@ class CategoriaController extends Controller
     {
         $validated = $request->validate([
             'nombre' => 'required|string|max:100|unique:categorias,nombre,' . $categoria->id,
-            'descripcion' => 'nullable|string',
             'imagen' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'estado' => 'required|in:activo,inactivo',
         ], [
@@ -138,12 +136,14 @@ class CategoriaController extends Controller
     public function destroy(Categoria $categoria)
     {
         try {
-            // Eliminar imagen si existe
-            if ($categoria->imagen) {
-                Storage::disk('public')->delete($categoria->imagen);
-            }
-            
+            $imagen = $categoria->imagen;
+
             $categoria->delete();
+
+            // La imagen se borra solo si la categoría se pudo eliminar
+            if ($imagen) {
+                Storage::disk('public')->delete($imagen);
+            }
             
             return redirect()
                 ->route('inventario.categorias.index')

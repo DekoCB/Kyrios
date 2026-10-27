@@ -184,6 +184,16 @@ class CajaController extends Controller
         }
     }
 
+    /** El id de la caja llega del formulario: solo su dueño o un administrador pueden moverla (igual que al cerrar). */
+    private function autorizarCaja(int $cajaId): void
+    {
+        $caja = Caja::findOrFail($cajaId);
+
+        if ($caja->user_id !== auth()->id() && auth()->user()->role->nombre !== 'Administrador') {
+            abort(403, 'No tienes acceso a esta caja.');
+        }
+    }
+
     /**
      * Registrar ingreso manual.
      */
@@ -197,6 +207,8 @@ class CajaController extends Controller
             'referencia'  => 'nullable|string|max:100',
             'observaciones' => 'nullable|string|max:500',
         ]);
+
+        $this->autorizarCaja((int) $validated['caja_id']);
 
         try {
             $this->cajaService->registrarMovimiento(
@@ -230,6 +242,8 @@ class CajaController extends Controller
             'categoria_gasto'=> 'required|in:operativo,limpieza,transporte,alimentacion,otros',
             'observaciones'  => 'nullable|string|max:500',
         ]);
+
+        $this->autorizarCaja((int) $validated['caja_id']);
 
         $conceptoCompleto = '[' . ucfirst($validated['categoria_gasto']) . '] ' . $validated['concepto'];
 

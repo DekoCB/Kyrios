@@ -162,6 +162,16 @@ class DevolucionController extends Controller
                     $detalle = DetalleVenta::with(['producto', 'variante', 'movimientosDevolucion', 'venta'])
                                            ->findOrFail($detalleId);
 
+                    // La pantalla solo ofrece líneas de ventas pagadas del cliente, pero el servidor debe
+                    // exigirlo: una venta anulada o eliminada ya repuso su stock y devolverla lo sumaría dos veces.
+                    $ventaOrigen = $detalle->venta;
+                    if (!$ventaOrigen || $ventaOrigen->estado_pago !== 'pagado') {
+                        throw new \Exception("«{$detalle->producto?->nombre}»: solo se devuelven productos de ventas pagadas (esta venta está anulada, eliminada o sin cobrar).");
+                    }
+                    if ((int) $ventaOrigen->cliente_id !== (int) $request->cliente_id) {
+                        throw new \Exception("«{$detalle->producto?->nombre}» no pertenece a una venta del cliente seleccionado.");
+                    }
+
                     $disponible = $detalle->cantidad_disponible;
 
                     if ($disponible <= 0) {

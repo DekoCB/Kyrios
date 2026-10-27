@@ -38,22 +38,9 @@ class PrecioRotativoService
             $query->where('proveedor_id', $proveedor->id);
         }
 
-        // Prioridad 2: Precio específico para este cliente
-        if ($cliente) {
-            $query->where('cliente_id', $cliente->id);
-        }
-
-        // Prioridad 3: Precio por tipo
+        // Precio por tipo. La tabla producto_precios no tiene cliente ni rango de cantidad:
+        // filtrar por esas columnas inexistentes provocaba un error de SQL.
         $query->where('tipo_precio', $tipoPrecio);
-
-        // Filtrar por cantidad si aplica
-        $query->where(function($q) use ($cantidad) {
-            $q->whereNull('cantidad_minima')
-              ->orWhere('cantidad_minima', '<=', $cantidad);
-        })->where(function($q) use ($cantidad) {
-            $q->whereNull('cantidad_maxima')
-              ->orWhere('cantidad_maxima', '>=', $cantidad);
-        });
 
         // Ordenar por prioridad (menor número = mayor prioridad)
         $precio = $query->orderBy('prioridad', 'asc')
@@ -64,10 +51,10 @@ class PrecioRotativoService
             return [
                 'precio' => $precio->precio,
                 'incluye_igv' => (bool) $precio->incluye_igv,
-                'moneda' => $precio->moneda,
+                'moneda' => 'PEN',
                 'tipo' => $precio->tipo_precio,
                 'proveedor_id' => $precio->proveedor_id,
-                'cliente_id' => $precio->cliente_id,
+                'cliente_id' => null,
                 'id_precio' => $precio->id
             ];
         }

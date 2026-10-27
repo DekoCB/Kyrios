@@ -20,7 +20,7 @@
 
         <!-- Buscador -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <form action="{{ route('inventario.consulta-tienda') }}" method="GET">
+            <form action="{{ route('inventario.productos.consulta-tienda') }}" method="GET">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Buscar Producto</label>
@@ -43,7 +43,7 @@
                 </div>
 
                 <div class="flex justify-end space-x-3 mt-4">
-                    <a href="{{ route('inventario.consulta-tienda') }}" class="text-gray-600 hover:text-gray-900">
+                    <a href="{{ route('inventario.productos.consulta-tienda') }}" class="text-gray-600 hover:text-gray-900">
                         <i class="fas fa-redo mr-2"></i>Limpiar
                     </a>
                     <button type="submit" class="bg-blue-900 text-white px-6 py-2 rounded-lg hover:bg-blue-800">

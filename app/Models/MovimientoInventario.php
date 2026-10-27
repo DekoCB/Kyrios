@@ -335,6 +335,8 @@ public static function registrarMovimiento($datos)
         }
 
         $stockAlmacen = \App\Models\StockAlmacen::fila($datos['producto_id'], $datos['almacen_id'], $varianteId);
+        // Bloqueo de la fila: dos movimientos simultáneos no pueden leer la misma existencia
+        $stockAlmacen = \App\Models\StockAlmacen::whereKey($stockAlmacen->id)->lockForUpdate()->first();
 
         $stockAnterior = $stockAlmacen->cantidad;
         $cantidad = $datos['cantidad'];

@@ -199,8 +199,7 @@ class GuiaRemisionService
                     $stockDestino = StockAlmacen::fila($mov->producto_id, $guia->almacen_destino_id, $mov->variante_id);
                     $stockDestino->increment('cantidad', $mov->cantidad);
 
-                    $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
-                    $mov->producto->update(['stock_actual' => $totalStock]);
+                    $this->sincronizarStock($mov->producto_id, $mov->variante_id);
                 }
 
                 $mov->update([
@@ -232,8 +231,7 @@ class GuiaRemisionService
                 $stockOrigen = StockAlmacen::fila($mov->producto_id, $guia->almacen_id, $mov->variante_id);
                 $stockOrigen->increment('cantidad', $mov->cantidad);
 
-                $totalStock = StockAlmacen::where('producto_id', $mov->producto_id)->sum('cantidad');
-                $mov->producto->update(['stock_actual' => $totalStock]);
+                $this->sincronizarStock($mov->producto_id, $mov->variante_id);
 
                 $mov->update(['estado' => 'anulado']);
             }
@@ -261,9 +259,11 @@ class GuiaRemisionService
             throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante.");
         }
 
+        // Bloqueo de la fila: dos guías simultáneas no pueden usar la misma existencia
         $stockOrigen = StockAlmacen::where('producto_id', $producto->id)
             ->where('almacen_id', $almacenId)
             ->deVariante($varianteId)
+            ->lockForUpdate()
             ->first();
 
         if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
@@ -292,8 +292,18 @@ class GuiaRemisionService
 
         $stockOrigen->decrement('cantidad', $cantidad);
 
-        $total = StockAlmacen::where('producto_id', $producto->id)->sum('cantidad');
-        $producto->update(['stock_actual' => $total]);
+        $this->sincronizarStock($producto->id, $varianteId);
+    }
+
+    /** stock_actual del producto y de la variante = suma de sus filas en stock_almacen. */
+    private function sincronizarStock(int $productoId, ?int $varianteId): void
+    {
+        \App\Models\Producto::where('id', $productoId)->update(['stock_actual' => StockAlmacen::where('producto_id', $productoId)->sum('cantidad')]);
+
+        if ($varianteId) {
+            \App\Models\ProductoVariante::where('id', $varianteId)
+                ->update(['stock_actual' => StockAlmacen::where('variante_id', $varianteId)->sum('cantidad')]);
+        }
     }
 
     /**

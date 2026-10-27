@@ -69,6 +69,7 @@ Route::get('/dashboard', function () {
         'Almacenero'    => redirect()->route('almacenero.dashboard'),
         'Vendedor'      => redirect()->route('vendedor.dashboard'),
         'Tienda'        => redirect()->route('tienda.dashboard'),
+        'Proveedor'     => redirect()->route('proveedor.dashboard'),
         'Cajero'        => redirect()->route('cajero.dashboard'),
         'Técnico'       => redirect()->route('caja-chica.index'),
         default         => redirect()->route('login'),
@@ -82,7 +83,7 @@ Route::get('/dashboard', function () {
 */
 Route::middleware('guest')->group(function () {
     Route::get('/master-password', [MasterPasswordController::class, 'show'])->name('master-password.show');
-    Route::post('/master-password', [MasterPasswordController::class, 'verify'])->name('master-password.verify');
+    Route::post('/master-password', [MasterPasswordController::class, 'verify'])->middleware('throttle:6,1')->name('master-password.verify');
 });
 
 /*
@@ -209,10 +210,8 @@ Route::middleware('auth')->group(function () {
                 // 🔴 NUEVAS RUTAS PARA GENERAR CÓDIGOS DE BARRAS
                 Route::post('/productos/generar-codigo-barras', [ProductoController::class, 'generarCodigoBarras'])->name('productos.generar-codigo-barras');
                 Route::get('/productos/validar-codigo-barras', [ProductoController::class, 'validarCodigoBarras'])->name('productos.validar-codigo-barras');
-                // Gestión de proveedores del producto
-                Route::get('/productos/{producto}/proveedores', [ProductoController::class, 'proveedores'])->name('productos.proveedores');
+                // Asociar un proveedor al producto (no hay pantalla de listado ni de desasociar)
                 Route::post('/productos/{producto}/proveedores', [ProductoController::class, 'asociarProveedor'])->name('productos.proveedores.asociar');
-                Route::delete('/productos/proveedores/{productoProveedor}', [ProductoController::class, 'desasociarProveedor'])->name('productos.proveedores.desasociar');
             });
 
             Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
@@ -336,8 +335,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/{cuenta}', [App\Http\Controllers\CuentaPorPagarController::class, 'show'])->name('show');
         Route::post('/{cuenta}/registrar-pago', [App\Http\Controllers\CuentaPorPagarController::class, 'registrarPago'])->name('registrar-pago');
         Route::post('/{cuenta}/generar-cuotas', [App\Http\Controllers\CuentaPorPagarController::class, 'generarCuotas'])->name('generar-cuotas');
-        Route::get('/{cuenta}/programar-pago', [App\Http\Controllers\CuentaPorPagarController::class, 'programarPago'])->name('programar-pago');
-        Route::post('/{cuenta}/programar-pago', [App\Http\Controllers\CuentaPorPagarController::class, 'guardarProgramacion'])->name('guardar-programacion');
     });
 
     // También puedes agregar una ruta para el dashboard financiero
@@ -600,11 +597,11 @@ Route::middleware('auth')->group(function () {
         Route::post('colores/rapida', [App\Http\Controllers\Catalogo\ColorController::class,  'storeRapida'])->name('colores.rapida');
         Route::post('unidades/rapida', [App\Http\Controllers\Catalogo\UnidadMedidaController::class,  'storeRapida'])->name('unidades.rapida');
 
-        Route::resource('colores', App\Http\Controllers\Catalogo\ColorController::class)->parameters(['colores' => 'color']);
-        Route::resource('motivos', App\Http\Controllers\Catalogo\MotivoMovimientoController::class)->parameters(['motivos' => 'motivo']);
-        Route::resource('unidades', App\Http\Controllers\Catalogo\UnidadMedidaController::class)->parameters(['unidades' => 'unidade']);
-        Route::resource('marcas', App\Http\Controllers\Catalogo\MarcaController::class)->parameters(['marcas' => 'marca']);
-        Route::resource('modelos', App\Http\Controllers\Catalogo\ModeloController::class)->parameters(['modelos' => 'modelo']);
+        Route::resource('colores', App\Http\Controllers\Catalogo\ColorController::class)->parameters(['colores' => 'color'])->except(['show']);
+        Route::resource('motivos', App\Http\Controllers\Catalogo\MotivoMovimientoController::class)->parameters(['motivos' => 'motivo'])->except(['show']);
+        Route::resource('unidades', App\Http\Controllers\Catalogo\UnidadMedidaController::class)->parameters(['unidades' => 'unidade'])->except(['show']);
+        Route::resource('marcas', App\Http\Controllers\Catalogo\MarcaController::class)->parameters(['marcas' => 'marca'])->except(['show']);
+        Route::resource('modelos', App\Http\Controllers\Catalogo\ModeloController::class)->parameters(['modelos' => 'modelo'])->except(['show']);
         Route::get('modelos-por-marca/{marcaId}', [App\Http\Controllers\Catalogo\ModeloController::class, 'getModelosPorMarca'])->name('modelos.por-marca');
         Route::get('marcas-por-categoria/{categoriaId}', [App\Http\Controllers\Catalogo\MarcaController::class, 'getMarcasPorCategoria'])->name('marcas.por-categoria');
 
@@ -687,14 +684,6 @@ Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
     Route::get('/productos/buscar', [App\Http\Controllers\Api\ProductoController::class, 'buscarPorCodigo'])
         ->name('productos.buscar');
 
-    // Obtener precios de un producto (con lógica rotativa)
-    Route::get('/productos/{producto}/precios', [App\Http\Controllers\Api\ProductoController::class, 'obtenerPrecios'])
-        ->name('productos.precios');
-
-    // Obtener stock de producto por almacén
-    Route::get('/productos/{producto}/stock', [App\Http\Controllers\Api\ProductoController::class, 'obtenerStock'])
-        ->name('productos.stock');
-
     // Buscar cliente por documento
     Route::get('/clientes/buscar', [App\Http\Controllers\Api\ClienteController::class, 'buscarPorDocumento'])
         ->name('clientes.buscar');
@@ -702,10 +691,6 @@ Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
     // Obtener tipo de cambio del día
     Route::get('/tipo-cambio', [App\Http\Controllers\Api\TipoCambioController::class, 'obtener'])
         ->name('tipo-cambio');
-
-    // Validar código de barras (para creación de productos)
-    Route::get('/validar-codigo-barras', [App\Http\Controllers\Api\ProductoController::class, 'validarCodigoBarras'])
-        ->name('validar-codigo-barras');
 
     // ── VARIANTES ──────────────────────────────────────────────────────────────
     Route::prefix('variantes')->name('variantes.')->group(function () {
@@ -715,15 +700,18 @@ Route::prefix('api')->name('api.')->middleware('auth')->group(function () {
 
         // CRUD de variante individual
         Route::post('/', [App\Http\Controllers\Api\VarianteController::class, 'store'])
+            ->middleware('role:Administrador,Almacenero')
             ->name('store');
 
         Route::get('/{variante}', [App\Http\Controllers\Api\VarianteController::class, 'show'])
             ->name('show');
 
         Route::put('/{variante}', [App\Http\Controllers\Api\VarianteController::class, 'update'])
+            ->middleware('role:Administrador,Almacenero')
             ->name('update');
 
         Route::delete('/{variante}', [App\Http\Controllers\Api\VarianteController::class, 'destroy'])
+            ->middleware('role:Administrador,Almacenero')
             ->name('destroy');
 
         // Stock de variante

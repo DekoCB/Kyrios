@@ -244,7 +244,10 @@ class FacturacionElectronicaController extends Controller
         $igvTotal     = (float) $venta->igv;
         $totalPagar   = (float) $venta->total;
 
-        $tipoDocCliente = match(strtolower($venta->cliente?->tipo_documento ?? 'dni')) {
+        // Cliente registrado sin documento (prospecto): tipo 0, no DNI.
+        $sinDocumento = $venta->cliente && blank($venta->cliente->numero_documento);
+
+        $tipoDocCliente = $sinDocumento ? '0' : match(strtolower($venta->cliente?->tipo_documento ?? 'dni')) {
             'ruc'       => '6',
             'dni'       => '1',
             'pasaporte' => '7',

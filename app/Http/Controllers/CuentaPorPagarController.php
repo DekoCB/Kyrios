@@ -247,55 +247,6 @@ class CuentaPorPagarController extends Controller
     }
 
     /**
-     * Programar pago (modal)
-     */
-    public function programarPago(CuentaPorPagar $cuenta)
-    {
-        return view('cuentas-por-pagar.programar-pago', compact('cuenta'));
-    }
-
-    /**
-     * Guardar programación de pago
-     */
-    public function guardarProgramacion(Request $request, CuentaPorPagar $cuenta)
-    {
-        $validated = $request->validate([
-            'fecha_programada' => 'required|date|after_or_equal:today',
-            'monto' => 'required|numeric|min:0.01|max:' . $cuenta->saldo_pendiente,
-            'observaciones' => 'nullable|string|max:255',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            // Crear pago programado
-            Pago::create([
-                'cuenta_por_pagar_id' => $cuenta->id,
-                'monto' => $validated['monto'],
-                'fecha_pago' => $validated['fecha_programada'],
-                'metodo_pago' => 'programado',
-                'estado' => 'programado',
-                'usuario_id' => auth()->id(),
-                'observaciones' => $validated['observaciones'] ?? null,
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Pago programado correctamente'
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Registrar pago manual
      */
     public function registrarPago(Request $request, CuentaPorPagar $cuenta)
@@ -389,58 +340,33 @@ class CuentaPorPagarController extends Controller
         }
     }
 
-    /**
-     * Reporte de vencimientos
-     */
-    public function reporteVencimientos(Request $request)
-    {
-        $fechaInicio = $request->get('fecha_inicio', now()->startOfMonth());
-        $fechaFin = $request->get('fecha_fin', now()->endOfMonth());
-
-        $vencimientos = CuentaPorPagar::with('proveedor')
-            ->whereBetween('fecha_vencimiento', [$fechaInicio, $fechaFin])
-            ->whereIn('estado', ['pendiente', 'parcial'])
-            ->orderBy('fecha_vencimiento')
-            ->get();
-
-        $resumen = [
-            'total' => $vencimientos->sum('monto_total'),
-            'por_proveedor' => $vencimientos->groupBy('proveedor_id')
-                ->map(function($items) {
-                    return [
-                        'proveedor' => $items->first()->proveedor->razon_social,
-                        'cantidad' => $items->count(),
-                        'monto' => $items->sum('monto_total'),
-                    ];
-                }),
-        ];
-
-        return view('cuentas-por-pagar.reporte-vencimientos', compact('vencimientos', 'resumen', 'fechaInicio', 'fechaFin'));
-    }
 
     /**
      * Dashboard financiero general
      */
     public function dashboard()
     {
+        // Lo que se debe es el saldo (total menos lo ya pagado), no el total de la factura
+        $saldo = 'monto_total - monto_pagado';
+
         $stats = [
-            'por_pagar' => CuentaPorPagar::whereIn('estado', ['pendiente', 'parcial'])->sum('monto_total'),
-            'vencido' => CuentaPorPagar::where('estado', 'vencido')->sum('monto_total'),
-            'pagado_mes' => CuentaPorPagar::where('estado', 'pagado')
+            'por_pagar' => (float) CuentaPorPagar::whereIn('estado', ['pendiente', 'parcial', 'vencido'])->sum(DB::raw($saldo)),
+            'vencido' => (float) CuentaPorPagar::where('estado', 'vencido')->sum(DB::raw($saldo)),
+            'pagado_mes' => (float) CuentaPorPagar::whereYear('fecha_ultimo_pago', now()->year)
                 ->whereMonth('fecha_ultimo_pago', now()->month)
-                ->sum('monto_total'),
-            'proyeccion_30_dias' => CuentaPorPagar::whereBetween('fecha_vencimiento', [now(), now()->addDays(30)])
+                ->sum('monto_pagado'),
+            'proyeccion_30_dias' => (float) CuentaPorPagar::whereBetween('fecha_vencimiento', [now()->toDateString(), now()->addDays(30)->toDateString()])
                 ->whereIn('estado', ['pendiente', 'parcial'])
-                ->sum('monto_total'),
+                ->sum(DB::raw($saldo)),
         ];
 
         $proximosVencimientos = CuentaPorPagar::with('proveedor')
-            ->whereBetween('fecha_vencimiento', [now(), now()->addDays(7)])
+            ->whereBetween('fecha_vencimiento', [now()->toDateString(), now()->addDays(7)->toDateString()])
             ->whereIn('estado', ['pendiente', 'parcial'])
             ->orderBy('fecha_vencimiento')
             ->limit(10)
             ->get();
 
-        return view('cuentas-por-pagar.dashboard', compact('stats', 'proximosVencimientos'));
+        return view('compras.cuentas-por-pagar.dashboard', compact('stats', 'proximosVencimientos'));
     }
 }

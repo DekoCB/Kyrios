@@ -341,14 +341,14 @@ function empresaForm() {
         sunatOk: false,
 
         // Campos reactivos para autocompletar desde SUNAT
-        ruc:             '{{ old('ruc', $empresa->ruc) }}',
-        razon_social:    '{{ old('razon_social', $empresa->razon_social) }}',
-        nombre_comercial:'{{ old('nombre_comercial', $empresa->nombre_comercial) }}',
-        direccion:       '{{ old('direccion', $empresa->direccion) }}',
-        departamento:    '{{ old('departamento', $empresa->departamento) }}',
-        provincia:       '{{ old('provincia', $empresa->provincia) }}',
-        distrito:        '{{ old('distrito', $empresa->distrito) }}',
-        ubigeo:          '{{ old('ubigeo', $empresa->ubigeo) }}',
+        ruc:             @json(old('ruc', $empresa->ruc) ?? ''),
+        razon_social:    @json(old('razon_social', $empresa->razon_social) ?? ''),
+        nombre_comercial:@json(old('nombre_comercial', $empresa->nombre_comercial) ?? ''),
+        direccion:       @json(old('direccion', $empresa->direccion) ?? ''),
+        departamento:    @json(old('departamento', $empresa->departamento) ?? ''),
+        provincia:       @json(old('provincia', $empresa->provincia) ?? ''),
+        distrito:        @json(old('distrito', $empresa->distrito) ?? ''),
+        ubigeo:          @json(old('ubigeo', $empresa->ubigeo) ?? ''),
 
         async consultarRuc() {
             if (this.ruc.length !== 11) return;

@@ -315,8 +315,19 @@ class VentaController extends Controller
         }
     }
 
+    /** Igual que la lista de ventas: un vendedor solo ve las suyas (la ruta recibe el id, no la lista). */
+    private function autorizarVenta(Venta $venta): void
+    {
+        abort_if(
+            auth()->user()->role?->nombre === 'Vendedor' && $venta->user_id !== auth()->id(),
+            403,
+            'Esta venta es de otro vendedor.'
+        );
+    }
+
     public function show(Venta $venta)
     {
+        $this->autorizarVenta($venta);
         $venta->load('vendedor', 'confirmador', 'cliente', 'almacen', 'sucursal', 'serieComprobante',
             'detalles.producto.categoria', 'detalles.producto.unidadMedida', 'detalles.variante.color',
             'guiaRemision', 'cuentaPorCobrar.cuotas');
@@ -326,6 +337,7 @@ class VentaController extends Controller
 
     public function guiaPdf(Venta $venta)
     {
+        $this->autorizarVenta($venta);
         $venta->load('cliente', 'almacen', 'detalles.producto.unidadMedida', 'detalles.variante', 'guiaRemision');
 
         $guia = $venta->guiaRemision;
@@ -351,6 +363,7 @@ class VentaController extends Controller
 
     public function pdf(Request $request, Venta $venta)
     {
+        $this->autorizarVenta($venta);
         $formato = $request->get('formato', 'a4'); // a4 | ticket
 
         $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',
@@ -693,6 +706,7 @@ class VentaController extends Controller
 
     public function showCredito(Venta $venta)
     {
+        $this->autorizarVenta($venta);
         if (!$venta->es_credito) {
             return redirect()->route('ventas.show', $venta)->with('error', 'Esta venta no es a crédito.');
         }
@@ -726,6 +740,12 @@ class VentaController extends Controller
 
         if ($cuenta->estado === 'pagado') {
             return back()->with('error', 'Esta cuenta ya fue pagada completamente.');
+        }
+
+        // La cuota que se marca como pagada debe ser de ESTA cuenta (el id llega del formulario).
+        if (!empty($validated['cuota_cobro_id'])
+            && !$cuenta->cuotas()->whereKey($validated['cuota_cobro_id'])->exists()) {
+            return back()->with('error', 'La cuota elegida no pertenece a esta cuenta por cobrar.');
         }
 
         // Verificar que el monto no exceda el saldo pendiente

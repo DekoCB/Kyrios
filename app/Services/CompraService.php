@@ -428,6 +428,12 @@ class CompraService
     {
         DB::transaction(function () use ($compra, $datos, $detalles) {
 
+            // El stock de la compra ya está en su almacén: cambiar el almacén aquí dejaría el stock en el
+            // almacén original y la compra apuntando a otro (después no se podría ni anular).
+            if (isset($datos['almacen_id']) && (int) $datos['almacen_id'] !== (int) $compra->almacen_id) {
+                throw new \Exception('No se puede cambiar el almacén de una compra ya ingresada: el stock quedó en el almacén original. Anule la compra y regístrela de nuevo.');
+            }
+
             // Al crear la compra con "el precio ya incluye IGV" marcado, el
             // subtotal de CADA detalle se guarda tal cual se ingresó (con IGV
             // incluido), mientras que la cabecera (compra.subtotal) sí queda
@@ -464,6 +470,14 @@ class CompraService
                     $stock = StockAlmacen::fila($detalle->producto_id, $compra->almacen_id, $detalle->variante_id);
 
                     $stockAnterior = $stock->cantidad;
+
+                    // Bajar la cantidad comprada saca stock: no puede dejar el almacén en negativo
+                    if ($diff < 0 && $stockAnterior < abs($diff)) {
+                        throw new \Exception(
+                            "No se puede bajar la cantidad de «{$detalle->producto->nombre}»: en el almacén quedan {$stockAnterior} unidad(es) " .
+                            "y se intenta quitar " . abs($diff) . ". Parte del stock ya salió."
+                        );
+                    }
 
                     if ($diff > 0) {
                         $stock->increment('cantidad', $diff);

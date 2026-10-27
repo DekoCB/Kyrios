@@ -1037,6 +1037,12 @@ class VentaService
             throw new \Exception('La venta ya ha sido procesada');
         }
 
+        // Igual que al vender al contado o cobrar un crédito: sin caja abierta el cobro no tendría
+        // dónde registrarse y la venta quedaría pagada sin ingreso en caja.
+        if (!Caja::where('user_id', $usuarioId)->where('estado', 'abierta')->exists()) {
+            throw new \Exception('Debe abrir caja antes de confirmar un cobro. Vaya a Caja → Abrir Caja.');
+        }
+
         DB::transaction(function () use ($venta, $metodoPago, $usuarioId, $extra) {
             $update = [
                 'estado_pago'         => 'pagado',

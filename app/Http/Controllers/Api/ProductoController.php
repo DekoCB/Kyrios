@@ -28,35 +28,24 @@ class ProductoController extends Controller
             'almacen_id' => 'nullable|exists:almacenes,id'
         ]);
 
-        $codigo = $request->codigo;
         $almacenId = $request->almacen_id ?? auth()->user()->almacen_id;
 
-        // Buscar en códigos de barras
-        $codigoBarras = ProductoCodigoBarras::where('codigo', $codigo)
-            ->with('producto')
-            ->first();
+        // Misma búsqueda que usa el escáner: código Kyrios, del fabricante, del Excel o de barras
+        $variante = app(\App\Services\EscanerService::class)->buscar($request->codigo)->first();
 
-        if ($codigoBarras) {
-            $producto = $codigoBarras->producto;
-        } else {
-            // Buscar por código interno
-            $producto = Producto::where('codigo_interno', $codigo)
-                ->orWhere('sku', $codigo)
-                ->orWhere('codigo_barras', $codigo)
-                ->first();
-        }
-
-        if (!$producto) {
+        if (!$variante) {
             return response()->json([
                 'success' => false,
                 'message' => 'Producto no encontrado'
             ], 404);
         }
 
-        // Obtener stock del almacén
+        $producto = $variante->producto;
+
+        // Stock de la variante en el almacén
         $stock = 0;
         if ($almacenId) {
-            $stock = StockAlmacen::totalEn($producto->id, $almacenId);
+            $stock = StockAlmacen::cantidadEn($producto->id, $almacenId, $variante->id);
         }
 
         // Obtener precio vigente
@@ -67,7 +56,8 @@ class ProductoController extends Controller
             'producto' => [
                 'id' => $producto->id,
                 'nombre' => $producto->nombre,
-                'codigo_interno' => $producto->codigo_interno,
+                'variante_id' => $variante->id,
+                'codigo_interno' => $variante->codigo_kyrios ?? $variante->sku,
                 'precio_venta' => $precioInfo['precio'],
                 'incluye_igv' => $precioInfo['incluye_igv'],
                 'stock_actual' => $stock,

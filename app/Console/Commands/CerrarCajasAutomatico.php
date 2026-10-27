@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Caja;
-use App\Models\MovimientoCaja;
+use App\Services\CajaService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class CerrarCajasAutomatico extends Command
 {
@@ -36,27 +35,14 @@ class CerrarCajasAutomatico extends Command
             return 0;
         }
 
+        $servicio = app(CajaService::class);
         $cerradas = 0;
+
         foreach ($cajas as $caja) {
             try {
-                DB::transaction(function () use ($caja) {
-                    // Calcular saldo esperado de efectivo
-                    $mov          = $caja->movimientos;
-                    $ingresos     = $mov->where('tipo', 'ingreso');
-                    $egresos      = $mov->where('tipo', 'egreso');
-                    $efectivoIn   = $ingresos->whereNotNull('venta_id')->where('metodo_pago', 'efectivo')->sum('monto');
-                    $manualIn     = $ingresos->whereNull('venta_id')->whereNotIn('concepto', ['Sobrante en cierre de caja'])->sum('monto');
-                    $egresosTotal = $egresos->whereNotIn('concepto', ['Faltante en cierre de caja'])->sum('monto');
-                    $saldoEsperado = (float) $caja->monto_inicial + $efectivoIn + $manualIn - $egresosTotal;
-
-                    $caja->update([
-                        'estado'               => 'cerrada',
-                        'fecha_cierre'         => now(),
-                        'monto_real_cierre'    => $saldoEsperado,
-                        'diferencia_cierre'    => 0,
-                        'observaciones_cierre' => 'Cierre automático al fin del día (sistema)',
-                    ]);
-                });
+                // Mismo arqueo y mismo cierre que el manual: solo el efectivo cuenta para el cajón.
+                $esperado = $servicio->getArqueo($caja)['saldo_esperado'];
+                $servicio->cerrarCaja($caja->id, $esperado, 'Cierre automático al fin del día (sistema)');
 
                 $this->line("  ✓ Cerrada caja #{$caja->id} | {$caja->fecha} | {$caja->usuario?->name}");
                 $cerradas++;

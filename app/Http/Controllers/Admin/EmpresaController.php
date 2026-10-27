@@ -22,7 +22,7 @@ class EmpresaController extends Controller
             return response()->json(['error' => 'RUC inválido'], 422);
         }
 
-        $token = env('APIS_NET_PE_TOKEN', 'apis-token-demo');
+        $token = config('services.reniec.token') ?: 'apis-token-demo';
 
         $response = Http::withToken($token)
             ->timeout(8)

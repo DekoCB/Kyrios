@@ -15,7 +15,7 @@ class MasterPasswordController extends Controller
      */
     private function getMasterPassword(): string
     {
-    return env('MASTER_PASSWORD', 'ImportMaster2024');
+        return (string) config('auth.master_password');
     }
     public function show(Request $request): View
     {
@@ -36,8 +36,9 @@ class MasterPasswordController extends Controller
             'master_password.required' => 'La contraseña maestra es obligatoria.',
         ]);
 
-        // Verificar la contraseña maestra
-        if ($request->master_password !== $this->getMasterPassword()) {
+        // Sin contraseña maestra configurada, nadie puede pasar (no hay valor por defecto).
+        $maestra = $this->getMasterPassword();
+        if ($maestra === '' || !hash_equals($maestra, (string) $request->master_password)) {
             return back()->withErrors([
                 'master_password' => 'La contraseña maestra es incorrecta.',
             ])->withInput();
@@ -46,7 +47,9 @@ class MasterPasswordController extends Controller
         // Guardar en sesión que la contraseña maestra fue verificada
         session(['master_password_verified' => true]);
 
-        // Redirigir a la ruta original
-        return redirect($request->redirect);
+        // Solo a rutas internas del sistema: nunca a una dirección externa.
+        $destino = preg_match('/^[A-Za-z0-9\/_\-]+$/', $request->redirect) ? '/' . ltrim($request->redirect, '/') : '/register';
+
+        return redirect($destino);
     }
 }
