@@ -441,7 +441,7 @@
                             <li>
                                 <a href="{{ route('catalogo.modelos.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('catalogo.modelos.*') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-mobile-alt mr-3 text-sm"></i>Modelos
+                                    <i class="fas fa-lightbulb mr-3 text-sm"></i>Modelos
                                 </a>
                             </li>
                             <li>
@@ -672,7 +672,7 @@
                             <li>
                                 <a href="{{ route('catalogo.modelos.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors">
-                                    <i class="fas fa-mobile-alt mr-3 text-sm"></i>Modelos
+                                    <i class="fas fa-lightbulb mr-3 text-sm"></i>Modelos
                                 </a>
                             </li>
                         </ul>

@@ -371,7 +371,7 @@
                             @endif
                             <div class="flex items-center space-x-4">
                                 <div id="imagePreviewContainer" class="hidden">
-                                    <img id="imagePreview" src="" alt="Vista previa" class="h-20 w-20 object-cover rounded-lg border">
+                                    <img id="imagePreview" src="" alt="Vista previa" class="h-20 w-20 object-cover rounded-lg border border-gray-200">
                                 </div>
                                 <input type="file" name="imagen" id="imagen" accept="image/*"
                                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"

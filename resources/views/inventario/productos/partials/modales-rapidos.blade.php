@@ -87,7 +87,7 @@
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h3 id="modalModeloTitulo" class="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <span class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-mobile-alt text-indigo-700 text-sm"></i>
+                    <i class="fas fa-lightbulb text-indigo-700 text-sm"></i>
                 </span>
                 Nuevo Modelo
             </h3>

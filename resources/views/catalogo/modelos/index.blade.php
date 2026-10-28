@@ -39,7 +39,7 @@
                     <p class="text-xs text-gray-500 uppercase font-medium">Total Modelos</p>
                     <p class="text-3xl font-bold text-gray-800">{{ $total }}</p>
                 </div>
-                <div class="bg-blue-100 p-3 rounded-full"><i class="fas fa-mobile-alt text-blue-600 text-xl"></i></div>
+                <div class="bg-blue-100 p-3 rounded-full"><i class="fas fa-lightbulb text-blue-600 text-xl"></i></div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border-l-4 border-green-500 p-4 flex justify-between items-center">
                 <div>
@@ -123,7 +123,7 @@
                                      class="w-12 h-12 object-cover rounded-lg border border-gray-200">
                             @else
                                 <div class="w-12 h-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                                    <i class="fas fa-mobile-alt text-gray-400"></i>
+                                    <i class="fas fa-lightbulb text-gray-400"></i>
                                 </div>
                             @endif
                         </td>
@@ -163,7 +163,7 @@
                     @empty
                     <tr>
                         <td colspan="7" class="px-6 py-12 text-center text-gray-400">
-                            <i class="fas fa-mobile-alt text-4xl mb-3 block"></i>
+                            <i class="fas fa-lightbulb text-4xl mb-3 block"></i>
                             <p class="font-medium">No se encontraron modelos</p>
                             <button @click="abrirCrear()" class="text-blue-600 text-sm mt-1 inline-block hover:underline">
                                 Crear el primer modelo

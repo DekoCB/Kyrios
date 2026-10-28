@@ -1775,7 +1775,7 @@
                     <div class="bg-white border-2 border-gray-200 rounded-xl p-3 hover:border-indigo-300 hover:shadow-lg transition-all">
                         <div class="flex items-center gap-2 mb-2">
                             <div class="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                                <i class="fas fa-mobile-alt text-indigo-600 text-sm"></i>
+                                <i class="fas fa-lightbulb text-indigo-600 text-sm"></i>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-semibold text-gray-900 text-sm truncate">${p.nombre}</h4>
@@ -2635,7 +2635,7 @@ function guardarNuevoProducto() {
 <!-- MODAL: CREAR PRODUCTO RÁPIDO                                 -->
 <!-- ============================================================ -->
 <div id="modalCrearProducto"
-     class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden items-start justify-center p-4 overflow-y-auto">
+     class="fixed inset-0 bg-black/60 z-50 hidden items-start justify-center p-4 overflow-y-auto">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg my-auto">
 
         <!-- Header -->

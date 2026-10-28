@@ -115,7 +115,7 @@
         <button @click="showIngresoModal = true"
                 class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl p-4
                        flex items-center gap-4 transition-all shadow-sm">
-            <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+            <div class="bg-white/20 p-3 rounded-lg">
                 <i class="fas fa-plus-circle text-2xl"></i>
             </div>
             <div class="text-left">
@@ -127,7 +127,7 @@
         <button @click="showGastoModal = true"
                 class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl p-4
                        flex items-center gap-4 transition-all shadow-sm">
-            <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+            <div class="bg-white/20 p-3 rounded-lg">
                 <i class="fas fa-minus-circle text-2xl"></i>
             </div>
             <div class="text-left">
@@ -139,7 +139,7 @@
         <button @click="showCierreModal = true"
                 class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white rounded-xl p-4
                        flex items-center gap-4 transition-all shadow-sm">
-            <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+            <div class="bg-white/20 p-3 rounded-lg">
                 <i class="fas fa-lock text-2xl"></i>
             </div>
             <div class="text-left">

@@ -156,7 +156,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-3">Logo para fondo oscuro</label>
-                        <div class="mb-3 p-3 rounded-lg border inline-flex" style="background:#44413A;">
+                        <div class="mb-3 p-3 rounded-lg border border-gray-200 inline-flex" style="background:#44413A;">
                             <img src="{{ $empresa->logo_url }}" alt="Logo fondo oscuro" class="h-20 object-contain">
                         </div>
                         <p class="text-xs text-gray-500 mb-2">{{ $empresa->logo_path ? 'Logo subido por la empresa.' : 'Logo oficial de Kyrios (letras blancas). Se usa hasta que suba otro.' }}</p>
@@ -166,7 +166,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-3">Logo para fondo claro / Comprobantes</label>
-                        <div class="mb-3 p-3 bg-white rounded-lg border inline-flex">
+                        <div class="mb-3 p-3 bg-white rounded-lg border border-gray-200 inline-flex">
                             <img src="{{ $empresa->logo_pdf_url }}" alt="Logo comprobantes" class="h-20 object-contain">
                         </div>
                         <p class="text-xs text-gray-500 mb-2">{{ $empresa->logo_pdf_path ? 'Logo subido por la empresa.' : 'Logo oficial de Kyrios (letras oscuras). Se usa hasta que suba otro.' }}</p>

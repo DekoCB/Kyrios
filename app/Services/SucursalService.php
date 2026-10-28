@@ -33,6 +33,10 @@ class SucursalService
             $esTienda    = ($datos['tipo'] ?? 'tienda') === 'tienda';
             $tipoAlmacen = $esTienda ? 'tienda' : 'deposito';
             $prefixNombre = $esTienda ? 'Tienda ' : 'Almacén ';
+            // Si el nombre ya empieza con ese prefijo (p. ej. «Tienda Miraflores») no se repite
+            if (mb_stripos(trim($sucursal->nombre), trim($prefixNombre)) === 0) {
+                $prefixNombre = '';
+            }
 
             $almacen = Almacen::create([
                 'nombre'      => $prefixNombre . $sucursal->nombre,

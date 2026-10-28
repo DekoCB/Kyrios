@@ -303,6 +303,9 @@
                         <option value="{{ $alm->id }}">{{ $alm->nombre }}</option>
                     @endforeach
                 </select>
+                @if($almacenes->isEmpty())
+                    <p class="mt-1.5 text-xs text-red-600"><i class="fas fa-exclamation-circle mr-1"></i>No hay una tienda activa para vender. Cree una sucursal de tipo tienda en Administración y traslade stock hacia ella.</p>
+                @endif
             </div>
 
             {{-- Cart items (scrollable) --}}
