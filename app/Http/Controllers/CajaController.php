@@ -98,7 +98,7 @@ class CajaController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'monto_inicial'    => 'required|numeric|min:0',
+            'monto_inicial'    => 'required|numeric|min:0|max:9999999',
             'almacen_id'       => 'nullable|exists:almacenes,id',
             'observaciones'    => 'nullable|string|max:500',
         ]);
@@ -160,7 +160,7 @@ class CajaController extends Controller
     {
         $validated = $request->validate([
             'caja_id'             => 'required|exists:caja,id',
-            'monto_real_cierre'   => 'required|numeric|min:0',
+            'monto_real_cierre'   => 'required|numeric|min:0|max:9999999',
             'observaciones_cierre'=> 'nullable|string|max:500',
         ]);
 
@@ -201,7 +201,7 @@ class CajaController extends Controller
     {
         $validated = $request->validate([
             'caja_id'     => 'required|exists:caja,id',
-            'monto'       => 'required|numeric|min:0.01',
+            'monto'       => 'required|numeric|min:0.01|max:9999999',
             'concepto'    => 'required|string|max:255',
             'metodo_pago' => 'required|in:efectivo,yape,plin,transferencia',
             'referencia'  => 'nullable|string|max:100',
@@ -237,7 +237,7 @@ class CajaController extends Controller
     {
         $validated = $request->validate([
             'caja_id'        => 'required|exists:caja,id',
-            'monto'          => 'required|numeric|min:0.01',
+            'monto'          => 'required|numeric|min:0.01|max:9999999',
             'concepto'       => 'required|string|max:255',
             'categoria_gasto'=> 'required|in:operativo,limpieza,transporte,alimentacion,otros',
             'observaciones'  => 'nullable|string|max:500',

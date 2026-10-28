@@ -35,11 +35,19 @@ class ImportarClientes extends Command
             return self::FAILURE;
         }
 
-        $cuenta = ['creados' => 0, 'ya_existian' => 0, 'prospectos' => 0, 'con_documento' => 0];
+        $cuenta = ['creados' => 0, 'ya_existian' => 0, 'prospectos' => 0, 'con_documento' => 0, 'con_error' => 0];
+        $errores = [];
         $seco = (bool) $this->option('dry-run');
 
-        foreach ($datos['clientes'] as $fila) {
-            $fila = $this->limpiar($fila);
+        foreach ($datos['clientes'] as $posicion => $fila) {
+            $fila = $this->limpiar(is_array($fila) ? $fila : []);
+
+            if (empty($fila['nombre'])) {
+                $cuenta['con_error']++;
+                $errores[] = 'Fila ' . ($posicion + 1) . ': sin nombre';
+                continue;
+            }
+
             $existente = $this->buscarExistente($fila);
 
             if ($existente) {
@@ -47,20 +55,31 @@ class ImportarClientes extends Command
                 continue;
             }
 
-            $cuenta[$fila['numero_documento'] ? 'con_documento' : 'prospectos']++;
-            $cuenta['creados']++;
-
             if (!$seco) {
-                $creado = $fila['created_at'] ?? null;
-                unset($fila['created_at']);
-                $cliente = Cliente::create($fila + ['estado' => 'activo']);
-                if ($creado) {
-                    $cliente->forceFill(['created_at' => $creado])->saveQuietly();
+                try {
+                    $creado = $fila['created_at'] ?? null;
+                    unset($fila['created_at']);
+                    $cliente = Cliente::create($fila + ['estado' => 'activo']);
+                    if ($creado) {
+                        $cliente->forceFill(['created_at' => $creado])->saveQuietly();
+                    }
+                } catch (\Throwable $e) {
+                    // Un dato malo (fecha imposible, número fuera de rango) no detiene el resto de la carga
+                    $cuenta['con_error']++;
+                    $errores[] = 'Fila ' . ($posicion + 1) . " ({$fila['nombre']}): " . mb_substr(strtok($e->getMessage(), "\n"), 0, 120);
+                    continue;
                 }
             }
+
+            $cuenta[$fila['numero_documento'] ? 'con_documento' : 'prospectos']++;
+            $cuenta['creados']++;
         }
 
-        $this->info(($seco ? '[simulación] ' : '') . "Creados {$cuenta['creados']} (con documento {$cuenta['con_documento']}, prospectos {$cuenta['prospectos']}); ya existían {$cuenta['ya_existian']}.");
+        foreach (array_slice($errores, 0, 20) as $linea) {
+            $this->warn($linea);
+        }
+
+        $this->info(($seco ? '[simulación] ' : '') . "Creados {$cuenta['creados']} (con documento {$cuenta['con_documento']}, prospectos {$cuenta['prospectos']}); ya existían {$cuenta['ya_existian']}; {$cuenta['con_error']} con error.");
 
         return self::SUCCESS;
     }
@@ -71,6 +90,17 @@ class ImportarClientes extends Command
             if (isset($fila[$campo]) && $fila[$campo] !== null) {
                 $fila[$campo] = mb_substr(trim((string) $fila[$campo]), 0, $max) ?: null;
             }
+        }
+        // Una fecha imposible (30 de febrero) se descarta: Carbon la corrige en silencio a otra fecha
+        if (!empty($fila['fecha_cumpleanos'])) {
+            $d = \DateTime::createFromFormat('!Y-m-d', (string) $fila['fecha_cumpleanos']);
+            if (!$d || $d->format('Y-m-d') !== $fila['fecha_cumpleanos']) {
+                $fila['fecha_cumpleanos'] = null;
+            }
+        }
+        // Documento sin espacios ni guiones (viene así de copiar desde Excel o un PDF)
+        if (!empty($fila['numero_documento'])) {
+            $fila['numero_documento'] = preg_replace('/[\s\-]+/', '', $fila['numero_documento']);
         }
         if (empty($fila['numero_documento'])) {
             $fila['numero_documento'] = $fila['tipo_documento'] = null;

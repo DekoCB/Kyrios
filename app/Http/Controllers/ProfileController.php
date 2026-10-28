@@ -38,8 +38,8 @@ class ProfileController extends Controller
     public function password(Request $request): RedirectResponse
     {
         $request->validate([
-            'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)],
+            'current_password' => ['bail', 'required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)],
         ], [
             'current_password.current_password' => 'La contraseña actual no es correcta',
         ]);
@@ -55,7 +55,7 @@ class ProfileController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         $request->validate([
-            'password' => ['required', 'current_password'],
+            'password' => ['bail', 'required', 'string', 'current_password'],
         ]);
 
         $user = $request->user();

@@ -324,11 +324,11 @@ class TrasladoController extends Controller
                 ->limit(8)
                 ->get(['id', 'ruc', 'razon_social as nombre']);
         } else {
-            $results = Cliente::where('documento', 'like', "%{$termino}%")
+            // La tabla clientes guarda el documento en numero_documento y el nombre completo en nombre
+            $results = Cliente::where('numero_documento', 'like', "%{$termino}%")
                 ->orWhere('nombre', 'like', "%{$termino}%")
-                ->orWhere('apellido', 'like', "%{$termino}%")
                 ->limit(8)
-                ->get(['id', 'documento', \Illuminate\Support\Facades\DB::raw("CONCAT(nombre, ' ', COALESCE(apellido,'')) as nombre")]);
+                ->get(['id', 'numero_documento as documento', 'nombre']);
         }
 
         return response()->json($results);

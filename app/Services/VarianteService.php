@@ -105,7 +105,7 @@ class VarianteService
      */
     public function getProductosParaSelectorCompra(): \Illuminate\Support\Collection
     {
-        return Producto::with(['categoria', 'marca', 'modelo', 'variantesActivas.color'])
+        return Producto::with(['categoria', 'marca', 'modelo', 'unidadMedida', 'variantesActivas.color'])
             ->where('estado', 'activo')
             ->orderBy('nombre')
             ->get()

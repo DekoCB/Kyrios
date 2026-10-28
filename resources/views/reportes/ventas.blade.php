@@ -141,13 +141,10 @@
 
             {{-- ── KPI CARDS ────────────────────────── --}}
             @php
-                function varPct($actual, $prev) {
-                    if ($prev == 0) return $actual > 0 ? 100 : 0;
-                    return round(($actual - $prev) / $prev * 100, 1);
-                }
-                $vVentas  = varPct($kpis['total_ventas'],    $kpisPrev['total_ventas']);
-                $vCosto   = varPct($kpis['total_costo'],     $kpisPrev['total_costo']);
-                $vGanancia = varPct($kpis['ganancia_bruta'], $kpisPrev['ganancia_bruta']);
+                $varPct = fn ($actual, $prev) => \App\Http\Controllers\ReporteVentasController::varPct((float) $actual, (float) $prev);
+                $vVentas  = $varPct($kpis['total_ventas'],    $kpisPrev['total_ventas']);
+                $vCosto   = $varPct($kpis['total_costo'],     $kpisPrev['total_costo']);
+                $vGanancia = $varPct($kpis['ganancia_bruta'], $kpisPrev['ganancia_bruta']);
                 $vMargen  = round($kpis['margen_promedio'] - $kpisPrev['margen_promedio'], 1);
             @endphp
 

@@ -67,7 +67,7 @@ class ComisionController extends Controller
             'nombre'           => 'required|string|max:100',
             'tipo_aplicacion'  => 'required|in:usuario,categoria,producto,producto_usuario,categoria_usuario',
             'tipo_calculo'     => 'required|in:porcentaje,monto_fijo,porcentaje_margen',
-            'valor'            => 'required|numeric|min:0.0001',
+            'valor'            => ['required', 'numeric', 'min:0.0001', 'max:999999', $this->topePorcentaje($request)],
             'user_id'          => 'nullable|required_if:tipo_aplicacion,usuario,producto_usuario,categoria_usuario|exists:users,id',
             'categoria_id'     => 'nullable|required_if:tipo_aplicacion,categoria,categoria_usuario|exists:categorias,id',
             'producto_id'      => 'nullable|required_if:tipo_aplicacion,producto,producto_usuario|exists:productos,id',
@@ -96,7 +96,7 @@ class ComisionController extends Controller
         $request->validate([
             'nombre'       => 'required|string|max:100',
             'tipo_calculo' => 'required|in:porcentaje,monto_fijo,porcentaje_margen',
-            'valor'        => 'required|numeric|min:0.0001',
+            'valor'        => ['required', 'numeric', 'min:0.0001', 'max:999999', $this->topePorcentaje($request)],
         ]);
 
         $regla->update($request->only('nombre', 'tipo_calculo', 'valor'));
@@ -153,7 +153,7 @@ class ComisionController extends Controller
             'tipo_aplicacion' => 'required|in:producto,categoria,producto_usuario',
             'tipo_bonus'      => 'required|in:fijo,meta',
             'tipo_calculo'    => 'required|in:monto_fijo,porcentaje_venta',
-            'valor'           => 'required|numeric|min:0.0001',
+            'valor'           => ['required', 'numeric', 'min:0.0001', 'max:999999', $this->topePorcentaje($request)],
             'producto_id'     => 'nullable|required_if:tipo_aplicacion,producto,producto_usuario|exists:productos,id',
             'categoria_id'    => 'nullable|required_if:tipo_aplicacion,categoria|exists:categorias,id',
             'user_id'         => 'nullable|required_if:tipo_aplicacion,producto_usuario|exists:users,id',
@@ -190,7 +190,7 @@ class ComisionController extends Controller
         $request->validate([
             'nombre'        => 'required|string|max:100',
             'tipo_calculo'  => 'required|in:monto_fijo,porcentaje_venta',
-            'valor'         => 'required|numeric|min:0.0001',
+            'valor'         => ['required', 'numeric', 'min:0.0001', 'max:999999', $this->topePorcentaje($request)],
             'meta_unidades' => 'nullable|integer|min:1',
             'meta_periodo'  => 'nullable|in:mensual,quincenal,semanal',
         ]);
@@ -397,5 +397,16 @@ class ComisionController extends Controller
             ]);
 
         return back()->with('success', count($request->ids) . ' bonos marcados como pagados.');
+    }
+
+    /** Un porcentaje de comisión o bono no puede pasar de 100 (el monto fijo solo tiene el tope de la columna). */
+    private function topePorcentaje(Request $request): \Closure
+    {
+        return function (string $atributo, $valor, \Closure $fallar) use ($request) {
+            $porcentual = in_array($request->input('tipo_calculo'), ['porcentaje', 'porcentaje_margen', 'porcentaje_venta'], true);
+            if ($porcentual && (float) $valor > 100) {
+                $fallar('Un porcentaje no puede ser mayor a 100.');
+            }
+        };
     }
 }

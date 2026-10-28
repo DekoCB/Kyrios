@@ -89,4 +89,18 @@ class CicloCompletoHallazgosTest extends TestCase
         $this->assertStringContainsString('serie ni correlativo', $r['message']);
         $this->assertNull($venta->fresh()->sunat_enviado_at, 'no debe haberse enviado nada');
     }
+
+    public function test_una_guia_con_numero_de_respaldo_no_se_envia_a_sunat(): void
+    {
+        $this->actingAs($this->admin());
+        Empresa::create(['ruc' => '20000000001', 'razon_social' => 'PRUEBAS SAC', 'direccion' => 'AV. X 1', 'sunat_modo' => 'beta']);
+        $guia = new \App\Models\GuiaRemision(['numero_guia' => 'GR-00001']);
+        $guia->exists = true;
+        $guia->id = 1;
+
+        $r = app(\App\Services\SunatGuiaService::class)->enviar($guia);
+
+        $this->assertFalse($r['success']);
+        $this->assertStringContainsString('formato que exige SUNAT', $r['message']);
+    }
 }

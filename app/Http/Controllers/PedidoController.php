@@ -83,6 +83,14 @@ class PedidoController extends Controller
             'detalles.*.precio_referencial' => 'nullable|numeric|min:0',
         ]);
 
+        // La variante de cada línea tiene que ser del producto de esa línea
+        foreach ($validated['detalles'] as $i => $linea) {
+            if (!empty($linea['variante_id'])
+                && !\App\Models\ProductoVariante::where('id', $linea['variante_id'])->where('producto_id', $linea['producto_id'])->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["detalles.$i.variante_id" => 'La variante seleccionada no pertenece al producto de esa línea.']);
+            }
+        }
+
         $pedido = Pedido::create([
             'proveedor_id' => $validated['proveedor_id'],
             'almacen_id' => $validated['almacen_id'],

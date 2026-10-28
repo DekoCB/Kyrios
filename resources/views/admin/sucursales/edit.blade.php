@@ -17,11 +17,11 @@
 
     {{-- Header --}}
     <div class="mb-6">
-        <div class="flex items-center gap-3 mb-1">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-1">
             <a href="{{ route('admin.sucursales.index') }}" class="text-gray-400 hover:text-gray-600">
                 <i class="fas fa-arrow-left"></i>
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">{{ $sucursal->nombre }}</h1>
+            <h1 class="text-2xl font-bold text-gray-900 break-words min-w-0">{{ $sucursal->nombre }}</h1>
             <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">{{ $sucursal->codigo }}</span>
             @if($sucursal->esAlmacen())
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">

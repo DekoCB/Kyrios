@@ -190,7 +190,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: #44413A;
+            color: #b9b39b;
             margin-bottom: 14px;
         }
 
@@ -246,7 +246,7 @@
         }
 
         .footer-note span {
-            color: #44413A;
+            color: #b9b39b;
             font-weight: 500;
         }
     </style>

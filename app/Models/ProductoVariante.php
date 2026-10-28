@@ -151,9 +151,9 @@ class ProductoVariante extends Model
     public function sincronizarStockProductoBase(): void
     {
         if ($this->producto) {
-            $totalStock = static::where('producto_id', $this->producto_id)
-                ->where('estado', 'activo')
-                ->sum('stock_actual');
+            // El stock del producto es la suma de stock_almacen (como en compras, ventas y la reconciliación),
+            // también de las variantes desactivadas: sus unidades siguen en el almacén.
+            $totalStock = StockAlmacen::where('producto_id', $this->producto_id)->sum('cantidad');
 
             $this->producto->update(['stock_actual' => $totalStock]);
         }

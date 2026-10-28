@@ -127,6 +127,9 @@ class MarcaController extends Controller
                     'nombre' => $marca->nombre
                 ]);
                 
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                // Un dato inválido es un 422 con sus mensajes, no un error del servidor
+                throw $e;
             } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,

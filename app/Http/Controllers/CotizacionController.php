@@ -44,7 +44,7 @@ class CotizacionController extends Controller
             'detalles.*.producto_id'      => 'required|exists:productos,id',
             'detalles.*.variante_id'      => 'nullable|exists:producto_variantes,id',
             'detalles.*.cantidad'         => 'required|integer|min:1|max:100000',
-            'detalles.*.precio_unitario'  => 'required|numeric|min:0.01',
+            'detalles.*.precio_unitario'  => 'required|numeric|min:0.01|max:9999999',
             'detalles.*.incluye_igv'      => 'nullable|boolean',
         ];
     }

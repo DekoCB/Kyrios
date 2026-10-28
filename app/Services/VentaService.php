@@ -76,6 +76,61 @@ class VentaService
     }
 
     /**
+     * Bloquea la fila de la venta y deja la instancia recibida con los datos vigentes: dos solicitudes
+     * simultáneas (doble clic) cargan la venta al mismo tiempo y ambas verían el estado viejo.
+     */
+    private function bloquearVenta(Venta $venta): void
+    {
+        $vigente = Venta::whereKey($venta->id)->lockForUpdate()->first();
+        if (!$vigente) {
+            throw new \Exception('Esta venta ya fue eliminada.');
+        }
+        $venta->setRawAttributes($vigente->getAttributes(), true);
+    }
+
+    /**
+     * Pagos por método de una venta al contado: deben cubrir el total. Si suman más (efectivo entregado
+     * con vuelto) el exceso se descuenta del efectivo, para que la caja registre solo lo que se quedó.
+     */
+    private function normalizarPagosDetalle(array $pagos, float $total): array
+    {
+        $total = round($total, 2);
+        $pagos = array_values(array_filter($pagos, fn ($p) => (float) ($p['monto'] ?? 0) > 0));
+        $suma  = round(array_sum(array_map(fn ($p) => (float) $p['monto'], $pagos)), 2);
+
+        if ($suma + 0.01 < $total) {
+            throw new \Exception('Los pagos registrados (S/ ' . number_format($suma, 2) . ') no cubren el total de la venta (S/ ' . number_format($total, 2) . ').');
+        }
+
+        $exceso = round($suma - $total, 2);
+        for ($i = count($pagos) - 1; $i >= 0 && $exceso > 0.009; $i--) {
+            if (($pagos[$i]['metodo'] ?? null) !== 'efectivo') {
+                continue;
+            }
+            $quita = min($exceso, (float) $pagos[$i]['monto']);
+            $pagos[$i]['monto'] = round((float) $pagos[$i]['monto'] - $quita, 2);
+            $exceso = round($exceso - $quita, 2);
+        }
+        if ($exceso > 0.01) {
+            throw new \Exception('Los pagos superan el total de la venta y el vuelto solo puede salir de un pago en efectivo.');
+        }
+
+        return array_values(array_filter($pagos, fn ($p) => (float) $p['monto'] > 0));
+    }
+
+    /** Monto (con IGV) de las unidades de esta venta que ya se devolvieron. */
+    private function montoYaDevuelto(Venta $venta): float
+    {
+        $venta->loadMissing('detalles');
+        $monto = 0.0;
+        foreach ($venta->detalles as $d) {
+            $monto += (int) $d->cantidad_devuelta * (float) $d->precio_con_igv;
+        }
+
+        return round($monto, 2);
+    }
+
+    /**
      * Crear una nueva venta
      */
     public function crearVenta(array $datosVenta, array $detalles, ?array $pago = null, ?array $creditoData = null)
@@ -172,11 +227,18 @@ class VentaService
             $subtotal = round($subtotal, 4);
             $igv      = round($total - $subtotal, 4);
 
-            $venta->update([
+            $camposTotales = [
                 'subtotal' => $subtotal,
                 'igv'      => $igv,
                 'total'    => $total,
-            ]);
+            ];
+
+            // Pago al contado con desglose por método: debe cubrir el total (y el vuelto no entra a caja)
+            if ($pago && !$esCredito && !empty($datosVenta['pagos_detalle'])) {
+                $camposTotales['pagos_detalle'] = $this->normalizarPagosDetalle($datosVenta['pagos_detalle'], $total);
+            }
+
+            $venta->update($camposTotales);
 
             // Crear guía de remisión si se proporcionaron datos
             if ($guiaData) {
@@ -345,6 +407,17 @@ class VentaService
         }
 
         return DB::transaction(function () use ($cuenta, $pagoData) {
+            // Dos cobros simultáneos no pueden pasarse del saldo: se bloquea la cuenta y se vuelve a comprobar
+            $vigente = CuentaPorCobrar::whereKey($cuenta->id)->lockForUpdate()->firstOrFail();
+            $cuenta->setRawAttributes($vigente->getAttributes(), true);
+            if (in_array($cuenta->estado, ['pagado', 'anulado'], true)) {
+                throw new \Exception('Esta cuenta por cobrar ya está ' . $cuenta->estado . '.');
+            }
+            $saldo = round((float) $cuenta->monto_total - (float) $cuenta->monto_pagado, 2);
+            if ((float) $pagoData['monto'] > $saldo + 0.01) {
+                throw new \Exception('El monto excede el saldo pendiente de S/ ' . number_format($saldo, 2));
+            }
+
             $monto = (float) $pagoData['monto'];
 
             // Crear registro de pago
@@ -366,20 +439,25 @@ class VentaService
                 'fecha_ultimo_pago'=> now()->toDateString(),
             ]);
 
-            // Marcar la cuota asociada como pagada (si se especificó)
+            // La cuota queda pagada cuando lo abonado a ella cubre su monto (un abono parcial no la cierra),
+            // aunque estuviera vencida.
             if (!empty($pagoData['cuota_cobro_id'])) {
-                $cuota = CuotaCobro::find($pagoData['cuota_cobro_id']);
-                if ($cuota && $cuota->estado === 'pendiente') {
-                    $cuota->update([
-                        'estado'         => 'pagado',
-                        'fecha_pago_real'=> now()->toDateString(),
-                    ]);
+                $cuota = CuotaCobro::where('cuenta_por_cobrar_id', $cuenta->id)->find($pagoData['cuota_cobro_id']);
+                if ($cuota && $cuota->estado !== 'pagado') {
+                    $abonado = (float) PagoCredito::where('cuota_cobro_id', $cuota->id)->sum('monto');
+                    if ($abonado + 0.005 >= (float) $cuota->monto) {
+                        $cuota->update([
+                            'estado'         => 'pagado',
+                            'fecha_pago_real'=> now()->toDateString(),
+                        ]);
+                    }
                 }
             }
 
             // Si el monto pagado cubre el total, cerrar la cuenta y actualizar la venta
             if ($nuevoPagado >= (float) $cuenta->monto_total) {
                 $cuenta->update(['estado' => 'pagado']);
+                $cuenta->cuotas()->where('estado', '!=', 'pagado')->update(['estado' => 'pagado', 'fecha_pago_real' => now()->toDateString()]);
                 $cuenta->venta->update([
                     'estado_pago'         => 'pagado',
                     'fecha_confirmacion'  => now(),
@@ -492,6 +570,11 @@ class VentaService
         $this->bloquearSiComisionPagada($venta);
 
         return DB::transaction(function () use ($venta, $requirioClave) {
+            $this->bloquearVenta($venta);
+            if ($venta->estado_pago === 'anulado') {
+                throw new \Exception('No se puede eliminar una venta ya anulada. Use la papelera directamente si lo necesita.');
+            }
+
             $datosAnteriores = $venta->only([
                 'codigo', 'estado_pago', 'estado_sunat', 'total', 'cliente_id', 'fecha', 'tipo_comprobante',
             ]);
@@ -579,6 +662,15 @@ class VentaService
         }
 
         return DB::transaction(function () use ($venta, $motivoCodigo, $requirioClave) {
+            $this->bloquearVenta($venta);
+            if ($venta->estado_pago === 'anulado') {
+                throw new \Exception('Esta venta ya está anulada. No se puede generar otra nota de crédito sobre ella.');
+            }
+            $ncExistente = $venta->notasCredito()->where('motivo_nc_codigo', '01')->where('estado_pago', '!=', 'anulado')->first();
+            if ($ncExistente) {
+                throw new \Exception("Ya existe una nota de crédito de anulación para este comprobante ({$ncExistente->codigo}).");
+            }
+
             $tipoNc      = $venta->tipo_comprobante === 'factura' ? 'nc_factura' : 'nc_boleta';
             $motivoDesc  = self::MOTIVOS_NC[$motivoCodigo];
 
@@ -736,6 +828,11 @@ class VentaService
         $this->bloquearSiComisionPagada($venta);
 
         return DB::transaction(function () use ($venta, $requirioClave) {
+            $this->bloquearVenta($venta);
+            if (in_array($venta->estado_pago, ['anulado', 'cotizacion'])) {
+                throw new \Exception('Esta venta ya está anulada o es una cotización.');
+            }
+
             $datosAnteriores = $venta->only([
                 'codigo', 'estado_pago', 'estado_sunat', 'total', 'cliente_id', 'fecha', 'tipo_comprobante',
             ]);
@@ -771,10 +868,17 @@ class VentaService
     {
         $venta->load('detalles.producto');
         foreach ($venta->detalles as $detalle) {
+            // Las unidades que el cliente ya devolvió volvieron al almacén con su devolución: reponerlas
+            // otra vez dejaría el stock inflado.
+            $cantidadReponer = max(0, (int) $detalle->cantidad - (int) $detalle->cantidad_devuelta);
+            if ($cantidadReponer === 0) {
+                continue;
+            }
+
             $stock = StockAlmacen::fila($detalle->producto_id, $venta->almacen_id, $detalle->variante_id);
 
             $stockAnterior = $stock->cantidad;
-            $stock->increment('cantidad', $detalle->cantidad);
+            $stock->increment('cantidad', $cantidadReponer);
             $stockNuevo = $stock->cantidad;
 
             // Igual que descontarStock() al vender: mantener sincronizados
@@ -782,7 +886,7 @@ class VentaService
             // total real de stock_almacen, si no quedan desfasados tras cada
             // anulación/eliminación/NC.
             if ($detalle->variante_id) {
-                $detalle->variante?->incrementarStock($detalle->cantidad);
+                $detalle->variante?->incrementarStock($cantidadReponer);
             } else {
                 $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');
                 \App\Models\Producto::where('id', $detalle->producto_id)->update(['stock_actual' => $totalStock]);
@@ -794,7 +898,7 @@ class VentaService
                 'almacen_id'      => $venta->almacen_id,
                 'user_id'         => auth()->id(),
                 'tipo_movimiento' => 'ingreso',
-                'cantidad'        => $detalle->cantidad,
+                'cantidad'        => $cantidadReponer,
                 'stock_anterior'  => $stockAnterior,
                 'stock_nuevo'     => $stockNuevo,
                 'motivo'          => $motivo,
@@ -984,7 +1088,16 @@ class VentaService
             $referencia = $pagosDetalle[0]['referencia'] ?? null;
         }
 
-        $cajaService->registrarCorreccion($caja, $tipo, (float) $venta->total, $concepto, $venta->id, $metodoPago, $referencia);
+        $monto = (float) $venta->total;
+        if ($esDevolucion) {
+            // Lo devuelto antes ya salió de la caja con su devolución: aquí solo se reintegra el resto.
+            $monto = round($monto - $this->montoYaDevuelto($venta), 2);
+            if ($monto < 0.01) {
+                return true;
+            }
+        }
+
+        $cajaService->registrarCorreccion($caja, $tipo, $monto, $concepto, $venta->id, $metodoPago, $referencia);
 
         return true;
     }
@@ -1019,6 +1132,24 @@ class VentaService
 
         $caja->decrement('monto_final', $total);
 
+        // Las devoluciones parciales de esta venta salieron de la caja; al borrar la venta (queda como si no
+        // hubiera existido) esos egresos dejan de tener sentido y se retiran también.
+        $devoluciones = MovimientoCaja::where('venta_id', $venta->id)
+            ->where('tipo', 'egreso')
+            ->where('concepto', 'like', 'Devolución de cliente%')
+            ->get();
+        foreach ($devoluciones->groupBy('caja_id') as $cajaId => $movs) {
+            MovimientoCaja::whereIn('id', $movs->pluck('id'))->delete();
+            $cajaDev = Caja::find($cajaId);
+            if ($cajaDev) {
+                $cajaDev->increment('monto_final', (float) $movs->sum('monto'));
+                if ($cajaDev->estado === 'cerrada' && $cajaDev->id !== $caja->id) {
+                    app(CajaService::class)->recalcularDiferenciaCierre($cajaDev);
+                }
+            }
+        }
+        $caja->refresh();
+
         if ($caja->estado === 'cerrada') {
             app(CajaService::class)->recalcularDiferenciaCierre($caja);
         }
@@ -1044,6 +1175,11 @@ class VentaService
         }
 
         DB::transaction(function () use ($venta, $metodoPago, $usuarioId, $extra) {
+            $this->bloquearVenta($venta);
+            if ($venta->estado_pago !== 'pendiente') {
+                throw new \Exception('La venta ya ha sido procesada');
+            }
+
             $update = [
                 'estado_pago'         => 'pagado',
                 'metodo_pago'         => $metodoPago,
@@ -1052,7 +1188,7 @@ class VentaService
             ];
 
             if (!empty($extra['pagos_detalle'])) {
-                $update['pagos_detalle'] = $extra['pagos_detalle'];
+                $update['pagos_detalle'] = $this->normalizarPagosDetalle($extra['pagos_detalle'], (float) $venta->total);
             }
 
             $venta->update($update);

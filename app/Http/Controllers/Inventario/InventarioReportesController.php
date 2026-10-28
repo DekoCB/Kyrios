@@ -486,7 +486,7 @@ class InventarioReportesController extends Controller
 
     private function exportarKardexCsv($producto, $movimientos, array $resumen, string $desde, string $hasta)
     {
-        $filename = 'kardex-'.str_slug($producto->nombre).'-'.now()->format('Ymd').'.csv';
+        $filename = 'kardex-'.\Illuminate\Support\Str::slug($producto->nombre).'-'.now()->format('Ymd').'.csv';
 
         return response()->streamDownload(function () use ($producto, $movimientos, $resumen, $desde, $hasta) {
             $h = fopen('php://output', 'w');
@@ -532,7 +532,10 @@ class InventarioReportesController extends Controller
         $categoriaId = $request->categoria_id;
         $marcaId     = $request->marca_id;
 
+        // Agregados en la misma consulta (antes: 2 consultas por producto): ¿tiene variantes? y stock de las activas
         $productos = Producto::where('estado', 'activo')
+            ->withCount('variantes')
+            ->withSum(['variantes as stock_variantes_activas' => fn($q) => $q->where('estado', 'activo')], 'stock_actual')
             ->with([
                 'categoria', 'marca',
                 'precios' => fn($q) => $q->where('activo', true)->where('tipo_precio', 'venta_regular')->orderByDesc('prioridad'),
@@ -541,7 +544,7 @@ class InventarioReportesController extends Controller
             ->when($marcaId,     fn($q) => $q->where('marca_id', $marcaId))
             ->get()
             ->map(function ($p) {
-                $stock = $p->tieneVariantes() ? (int) $p->stock_variantes : $p->stock_actual;
+                $stock = $p->variantes_count > 0 ? (int) $p->stock_variantes_activas : $p->stock_actual;
                 $pc    = (float) ($p->costo_promedio ?: $p->ultimo_costo_compra ?: 0);
                 $pv    = (float) ($p->precios->first()?->precio ?? 0);
 

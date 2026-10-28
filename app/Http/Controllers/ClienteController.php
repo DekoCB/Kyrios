@@ -31,7 +31,7 @@ class ClienteController extends Controller
     public function index(Request $request)
     {
         $clientes = $this->consulta($request)
-            ->withCount(['ventas', 'cotizaciones'])
+            ->withCount(['ventas' => fn ($q) => $q->whereNotIn('tipo_comprobante', Cliente::TIPOS_NOTA), 'cotizaciones'])
             ->conTotalComprado()
             ->orderBy('nombre')
             ->paginate(20)
@@ -137,7 +137,8 @@ class ClienteController extends Controller
         $ventas = $cliente->ventas()->with('serieComprobante')->latest('fecha')->latest('id')->limit(15)->get();
         $cotizaciones = $cliente->cotizaciones()->latest('fecha')->latest('id')->limit(15)->get();
 
-        $comprasValidas = $cliente->ventas()->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion']);
+        $comprasValidas = $cliente->ventas()->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion'])
+            ->whereNotIn('tipo_comprobante', Cliente::TIPOS_NOTA);
         $resumen = [
             'ventas'          => (clone $comprasValidas)->count(),
             'total_comprado'  => (float) (clone $comprasValidas)->sum('total'),
@@ -193,7 +194,7 @@ class ClienteController extends Controller
     /** Descarga la lista filtrada en CSV (abre directo en Excel). */
     public function exportar(Request $request): StreamedResponse
     {
-        $clientes = $this->consulta($request)->conTotalComprado()->withCount('ventas')->orderBy('nombre');
+        $clientes = $this->consulta($request)->conTotalComprado()->withCount(['ventas' => fn ($q) => $q->whereNotIn('tipo_comprobante', Cliente::TIPOS_NOTA)])->orderBy('nombre');
 
         return response()->streamDownload(function () use ($clientes) {
             $out = fopen('php://output', 'w');
@@ -215,8 +216,10 @@ class ClienteController extends Controller
 
     public function consultarDocumento(Request $request)
     {
-        $tipo   = strtoupper($request->input('tipo', 'DNI'));
-        $numero = trim($request->input('numero', ''));
+        $tipoEntrada   = $request->input('tipo', 'DNI');
+        $numeroEntrada = $request->input('numero', '');
+        $tipo   = is_string($tipoEntrada) ? strtoupper($tipoEntrada) : 'DNI';
+        $numero = is_string($numeroEntrada) ? trim($numeroEntrada) : '';
         $sunat  = app(SunatService::class);
 
         if ($tipo === 'RUC') {

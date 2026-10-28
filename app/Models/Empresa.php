@@ -27,6 +27,18 @@ class Empresa extends Model
         'certificado_pfx_password', 'gre_client_secret',
     ];
 
+    /** Credenciales cifradas en la base de datos (ver migración cifrar_credenciales_de_empresa). */
+    protected function casts(): array
+    {
+        return [
+            'sunat_clave_sol'          => \App\Casts\CifradoTolerante::class,
+            'sunat_token'              => \App\Casts\CifradoTolerante::class,
+            'api_key'                  => \App\Casts\CifradoTolerante::class,
+            'certificado_pfx_password' => \App\Casts\CifradoTolerante::class,
+            'gre_client_secret'        => \App\Casts\CifradoTolerante::class,
+        ];
+    }
+
     public static function instancia(): ?self
     {
         return self::first();

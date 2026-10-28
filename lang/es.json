@@ -1,0 +1,17 @@
+{
+    "Showing": "Mostrando",
+    "to": "a",
+    "of": "de",
+    "results": "resultados",
+    "Pagination Navigation": "Navegación de páginas",
+    "Go to page :page": "Ir a la página :page",
+    "Previous": "Anterior",
+    "Next": "Siguiente",
+    "Server Error": "Error del servidor",
+    "Page Expired": "Página expirada",
+    "Not Found": "No encontrado",
+    "Forbidden": "Acceso denegado",
+    "Unauthorized": "No autorizado",
+    "Too Many Requests": "Demasiadas solicitudes",
+    "Service Unavailable": "Servicio no disponible"
+}

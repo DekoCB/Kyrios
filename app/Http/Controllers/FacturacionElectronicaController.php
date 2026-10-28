@@ -98,11 +98,12 @@ class FacturacionElectronicaController extends Controller
 
     public function storeSerie(Request $request)
     {
+        $request->merge(['serie' => strtoupper((string) $request->input('serie'))]);
         $request->validate([
             'sucursal_id'       => 'required|exists:sucursales,id',
             'tipo_comprobante'  => 'required|string|max:5',
             'tipo_nombre'       => 'required|string|max:80',
-            'serie'             => 'required|string|max:5',
+            'serie'             => ['required', 'string', 'max:5', SerieComprobante::reglaFormatoSerie((string) $request->input('tipo_comprobante'))],
             'correlativo_actual'=> 'required|integer|min:1',
             'formato_impresion' => 'required|in:A4,ticket,A5',
         ]);
@@ -132,7 +133,7 @@ class FacturacionElectronicaController extends Controller
     {
         $request->validate([
             'tipo_nombre'        => 'required|string|max:80',
-            'correlativo_actual' => 'required|integer|min:1',
+            'correlativo_actual' => ['required', 'integer', 'min:1', $serie->reglaCorrelativoSiguiente()],
             'formato_impresion'  => 'required|in:A4,ticket,A5',
             'activo'             => 'boolean',
         ]);

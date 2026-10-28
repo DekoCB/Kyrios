@@ -505,9 +505,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/',                    [\App\Http\Controllers\GuiaRemisionController::class, 'index'])->name('index');
             Route::get('/create',              [\App\Http\Controllers\GuiaRemisionController::class, 'create'])->name('create');
             Route::post('/',                   [\App\Http\Controllers\GuiaRemisionController::class, 'store'])->name('store');
+            // Antes que «/{guiasRemision}»: si no, «buscar-destinatario» se toma como el id de una guía y da 404
+            Route::get('/buscar-destinatario', [\App\Http\Controllers\GuiaRemisionController::class, 'buscarDestinatario'])->name('buscar-destinatario');
             Route::get('/{guiasRemision}',     [\App\Http\Controllers\GuiaRemisionController::class, 'show'])->name('show');
             Route::get('/{guiasRemision}/pdf', [\App\Http\Controllers\GuiaRemisionController::class, 'pdf'])->name('pdf');
-            Route::get('/buscar-destinatario', [\App\Http\Controllers\GuiaRemisionController::class, 'buscarDestinatario'])->name('buscar-destinatario');
             Route::get('/api/ruc/{ruc}',       [\App\Http\Controllers\GuiaRemisionController::class, 'buscarRuc'])->name('api.ruc');
             Route::get('/api/dni/{dni}',       [\App\Http\Controllers\DniLookupController::class, 'buscar'])->name('api.dni');
         });

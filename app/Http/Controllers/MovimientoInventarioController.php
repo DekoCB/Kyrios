@@ -74,7 +74,7 @@ class MovimientoInventarioController extends Controller
      */
     public function create()
     {
-        $productos        = Producto::activos()->with('variantesActivas')->orderBy('nombre')->get();
+        $productos        = Producto::activos()->with(['variantesActivas', 'unidadMedida'])->orderBy('nombre')->get();
         // Stock por variante y almacén: [variante_id => [almacen_id => cantidad]]
         $stockVariantes   = \App\Models\StockAlmacen::whereNotNull('variante_id')->get()
             ->groupBy('variante_id')->map(fn ($f) => $f->pluck('cantidad', 'almacen_id'));

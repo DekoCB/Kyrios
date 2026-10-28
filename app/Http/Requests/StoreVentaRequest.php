@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Models\Cliente;
+use App\Models\Almacen;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreVentaRequest extends FormRequest
@@ -20,8 +22,8 @@ class StoreVentaRequest extends FormRequest
         return [
             // Cliente: opcional en ventas pendientes de cobro (las cotizaciones tienen su propio módulo)
             'cliente_id'               => ($esPendienteCobro)
-                                            ? 'nullable|exists:clientes,id'
-                                            : 'required|exists:clientes,id',
+                                            ? ['nullable', Rule::exists('clientes', 'id')->where('estado', 'activo')]
+                                            : ['required', Rule::exists('clientes', 'id')->where('estado', 'activo')],
 
             'almacen_id'               => 'required|exists:almacenes,id',
             'observaciones'            => 'nullable|string',
@@ -69,8 +71,8 @@ class StoreVentaRequest extends FormRequest
             'detalles'                       => 'required|array|min:1',
             'detalles.*.producto_id'         => 'required|exists:productos,id',
             'detalles.*.variante_id'         => 'nullable|exists:producto_variantes,id',
-            'detalles.*.cantidad'            => 'required|integer|min:1',
-            'detalles.*.precio_unitario'     => 'required|numeric|min:0.01',
+            'detalles.*.cantidad'            => 'required|integer|min:1|max:100000',
+            'detalles.*.precio_unitario'     => 'required|numeric|min:0.01|max:9999999',
             'detalles.*.incluye_igv'         => 'nullable|boolean',
         ];
     }
@@ -79,7 +81,7 @@ class StoreVentaRequest extends FormRequest
     {
         return [
             'cliente_id.required' => 'Debe seleccionar un cliente para registrar la venta.',
-            'cliente_id.exists'   => 'El cliente seleccionado no es válido.',
+            'cliente_id.exists'   => 'El cliente seleccionado no es válido o está inactivo.',
             'detalles.required'   => 'Debe agregar al menos un producto.',
             'detalles.min'        => 'Debe agregar al menos un producto.',
         ];
@@ -90,6 +92,27 @@ class StoreVentaRequest extends FormRequest
      */
     public function withValidator(Validator $validator): void
     {
+        // Solo se vende desde una tienda activa y, si el usuario tiene una asignada, desde la suya (el POS
+        // ya filtra así la lista; aquí se exige también en el servidor).
+        $validator->after(function (Validator $v) {
+            if ($v->errors()->has('almacen_id') || !$this->input('almacen_id')) {
+                return;
+            }
+            $almacen = Almacen::find($this->input('almacen_id'));
+            if (!$almacen) {
+                return;
+            }
+            if ($almacen->tipo !== 'tienda' || $almacen->estado !== 'activo') {
+                $v->errors()->add('almacen_id', 'Solo se puede vender desde una tienda activa.');
+
+                return;
+            }
+            $usuario = $this->user();
+            if ($usuario && $usuario->role?->nombre !== 'Administrador' && $usuario->almacen_id && (int) $usuario->almacen_id !== (int) $almacen->id) {
+                $v->errors()->add('almacen_id', 'Solo puede vender desde la tienda que tiene asignada.');
+            }
+        });
+
         $validator->after(function (Validator $v) {
             $tipo      = $this->input('tipo_comprobante');
             $clienteId = $this->input('cliente_id');

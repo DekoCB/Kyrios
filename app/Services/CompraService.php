@@ -220,6 +220,12 @@ class CompraService
                 throw new \Exception("El producto ID {$detalle['producto_id']} no está activo");
             }
 
+            // La variante tiene que ser del producto de la línea: si no, el stock queda en una variante ajena
+            if (!empty($detalle['variante_id'])
+                && !ProductoVariante::where('id', $detalle['variante_id'])->where('producto_id', $producto->id)->exists()) {
+                throw new \Exception("La variante seleccionada no pertenece al producto \"{$producto->nombre}\".");
+            }
+
             // Clave única: producto + variante (o modelo + color para retrocompatibilidad)
             $clave = implode('-', [
                 $detalle['producto_id'],
@@ -355,7 +361,11 @@ class CompraService
 
             // ── Guardia: productos ya consumidos parcialmente ────────────────
             foreach ($compra->detalles as $detalle) {
-                $stockDisponible = StockAlmacen::cantidadEn($detalle->producto_id, $compra->almacen_id, $detalle->variante_id);
+                $stockDisponible = (int) (StockAlmacen::where('producto_id', $detalle->producto_id)
+                    ->where('almacen_id', $compra->almacen_id)
+                    ->deVariante($detalle->variante_id)
+                    ->lockForUpdate()
+                    ->value('cantidad') ?? 0);
 
                 if ($stockDisponible < $detalle->cantidad) {
                     throw new \Exception(
@@ -591,13 +601,23 @@ class CompraService
     public function eliminarDetalle(Compra $compra, DetalleCompra $detalle): void
     {
         DB::transaction(function () use ($compra, $detalle) {
-            // Revertir stock en almacén
+            // Revertir stock en almacén (fila bloqueada: nadie puede descontarla entre la comprobación y el descuento)
             $stock = StockAlmacen::where('producto_id', $detalle->producto_id)
                 ->where('almacen_id', $compra->almacen_id)
                 ->deVariante($detalle->variante_id)
+                ->lockForUpdate()
                 ->first();
             if ($stock) {
                 $stockAnterior = $stock->cantidad;
+
+                // Quitar la línea saca stock: no puede dejar el almacén en negativo si esa mercadería ya salió
+                if ($stockAnterior < $detalle->cantidad) {
+                    throw new \Exception(
+                        "No se puede quitar «{$detalle->producto->nombre}» de la compra: en el almacén quedan {$stockAnterior} unidad(es) " .
+                        "y la línea registró {$detalle->cantidad}. Parte del stock ya salió."
+                    );
+                }
+
                 $stock->decrement('cantidad', $detalle->cantidad);
 
                 $totalStock = StockAlmacen::where('producto_id', $detalle->producto_id)->sum('cantidad');

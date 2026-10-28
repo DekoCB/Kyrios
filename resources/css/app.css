@@ -263,3 +263,10 @@ body { transition: background-color .2s ease, color .2s ease; }
 @keyframes kyrDlgIn{from{opacity:0}to{opacity:1}}
 @keyframes kyrDlgPop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.kyr-dlg,.kyr-dlg-caja{animation:none}}
+
+/* Texto claro dentro de franjas que en modo oscuro pasan a amarillo: se oscurece para no perder contraste */
+.dark :is(.bg-blue-600,.bg-blue-700,.bg-blue-800,.bg-blue-900,.bg-indigo-600,.bg-indigo-700):not(.kyr-sidebar *) :is(.text-white,.text-blue-100,.text-blue-200,.text-indigo-100,.text-indigo-200,.text-white\/80,.text-white\/70){color:#26241f}
+.dark :is(.bg-blue-600,.bg-blue-700,.bg-blue-800,.bg-blue-900,.bg-indigo-600,.bg-indigo-700):not(.kyr-sidebar *) :is(.bg-white\/20,.bg-white\/10){background-color:rgba(38,36,31,.15)}
+/* Opciones tipo tarjeta seleccionadas (radio con peer-checked) */
+.dark :is(.peer-checked\:bg-blue-50,.peer-checked\:bg-indigo-50){--tw-bg-opacity:1}
+.dark input.peer:checked ~ :is([class*="peer-checked:bg-blue-50"],[class*="peer-checked:bg-indigo-50"]){background-color:rgba(250,208,0,.14)}

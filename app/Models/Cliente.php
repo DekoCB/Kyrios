@@ -52,6 +52,9 @@ class Cliente extends Model
         'PN' => 'Persona natural', 'PJ' => 'Persona jurídica', 'CF' => 'Cliente final', 'NEG' => 'Negocio',
     ];
 
+    /** Notas de crédito/débito: ajustan una venta, no cuentan como compra. */
+    public const TIPOS_NOTA = ['nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'];
+
     public function ventas()
     {
         return $this->hasMany(Venta::class);
@@ -80,13 +83,16 @@ class Cliente extends Model
             return $query;
         }
 
-        return $query->where(function ($q) use ($termino) {
-            $q->where('nombre', 'like', "%{$termino}%")
-                ->orWhere('numero_documento', 'like', "%{$termino}%")
-                ->orWhere('telefono', 'like', "%{$termino}%")
-                ->orWhere('email', 'like', "%{$termino}%")
-                ->orWhere('contacto', 'like', "%{$termino}%")
-                ->orWhere('empresa', 'like', "%{$termino}%");
+        // Los comodines de LIKE (% _ \) que escriba el usuario se buscan tal cual, no como patrón
+        $like = '%' . addcslashes($termino, '\%_') . '%';
+
+        return $query->where(function ($q) use ($like) {
+            $q->where('nombre', 'like', $like)
+                ->orWhere('numero_documento', 'like', $like)
+                ->orWhere('telefono', 'like', $like)
+                ->orWhere('email', 'like', $like)
+                ->orWhere('contacto', 'like', $like)
+                ->orWhere('empresa', 'like', $like);
         });
     }
 
@@ -111,7 +117,8 @@ class Cliente extends Model
     public function scopeConTotalComprado($query)
     {
         return $query->withSum(
-            ['ventas as total_comprado' => fn ($v) => $v->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion'])],
+            ['ventas as total_comprado' => fn ($v) => $v->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion'])
+                ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)],
             'total'
         );
     }

@@ -196,7 +196,9 @@ class VentasCajaAuditoriaTest extends TestCase
         $this->post(route('ventas.credito.pago', $uno), [
             'monto' => 50, 'metodo_pago' => 'efectivo', 'fecha_pago' => now()->toDateString(), 'cuota_cobro_id' => $propia->id,
         ])->assertSessionHasNoErrors()->assertSessionMissing('error');
-        $this->assertSame('pagado', $propia->fresh()->estado);
+        // Un abono parcial (S/ 50 de una cuota mayor) se registra, pero la cuota sigue pendiente hasta cubrirla
+        $this->assertSame('pendiente', $propia->fresh()->estado);
+        $this->assertEquals(50.0, (float) CuentaPorCobrar::where('venta_id', $uno->id)->first()->monto_pagado);
     }
 
     public function test_un_cajero_no_mueve_la_caja_de_otro_usuario(): void

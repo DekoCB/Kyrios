@@ -175,18 +175,35 @@ class CajaChicaService
             throw new DomainException('Indique el motivo.');
         }
 
-        $mov->update([
-            'estado' => $estado, 'motivo_revision' => $estado === 'aprobado' ? null : $motivo,
-            'revisado_por' => $revisor->id, 'revisado_en' => now(),
-        ]);
+        return DB::transaction(function () use ($mov, $estado, $motivo, $revisor) {
+            $caja = CajaChica::lockForUpdate()->findOrFail($mov->caja_chica_id);
+            $mov->refresh();
 
-        return $mov;
+            // Un gasto rechazado no cuenta en el saldo: volver a darlo por válido solo si todavía alcanza el dinero.
+            if ($mov->estado === 'rechazado' && $estado !== 'rechazado' && (float) $mov->monto > $caja->saldo + 0.001) {
+                throw new DomainException('No se puede reactivar este gasto: el saldo de la caja (S/ ' . number_format($caja->saldo, 2) . ') ya no lo cubre.');
+            }
+
+            $mov->update([
+                'estado' => $estado, 'motivo_revision' => $estado === 'aprobado' ? null : $motivo,
+                'revisado_por' => $revisor->id, 'revisado_en' => now(),
+            ]);
+
+            return $mov;
+        });
     }
 
     public function eliminarMovimiento(CajaChicaMovimiento $mov): void
     {
         DB::transaction(function () use ($mov) {
-            $this->exigirActiva($mov->caja);
+            $caja = CajaChica::lockForUpdate()->findOrFail($mov->caja_chica_id);
+            $this->exigirActiva($caja);
+
+            // Quitar dinero que ya se gastó dejaría el saldo en negativo
+            if ($mov->tipo === 'ingreso' && $caja->saldo - (float) $mov->monto < -0.001) {
+                throw new DomainException('No se puede eliminar este ingreso: los gastos registrados superarían el saldo que quedaría (S/ ' . number_format($caja->saldo - (float) $mov->monto, 2) . ').');
+            }
+
             $rutas = $mov->adjuntos()->pluck('ruta');
             $mov->delete();
             Storage::disk(self::DISCO)->delete($rutas->all());
@@ -206,7 +223,7 @@ class CajaChicaService
     public function cerrar(CajaChica $caja): CajaChica
     {
         $this->exigirActiva($caja);
-        if ($caja->movimientos()->where('tipo', 'gasto')->where('estado', 'pendiente')->exists()) {
+        if ($caja->movimientos()->where('tipo', 'gasto')->whereIn('estado', ['pendiente', 'observado'])->exists()) {
             throw new DomainException('Hay gastos pendientes de revisión. Apruébelos o recházelos antes de cerrar la caja.');
         }
 

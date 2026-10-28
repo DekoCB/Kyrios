@@ -104,7 +104,8 @@ class ProveedorController extends Controller
     public function consultarSunat(Request $request)
     {
         $ruc = $request->input('ruc');
-        $result = app(SunatService::class)->consultarRuc($ruc);
+        // Sin RUC (o con algo que no es texto) se responde con el mensaje de validación del servicio, no con un error 500
+        $result = app(SunatService::class)->consultarRuc(is_scalar($ruc) ? trim((string) $ruc) : '');
         return response()->json($result);
     }
 }

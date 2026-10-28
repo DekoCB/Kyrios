@@ -23,6 +23,9 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    /** Notas de crédito/débito: ajustan una venta, no son ventas (si se sumaran, una venta anulada seguiría contando). */
+    private const TIPOS_NOTA = ['nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'];
+
     public function __construct(private CajaService $cajaService) {}
     public function index()
 {
@@ -51,12 +54,12 @@ class DashboardController extends Controller
         $anioAnterior = now()->subMonth()->year;
 
         // ── Ventas ────────────────────────────────────────────────────────────
-        $ventasMesActual = Venta::where('estado_pago', 'pagado')
+        $ventasMesActual = Venta::where('estado_pago', 'pagado')->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
             ->whereMonth('fecha', $mesActual)
             ->whereYear('fecha', $anioActual)
             ->sum('total');
 
-        $ventasMesAnterior = Venta::where('estado_pago', 'pagado')
+        $ventasMesAnterior = Venta::where('estado_pago', 'pagado')->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
             ->whereMonth('fecha', $mesAnterior)
             ->whereYear('fecha', $anioAnterior)
             ->sum('total');
@@ -85,7 +88,7 @@ class DashboardController extends Controller
             ->count();
 
         // Ventas por mes del año actual (para el gráfico)
-        $ventasPorMes = Venta::where('estado_pago', 'pagado')
+        $ventasPorMes = Venta::where('estado_pago', 'pagado')->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
             ->whereYear('fecha', $anioActual)
             ->selectRaw('MONTH(fecha) as mes, SUM(total) as total')
             ->groupBy('mes')
@@ -125,6 +128,7 @@ class DashboardController extends Controller
         $topProductos = DetalleVenta::join('ventas', 'detalle_ventas.venta_id', '=', 'ventas.id')
             ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
             ->where('ventas.estado_pago', 'pagado')
+            ->whereNotIn('ventas.tipo_comprobante', self::TIPOS_NOTA)
             ->whereMonth('ventas.fecha', $mesActual)
             ->whereYear('ventas.fecha', $anioActual)
             ->selectRaw('productos.nombre, SUM(detalle_ventas.cantidad) as total_vendido')
@@ -185,7 +189,7 @@ class DashboardController extends Controller
                 ->get(),
 
             // Ventas
-            'ventas_totales'        => Venta::where('estado_pago', 'pagado')->sum('total'),
+            'ventas_totales'        => Venta::where('estado_pago', 'pagado')->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)->sum('total'),
             'ventas_mes_actual'     => $ventasMesActual,
             'ventas_mes_anterior'   => $ventasMesAnterior,
             'variacion_ventas'      => $variacionVentas,
@@ -245,13 +249,16 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         $baseQuery = fn() => Venta::where('user_id', $user->id)
-            ->whereNotIn('tipo_comprobante', ['cotizacion', 'nota_venta']);
+            ->whereNotIn('tipo_comprobante', array_merge(['cotizacion', 'nota_venta'], self::TIPOS_NOTA));
+
+        // Lo vendido no incluye ventas anuladas ni canceladas
+        $vigentes = fn() => $baseQuery()->whereNotIn('estado_pago', ['anulado', 'cancelado']);
 
         // Ventas del día (todas del usuario)
-        $ventas_dia = $baseQuery()->whereDate('fecha', today())->sum('total');
+        $ventas_dia = $vigentes()->whereDate('fecha', today())->sum('total');
 
         // Ventas del mes
-        $ventas_mes = $baseQuery()
+        $ventas_mes = $vigentes()
             ->whereMonth('fecha', now()->month)
             ->whereYear('fecha', now()->year)
             ->sum('total');
@@ -275,6 +282,8 @@ class DashboardController extends Controller
         // Productos vendidos hoy (suma de cantidades)
         $productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', fn($q) =>
             $q->where('user_id', $user->id)->whereDate('fecha', today())
+                ->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion'])
+                ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
         )->sum('cantidad');
 
         // Últimas ventas
@@ -344,11 +353,13 @@ public function tienda()
     $ventas_dia = Venta::where('user_id', $user->id)
         ->whereDate('fecha', $hoy)
         ->where('estado_pago', 'pagado')
+        ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
         ->sum('total');
     
     $transacciones_dia = Venta::where('user_id', $user->id)
         ->whereDate('fecha', $hoy)
         ->where('estado_pago', 'pagado')
+        ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
         ->count();
     
     $clientes_atendidos = Venta::where('user_id', $user->id)
@@ -417,7 +428,7 @@ public function tienda()
 
         $cajaAtrasada = $this->cajaService->cajaAtrasada($user->id);
 
-        $ventasHoy = Venta::where('estado_pago', 'pagado')
+        $ventasHoy = Venta::where('estado_pago', 'pagado')->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
             ->whereDate('fecha', $hoy)
             ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
             ->sum('total');

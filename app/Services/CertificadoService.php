@@ -11,6 +11,46 @@ class CertificadoService
 {
     public function convertirPfxAPem(UploadedFile $pfxFile, string $password, Empresa $empresa): string
     {
+        $pem = $this->extraerPem($pfxFile->getRealPath(), $password);
+
+        $dir = "certificados/{$empresa->ruc}";
+        $path = "{$dir}/certificado.pem";
+
+        Storage::disk('local')->makeDirectory($dir);
+        Storage::disk('local')->put($path, $pem);
+
+        return $path;
+    }
+
+    /**
+     * Devuelve el PEM (llave privada + certificado). Primero con el programa openssl (soporta los PFX antiguos
+     * de SUNAT con RC2/3DES); si no existe, está bloqueado por el hosting o falla por otra razón que no sea la
+     * contraseña, se usa la extensión openssl de PHP.
+     */
+    private function extraerPem(string $rutaPfx, string $password): string
+    {
+        $errorCli = null;
+        try {
+            return $this->extraerConCli($rutaPfx, $password);
+        } catch (\Throwable $e) {
+            $errorCli = $e;
+            if ($this->esContrasenaIncorrecta($e->getMessage())) {
+                throw $e;
+            }
+        }
+
+        $contenido = (string) file_get_contents($rutaPfx);
+        $certs = [];
+        if (function_exists('openssl_pkcs12_read') && @openssl_pkcs12_read($contenido, $certs, $password)
+            && !empty($certs['pkey']) && !empty($certs['cert'])) {
+            return $certs['pkey'] . $certs['cert'] . (!empty($certs['extracerts']) ? implode('', $certs['extracerts']) : '');
+        }
+
+        throw $errorCli;
+    }
+
+    private function extraerConCli(string $rutaPfx, string $password): string
+    {
         $opensslBin = $this->resolveOpensslBinary();
         $env = ['CERT_PASS' => $password] + $this->resolveOpensslEnv();
 
@@ -19,23 +59,27 @@ class CertificadoService
         $tmpKey = tempnam(sys_get_temp_dir(), 'key_');
 
         try {
-            copy($pfxFile->getRealPath(), $tmpPfx);
+            copy($rutaPfx, $tmpPfx);
 
-            // -legacy fuerza el soporte de RC2/3DES (cifrado típico de certificados
-            // SUNAT antiguos) que OpenSSL 3.x desactiva por defecto.
-            $certResult = Process::env($env)->run([
-                $opensslBin, 'pkcs12', '-legacy', '-in', $tmpPfx,
-                '-passin', 'env:CERT_PASS', '-nokeys', '-out', $tmpCert,
-            ]);
-
-            if (!$certResult->successful()) {
-                throw new \Exception($this->traducirError($certResult->errorOutput()));
+            // -legacy da soporte a RC2/3DES (cifrado típico de certificados SUNAT antiguos) que OpenSSL 3.x
+            // desactiva por defecto. OpenSSL 1.x no conoce esa opción: se reintenta sin ella.
+            foreach ([['-legacy'], []] as $i => $legacy) {
+                $certResult = Process::env($env)->run(array_merge(
+                    [$opensslBin, 'pkcs12'], $legacy,
+                    ['-in', $tmpPfx, '-passin', 'env:CERT_PASS', '-nokeys', '-out', $tmpCert]
+                ));
+                if ($certResult->successful()) {
+                    break;
+                }
+                if ($i === 1 || !str_contains(strtolower($certResult->errorOutput()), 'legacy')) {
+                    throw new \Exception($this->traducirError($certResult->errorOutput()));
+                }
             }
 
-            $keyResult = Process::env($env)->run([
-                $opensslBin, 'pkcs12', '-legacy', '-in', $tmpPfx,
-                '-passin', 'env:CERT_PASS', '-nocerts', '-nodes', '-out', $tmpKey,
-            ]);
+            $keyResult = Process::env($env)->run(array_merge(
+                [$opensslBin, 'pkcs12'], $legacy,
+                ['-in', $tmpPfx, '-passin', 'env:CERT_PASS', '-nocerts', '-nodes', '-out', $tmpKey]
+            ));
 
             if (!$keyResult->successful()) {
                 throw new \Exception($this->traducirError($keyResult->errorOutput()));
@@ -48,20 +92,17 @@ class CertificadoService
                 throw new \Exception('El certificado PFX no contiene una llave privada o certificado válidos.');
             }
 
-            $pem = $keyContent . $certContent;
-
-            $dir = "certificados/{$empresa->ruc}";
-            $path = "{$dir}/certificado.pem";
-
-            Storage::disk('local')->makeDirectory($dir);
-            Storage::disk('local')->put($path, $pem);
-
-            return $path;
+            return $keyContent . $certContent;
         } finally {
             @unlink($tmpPfx);
             @unlink($tmpCert);
             @unlink($tmpKey);
         }
+    }
+
+    private function esContrasenaIncorrecta(string $mensaje): bool
+    {
+        return str_contains($mensaje, 'Verifique la contraseña');
     }
 
     private function resolveOpensslBinary(): string

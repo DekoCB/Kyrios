@@ -27,9 +27,16 @@ class AdminUserSeeder extends Seeder
             return;
         }
 
-        $email    = env('ADMIN_EMAIL', 'admin@importaciones.com');
-        $nombre   = env('ADMIN_NAME', 'Administrador');
-        $password = env('ADMIN_PASSWORD', 'Admin1234!');
+        $esLocal  = app()->environment(['local', 'development', 'testing']);
+        $email    = config('kyrios.admin.email') ?: ($esLocal ? 'admin@importaciones.com' : null);
+        $nombre   = config('kyrios.admin.nombre') ?: 'Administrador';
+        $password = config('kyrios.admin.password') ?: ($esLocal ? 'Admin1234!' : null);
+
+        // En producción no existe una clave por defecto: sin credenciales propias no se crea el administrador.
+        if (!$email || !$password) {
+            $this->command->error('Defina ADMIN_EMAIL y ADMIN_PASSWORD en el .env antes de ejecutar el seeder en este entorno.');
+            return;
+        }
 
         $user = User::updateOrCreate(
             ['email' => $email],
@@ -47,7 +54,7 @@ class AdminUserSeeder extends Seeder
             $this->command->info("✅ Usuario admin ya existe, datos actualizados: {$email}");
         }
 
-        if (app()->environment(['local', 'development', 'testing'])) {
+        if ($esLocal) {
             $this->command->warn("   Contraseña: {$password}");
         }
     }

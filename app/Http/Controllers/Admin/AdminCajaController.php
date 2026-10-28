@@ -161,7 +161,7 @@ class AdminCajaController extends Controller
 
     public function forzarCierre(Request $request, Caja $caja)
     {
-        $request->validate(['observaciones' => 'required|string|min:10']);
+        $request->validate(['observaciones' => 'required|string|min:10|max:500']);
 
         if ($caja->estado !== 'abierta') {
             return back()->with('error', 'Esta caja ya está cerrada.');
@@ -193,8 +193,8 @@ class AdminCajaController extends Controller
     public function ajustarDiferencia(Request $request, Caja $caja)
     {
         $request->validate([
-            'monto_ajuste'  => 'required|numeric|not_in:0',
-            'motivo_ajuste' => 'required|string|min:5',
+            'monto_ajuste'  => 'required|numeric|not_in:0|between:-9999999,9999999',
+            'motivo_ajuste' => 'required|string|min:5|max:500',
         ]);
 
         $monto = abs((float) $request->monto_ajuste);
@@ -226,8 +226,8 @@ class AdminCajaController extends Controller
         $request->validate([
             'sucursal_id'   => 'required|exists:sucursales,id',
             'user_id'       => 'required|exists:users,id',
-            'monto_inicial' => 'required|numeric|min:0',
-            'observaciones' => 'nullable|string',
+            'monto_inicial' => 'required|numeric|min:0|max:9999999',
+            'observaciones' => 'nullable|string|max:500',
         ]);
 
         $sucursal = Sucursal::findOrFail($request->sucursal_id);

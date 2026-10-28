@@ -78,6 +78,20 @@ class ReporteComprasController extends Controller
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+
+    /** Fecha Y-m-d válida o el valor por defecto: evita errores 500 y saltos de línea en el nombre del archivo. */
+    private static function fechaOr(?string $valor, string $defecto): string
+    {
+        $d = \DateTime::createFromFormat('!Y-m-d', (string) $valor);
+
+        return ($d && $d->format('Y-m-d') === $valor && $d->format('Y') >= '2000') ? $valor : $defecto;
+    }
+
+    private static function rangoOrdenado(string $desde, string $hasta, string $label): array
+    {
+        return $desde <= $hasta ? [$desde, $hasta, $label] : [$hasta, $desde, $label];
+    }
+
     private function parsePeriodo(Request $request): array
     {
         $periodo = $request->input('periodo', '30dias');
@@ -89,11 +103,11 @@ class ReporteComprasController extends Controller
             'mes'       => [Carbon::now()->startOfMonth()->toDateString(), Carbon::now()->endOfMonth()->toDateString(), 'Este mes'],
             'trimestre' => [Carbon::now()->startOfQuarter()->toDateString(), Carbon::now()->endOfQuarter()->toDateString(), 'Este trimestre'],
             'anio'      => [Carbon::now()->startOfYear()->toDateString(), $hoy->toDateString(), 'Este año'],
-            'custom'    => [
-                $request->input('fecha_desde', $hoy->copy()->subDays(29)->toDateString()),
-                $request->input('fecha_hasta', $hoy->toDateString()),
+            'custom'    => self::rangoOrdenado(
+                self::fechaOr($request->input('fecha_desde'), $hoy->copy()->subDays(29)->toDateString()),
+                self::fechaOr($request->input('fecha_hasta'), $hoy->toDateString()),
                 'Período personalizado',
-            ],
+            ),
             default     => [$hoy->copy()->subDays(29)->toDateString(), $hoy->toDateString(), 'Últimos 30 días'],
         };
     }

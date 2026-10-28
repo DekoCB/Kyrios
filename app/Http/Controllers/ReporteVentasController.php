@@ -129,6 +129,8 @@ class ReporteVentasController extends Controller
             ->leftJoin('producto_variantes as pv', 'dv.variante_id', '=', 'pv.id')
             ->leftJoin('colores as col', 'pv.color_id', '=', 'col.id')
             ->whereNotIn('v.estado_pago', ['anulado', 'cancelado', 'cotizacion'])
+            // Las notas de crédito/débito ajustan una venta: no son ventas (la original ya queda anulada)
+            ->whereNotIn('v.tipo_comprobante', ['nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'])
             ->whereNull('v.deleted_at')
             ->whereBetween('v.fecha', [$desde, $hasta]);
 
@@ -272,13 +274,27 @@ class ReporteVentasController extends Controller
                                 'Mes pasado',
                               ],
             'este_anio'    => [$today->copy()->startOfYear()->toDateString(), $today->toDateString(), 'Este año'],
-            'personalizado' => [
-                                $request->input('desde', $today->copy()->subDays(6)->toDateString()),
-                                $request->input('hasta', $today->toDateString()),
+            'personalizado' => self::rangoOrdenado(
+                                self::fechaOr($request->input('desde'), $today->copy()->subDays(6)->toDateString()),
+                                self::fechaOr($request->input('hasta'), $today->toDateString()),
                                 'Rango personalizado',
-                               ],
+                               ),
             default        => [$today->copy()->subDays(6)->toDateString(), $today->toDateString(), 'Últimos 7 días'],
         };
+    }
+
+
+    /** Fecha Y-m-d válida o el valor por defecto: evita errores 500 y saltos de línea en el nombre del archivo. */
+    private static function fechaOr(?string $valor, string $defecto): string
+    {
+        $d = \DateTime::createFromFormat('!Y-m-d', (string) $valor);
+
+        return ($d && $d->format('Y-m-d') === $valor && $d->format('Y') >= '2000') ? $valor : $defecto;
+    }
+
+    private static function rangoOrdenado(string $desde, string $hasta, string $label): array
+    {
+        return $desde <= $hasta ? [$desde, $hasta, $label] : [$hasta, $desde, $label];
     }
 
     private function periodoAnterior(string $desde, string $hasta): array

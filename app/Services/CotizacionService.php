@@ -238,6 +238,12 @@ class CotizacionService
 
             $this->validarClienteParaComprobante($cotizacion->cliente, $comprobante);
 
+            // Igual que en el POS: solo se vende desde una tienda activa (una cotización puede hacerse desde un depósito)
+            $almacenVenta = \App\Models\Almacen::find($cotizacion->almacen_id);
+            if (!$almacenVenta || $almacenVenta->tipo !== 'tienda' || $almacenVenta->estado !== 'activo') {
+                throw new \DomainException('Solo se vende desde una tienda activa: edite la cotización y elija una tienda antes de convertirla.');
+            }
+
             // Un vendedor no cobra: su venta queda pendiente para el cajero (misma regla que el POS)
             $condicion = $usuario->role?->nombre === 'Vendedor' ? 'pendiente_cobro' : ($opciones['condicion'] ?? 'contado');
             $pendiente = $condicion === 'pendiente_cobro';

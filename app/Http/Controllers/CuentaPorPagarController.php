@@ -178,6 +178,17 @@ class CuentaPorPagarController extends Controller
         try {
             DB::beginTransaction();
 
+            // Cuenta bloqueada y releída: el saldo que se valida es el vigente (dos pagos simultáneos no lo exceden)
+            $cuenta = CuentaPorPagar::whereKey($cuenta->id)->lockForUpdate()->firstOrFail();
+            if ((float) $request->monto > (float) $cuenta->saldo_pendiente + 0.001) {
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El monto (S/ ' . number_format((float) $request->monto, 2) . ') supera el saldo pendiente de la cuenta (S/ ' . number_format((float) $cuenta->saldo_pendiente, 2) . ').',
+                ], 422);
+            }
+
             $comprobantePath = null;
             $comprobanteOriginalName = null;
 

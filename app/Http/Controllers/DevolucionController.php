@@ -159,7 +159,9 @@ class DevolucionController extends Controller
                 $montosPorVenta = [];
 
                 foreach ($cantidades as $detalleId => $cantidadSolicitada) {
+                    // Se bloquea la línea: dos envíos seguidos (doble clic) no pueden devolver las mismas unidades.
                     $detalle = DetalleVenta::with(['producto', 'variante', 'movimientosDevolucion', 'venta'])
+                                           ->lockForUpdate()
                                            ->findOrFail($detalleId);
 
                     // La pantalla solo ofrece líneas de ventas pagadas del cliente, pero el servidor debe

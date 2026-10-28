@@ -24,7 +24,7 @@
                 · {{ now()->format('d/m/Y H:i') }}
             </p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             <a href="{{ route('admin.cajas.alertas') }}"
                class="relative inline-flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition">
                 <i class="fas fa-bell"></i> Alertas

@@ -205,10 +205,10 @@ class PrecioController extends Controller
     {
         $validated = $request->validate([
             'proveedor_id'    => 'nullable|exists:proveedores,id',
-            'variante_id'     => 'nullable|exists:producto_variantes,id',
-            'precio_compra'   => 'required|numeric|min:0.01',
-            'precio_venta'    => 'required|numeric|min:0.01',
-            'precio_mayorista'=> 'nullable|numeric|min:0.01',
+            'variante_id'     => ['nullable', \Illuminate\Validation\Rule::exists('producto_variantes', 'id')->where('producto_id', $producto->id)],
+            'precio_compra'   => 'required|numeric|min:0.01|max:9999999',
+            'precio_venta'    => 'required|numeric|min:0.01|max:9999999',
+            'precio_mayorista'=> 'nullable|numeric|min:0.01|max:9999999',
             'margen'          => 'required|numeric|min:0|max:1000',
             'margen_mayorista'=> 'nullable|numeric|min:0|max:1000',
             'observaciones'   => 'nullable|string|max:500',
@@ -227,14 +227,16 @@ class PrecioController extends Controller
             $variantesIds = [];
             if (!empty($validated['variante_id'])) {
                 $variantePrincipal = \App\Models\ProductoVariante::find($validated['variante_id']);
-                $variantesIds = $producto->variantesActivas()
-                    ->where('capacidad', $variantePrincipal?->capacidad)
-                    ->pluck('id')
-                    ->toArray();
+                // Solo las variantes con capacidad se agrupan por ella; las que no la tienen (todas las de
+                // luminarias) reciben el precio de forma individual, no se lo copian entre sí.
+                $variantesIds = $variantePrincipal?->capacidad
+                    ? $producto->variantesActivas()->where('capacidad', $variantePrincipal->capacidad)->pluck('id')->toArray()
+                    : [(int) $validated['variante_id']];
             }
 
             // Helper para crear un registro de precio
-            $crearPrecio = function (int|null $varianteId, int|null $almacenId) use ($validated, $producto) {
+            $incluyeIgv = (bool) ($validated['incluye_igv'] ?? true);
+            $crearPrecio = function (int|null $varianteId, int|null $almacenId) use ($validated, $producto, $incluyeIgv) {
                 ProductoPrecio::where('producto_id', $producto->id)
                     ->where('variante_id', $varianteId)
                     ->where('almacen_id', $almacenId)
@@ -251,7 +253,7 @@ class PrecioController extends Controller
                     'precio_compra'    => $validated['precio_compra'],
                     'precio_mayorista' => $validated['precio_mayorista'] ?? null,
                     'margen'           => $validated['margen'],
-                    'incluye_igv'      => false,
+                    'incluye_igv'      => $incluyeIgv,
                     'observaciones'    => $validated['observaciones'] ?? null,
                     'proveedor_id'     => $validated['proveedor_id'] ?? null,
                     'activo'           => true,
@@ -314,7 +316,7 @@ class PrecioController extends Controller
 
             ProductoPrecioHistorial::create([
                 'producto_id'    => $producto->id,
-                'variante_id'    => $validated['variante_id'] ?: null,
+                'variante_id'    => ($validated['variante_id'] ?? null) ?: null,
                 'tipo_cambio'    => 'venta_regular',
                 'precio_anterior'=> $precioAnterior ?: null,
                 'precio_nuevo'   => $validated['precio_venta'],
@@ -340,10 +342,10 @@ class PrecioController extends Controller
         'action'      => 'required|in:update_price,activate,deactivate,restore_global',
         'price_ids'   => 'required|array',
         'price_ids.*' => 'exists:producto_precios,id',
-        'value'       => 'nullable|numeric',
+        'value'       => 'nullable|required_if:action,update_price|numeric|min:0.01|max:9999999',
     ]);
 
-    $precios = ProductoPrecio::whereIn('id', $request->price_ids)->get();
+    $precios = ProductoPrecio::where('producto_id', $producto->id)->whereIn('id', $request->price_ids)->get();
 
     foreach ($precios as $precio) {
         switch ($request->action) {
@@ -382,6 +384,8 @@ class PrecioController extends Controller
 
 public function restoreSingle(Producto $producto, ProductoPrecio $precio)
 {
+    abort_if((int) $precio->producto_id !== (int) $producto->id, 404);
+
     $global = ProductoPrecio::where('producto_id', $producto->id)
         ->whereNull('almacen_id')
         ->where('variante_id', $precio->variante_id)
@@ -402,12 +406,12 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
      */
     public function update(Request $request, Producto $producto, $precioId)
     {
-        $precio = ProductoPrecio::findOrFail($precioId);
+        $precio = ProductoPrecio::where('producto_id', $producto->id)->findOrFail($precioId);
 
         $validated = $request->validate([
-            'precio_compra'    => 'required|numeric|min:0.01',
-            'precio_venta'     => 'required|numeric|min:0.01',
-            'precio_mayorista' => 'nullable|numeric|min:0.01',
+            'precio_compra'    => 'required|numeric|min:0.01|max:9999999',
+            'precio_venta'     => 'required|numeric|min:0.01|max:9999999',
+            'precio_mayorista' => 'nullable|numeric|min:0.01|max:9999999',
             'margen_mayorista' => 'nullable|numeric',
             'margen'           => 'required|numeric|min:0|max:1000',
             'observaciones'    => 'nullable|string|max:500',
@@ -438,7 +442,7 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
                 'precio_compra'    => $validated['precio_compra'],
                 'precio_mayorista' => $validated['precio_mayorista'] ?? null,
                 'margen'           => $validated['margen'],
-                'incluye_igv'      => false,
+                'incluye_igv'      => (bool) ($validated['incluye_igv'] ?? true),
                 'observaciones'    => $validated['observaciones'] ?? null,
                 'fecha_inicio'     => $validated['fecha_inicio'] ?? null,
                 'fecha_fin'        => $validated['fecha_fin'] ?? null,

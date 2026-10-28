@@ -126,7 +126,21 @@ class VentaController extends Controller
             ->groupBy('variante_id')
             ->map(fn($rows) => $rows->pluck('cantidad', 'almacen_id'));
 
-        $productos = $productos->map(function($p) use ($stockPorAlmacen, $stockVariantePorAlmacen) {
+        // Precio de respaldo (el mismo criterio de Producto::precio_venta) en UNA consulta para todos los
+        // productos; antes cada producto sin precio cargado hacía su propia consulta (cientos por pantalla).
+        $ahora = now();
+        $precioRespaldo = \App\Models\ProductoPrecio::query()
+            ->whereIn('producto_id', $productos->pluck('id'))
+            ->where('tipo_precio', 'venta_regular')
+            ->where('activo', true)
+            ->where(fn ($q) => $q->whereNull('fecha_inicio')->orWhere('fecha_inicio', '<=', $ahora))
+            ->where(fn ($q) => $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', $ahora))
+            ->orderByDesc('prioridad')
+            ->get(['producto_id', 'precio'])
+            ->groupBy('producto_id')
+            ->map(fn ($filas) => (float) $filas->first()->precio);
+
+        $productos = $productos->map(function($p) use ($stockPorAlmacen, $stockVariantePorAlmacen, $precioRespaldo) {
             // Separar precios por tipo
             $preciosRegulares  = $p->precios->where('tipo_precio', 'venta_regular');
             $preciosMayoristas = $p->precios->where('tipo_precio', 'venta_mayorista');
@@ -180,8 +194,8 @@ class VentaController extends Controller
                 'stock_actual'     => (int) array_sum($stockMap),
                 'stock_por_almacen'=> $stockMap,  // {almacen_id: qty}
                 'precio_venta'     => (float) ($variantes->isNotEmpty()
-                    ? ($variantes->filter(fn($v) => $v['precio_venta'] !== null)->min('precio_venta') ?? $precioBase?->precio ?? $p->precio_venta)
-                    : ($precioBase?->precio ?? $precioActivo?->precio ?? $p->precio_venta)),
+                    ? ($variantes->filter(fn($v) => $v['precio_venta'] !== null)->min('precio_venta') ?? $precioBase?->precio ?? ($precioRespaldo[$p->id] ?? 0.0))
+                    : ($precioBase?->precio ?? $precioActivo?->precio ?? ($precioRespaldo[$p->id] ?? 0.0))),
                 'precio_mayorista' => $precioMayoristaBase ? (float)$precioMayoristaBase->precio : null,
                 'incluye_igv'      => (bool) ($precioActivo?->incluye_igv ?? false),
                 'imagen'           => $p->imagen_url ?? null,

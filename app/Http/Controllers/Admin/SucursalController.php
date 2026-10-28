@@ -136,9 +136,16 @@ class SucursalController extends Controller
 
     public function updateSerie(Request $request, Sucursal $sucursal, SerieComprobante $serie)
     {
+        $request->merge(['serie' => strtoupper((string) $request->input('serie'))]);
         $validated = $request->validate([
-            'serie'              => 'required|string|max:5',
-            'correlativo_actual' => 'required|integer|min:1',
+            'serie'              => ['required', 'string', 'max:5', SerieComprobante::reglaFormatoSerie($serie->tipo_comprobante),
+                // Con comprobantes emitidos el código no se cambia: los números ya impresos o enviados a SUNAT quedarían distintos
+                function (string $atributo, $valor, \Closure $fallar) use ($serie) {
+                    if ($valor !== $serie->serie && $serie->ultimoCorrelativoEmitido() !== null) {
+                        $fallar('Esta serie ya emitió comprobantes: no se puede cambiar su código. Cree una serie nueva.');
+                    }
+                }],
+            'correlativo_actual' => ['required', 'integer', 'min:1', $serie->reglaCorrelativoSiguiente()],
             'formato_impresion'  => 'required|in:A4,ticket,A5',
             'activo'             => 'boolean',
         ]);
@@ -155,10 +162,12 @@ class SucursalController extends Controller
 
     public function storeSerie(Request $request, Sucursal $sucursal)
     {
+        $request->merge(['serie' => strtoupper((string) $request->input('serie'))]);
         $validated = $request->validate([
             'tipo_comprobante'   => 'required|string|max:5',
             'tipo_nombre'        => 'required|string|max:80',
-            'serie'              => 'required|string|max:5|unique:series_comprobantes,serie,NULL,id,sucursal_id,' . $sucursal->id,
+            'serie'              => ['required', 'string', 'max:5', 'unique:series_comprobantes,serie,NULL,id,sucursal_id,' . $sucursal->id,
+                SerieComprobante::reglaFormatoSerie((string) $request->input('tipo_comprobante'))],
             'correlativo_actual' => 'required|integer|min:1',
             'formato_impresion'  => 'required|in:A4,ticket,A5',
         ]);

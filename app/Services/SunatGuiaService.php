@@ -84,6 +84,16 @@ class SunatGuiaService
             return ['success' => false, 'message' => 'Esta guía ya fue aceptada por SUNAT.'];
         }
 
+        // SUNAT exige serie de guía remitente con 4 caracteres que empiezan con T (T001) y correlativo numérico;
+        // el respaldo interno «GR-00001» solo sirve para uso local y SUNAT lo rechaza.
+        if (!preg_match('/^T[A-Z0-9]{3}-\d{1,8}$/', (string) $guia->numero_guia)) {
+            return [
+                'success' => false,
+                'message' => "El número de guía «{$guia->numero_guia}» no tiene el formato que exige SUNAT (T001-00000001). "
+                    . 'Genere la serie de guías en Administración > Sucursales > Series y emita la guía de nuevo.',
+            ];
+        }
+
         $guia->load(['almacen.sucursal', 'almacenDestino.sucursal', 'detalles.producto.unidadMedida',
                       'cliente', 'proveedor', 'serieCombrobante']);
 

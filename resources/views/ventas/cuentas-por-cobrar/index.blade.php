@@ -62,9 +62,9 @@
         {{-- Filtros --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
             <form method="GET" class="flex flex-wrap gap-3 items-end">
-                <div>
+                <div class="w-full sm:w-auto min-w-0">
                     <label class="block text-xs font-semibold text-gray-500 mb-1">Cliente</label>
-                    <select name="cliente_id" class="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500">
+                    <select name="cliente_id" class="w-full sm:w-auto sm:max-w-xs border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500">
                         <option value="">Todos los clientes</option>
                         @foreach($clientes as $cliente)
                         <option value="{{ $cliente->id }}" {{ request('cliente_id') == $cliente->id ? 'selected' : '' }}>
