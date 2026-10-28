@@ -3,6 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Almacen;
+use App\Models\Caja;
+use App\Models\Categoria;
+use App\Models\Cliente;
+use App\Models\Empresa;
+use App\Models\Producto;
+use App\Models\StockAlmacen;
+use App\Services\SunatComprobanteService;
+use App\Services\VentaService;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\SucursalService;
@@ -54,5 +62,31 @@ class CicloCompletoHallazgosTest extends TestCase
         }
 
         $this->assertSame([], $encontrados, 'Tailwind 4 ya no tiene bg-opacity-*: usar bg-white/20');
+    }
+
+    public function test_un_comprobante_sin_serie_no_se_envia_a_sunat_con_un_numero_inventado(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin);
+        Empresa::create(['ruc' => '20000000001', 'razon_social' => 'PRUEBAS SAC', 'direccion' => 'AV. X 1', 'sunat_modo' => 'beta']);
+        $almacen = Almacen::create(['codigo' => 'ALM-S', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $cat = Categoria::create(['codigo' => 'CAT-S', 'nombre' => 'Luminaria', 'estado' => 'activo']);
+        $prod = Producto::create(['codigo' => 'KY-LU2501-0001', 'nombre' => 'Ring', 'categoria_id' => $cat->id, 'tipo_inventario' => 'cantidad', 'stock_minimo' => 0, 'stock_maximo' => 100, 'estado' => 'activo']);
+        StockAlmacen::fila($prod->id, $almacen->id, null)->update(['cantidad' => 10]);
+        Caja::create(['user_id' => $admin->id, 'almacen_id' => $almacen->id, 'fecha' => now()->toDateString(), 'fecha_apertura' => now(), 'monto_inicial' => 0, 'estado' => 'abierta']);
+        $cliente = Cliente::create(['tipo_documento' => 'RUC', 'numero_documento' => '20511879621', 'nombre' => 'GDK S.A.C.', 'estado' => 'activo']);
+
+        // Sin sucursal no hay serie que asignar: la venta queda sin número de comprobante
+        $venta = app(VentaService::class)->crearVenta([
+            'user_id' => $admin->id, 'cliente_id' => $cliente->id, 'almacen_id' => $almacen->id, 'fecha' => now()->toDateString(),
+            'tipo_comprobante' => 'factura', 'subtotal' => 0, 'igv' => 0, 'total' => 0, 'estado_pago' => 'pagado',
+            'condicion_pago' => 'contado', 'metodo_pago' => 'efectivo',
+        ], [['producto_id' => $prod->id, 'variante_id' => null, 'cantidad' => 1, 'precio_unitario' => 118.0, 'incluye_igv' => true]]);
+
+        $r = app(SunatComprobanteService::class)->enviar($venta);
+
+        $this->assertFalse($r['success']);
+        $this->assertStringContainsString('serie ni correlativo', $r['message']);
+        $this->assertNull($venta->fresh()->sunat_enviado_at, 'no debe haberse enviado nada');
     }
 }

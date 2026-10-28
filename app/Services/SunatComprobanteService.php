@@ -64,6 +64,15 @@ class SunatComprobanteService
 
         $venta->load(['cliente', 'serieComprobante', 'detalles.producto.unidadMedida', 'detalles.variante']);
 
+        // Sin serie y correlativo reales no se envía: antes se inventaba «B001-00000001» y SUNAT lo rechazaba
+        // (o, peor, lo aceptaba como otro comprobante).
+        if (!$venta->serieComprobante || $venta->correlativo === null) {
+            return [
+                'success' => false,
+                'message' => 'Este comprobante no tiene serie ni correlativo asignados. Genere las series en Administración > Sucursales > Series y emita el comprobante de nuevo.',
+            ];
+        }
+
         try {
             $see = $this->crearSee($empresa);
 
