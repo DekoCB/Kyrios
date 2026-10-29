@@ -141,24 +141,4 @@ class PedidoController extends Controller
             ->back()
             ->with('success', 'Estado del pedido actualizado');
     }
-
-    public function pedidosProveedor()
-    {
-        $user = auth()->user();
-
-        $proveedor = Proveedor::where('email', $user->email)
-            ->orWhere('ruc', $user->dni)
-            ->first();
-
-        $pedidos = collect();
-
-        if ($proveedor) {
-            $pedidos = Pedido::with('usuario', 'detalles.producto')
-                ->where('proveedor_id', $proveedor->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
-        }
-
-        return view('pedidos.proveedor', compact('pedidos'));
-    }
 }

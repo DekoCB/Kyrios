@@ -125,7 +125,7 @@ class UserController extends Controller
 
         // Un administrador no puede quitarse a sí mismo el acceso (se quedaría fuera del sistema).
         if ($user->id === auth()->id()) {
-            $rolAdmin = Role::where('nombre', 'Administrador')->value('id');
+            $rolAdmin = Role::where('nombre', Role::ADMINISTRACION)->value('id');
             if ($validated['estado'] !== 'activo' || (int) $validated['role_id'] !== (int) $rolAdmin) {
                 return back()->withInput()->with('error', 'No puedes desactivarte ni cambiar tu propio rol.');
             }

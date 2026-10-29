@@ -35,7 +35,7 @@ class SalidaEscanerTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'principal', 'estado' => 'activo']);
         $this->otro = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Local B', 'tipo' => 'principal', 'estado' => 'activo']);
 
@@ -71,12 +71,12 @@ class SalidaEscanerTest extends TestCase
         $this->get(route('inventario.recepcion.index'))->assertOk()->assertSee('Salida');
     }
 
-    public function test_solo_administrador_y_almacenero_acceden(): void
+    public function test_solo_administracion_y_logistica_acceden(): void
     {
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Almacenero'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Logística'])->id, 'estado' => 'activo']));
         $this->get(route('inventario.salida.index'))->assertOk();
 
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Vendedor'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Contador'])->id, 'estado' => 'activo']));
         $this->get(route('inventario.salida.index'))->assertForbidden();
         $this->retirar([['variante_id' => $this->v1->id, 'cantidad' => 1]])->assertForbidden();
     }

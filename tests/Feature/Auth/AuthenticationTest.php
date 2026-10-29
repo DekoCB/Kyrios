@@ -27,11 +27,11 @@ class AuthenticationTest extends TestCase
     public function test_cada_rol_entra_a_su_dashboard(): void
     {
         $destinos = [
-            'Administrador' => 'admin.dashboard',
-            'Vendedor'      => 'vendedor.dashboard',
-            'Almacenero'    => 'almacenero.dashboard',
-            'Tienda'        => 'tienda.dashboard',
-            'Proveedor'     => 'proveedor.dashboard',
+            'Administración' => 'admin.dashboard',
+            'Contador'       => 'contador.dashboard',
+            'Logística'      => 'logistica.dashboard',
+            'Operaciones'    => 'operaciones.dashboard',
+            'Cliente'        => 'cliente.dashboard',
         ];
 
         foreach ($destinos as $rol => $ruta) {
@@ -48,7 +48,7 @@ class AuthenticationTest extends TestCase
 
     public function test_una_clave_incorrecta_no_inicia_sesion(): void
     {
-        $user = $this->usuario('Administrador');
+        $user = $this->usuario('Administración');
 
         $this->post('/login', ['email' => $user->email, 'password' => 'incorrecta']);
 
@@ -57,7 +57,7 @@ class AuthenticationTest extends TestCase
 
     public function test_un_usuario_inactivo_no_puede_entrar(): void
     {
-        $user = $this->usuario('Administrador', ['estado' => 'inactivo']);
+        $user = $this->usuario('Administración', ['estado' => 'inactivo']);
 
         $this->post('/login', ['email' => $user->email, 'password' => 'password'])
             ->assertSessionHasErrors('email');
@@ -77,7 +77,7 @@ class AuthenticationTest extends TestCase
 
     public function test_el_usuario_puede_cerrar_sesion(): void
     {
-        $user = $this->usuario('Administrador');
+        $user = $this->usuario('Administración');
 
         $this->actingAs($user)->post('/logout')->assertRedirect('/');
 

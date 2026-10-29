@@ -14,9 +14,9 @@ class ProveedorController extends Controller
             ->orderBy('razon_social')
             ->get();
 
-        $canCreate = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canEdit = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canDelete = auth()->user()->role->nombre === 'Administrador';
+        $canCreate = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canEdit = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canDelete = auth()->user()->role->nombre === 'Administración';
 
         return view('proveedores.index', compact('proveedores', 'canCreate', 'canEdit', 'canDelete'));
     }

@@ -25,11 +25,9 @@ class CotizacionController extends Controller
     {
     }
 
-    /** El vendedor solo ve y trabaja sus cotizaciones; el resto de roles con acceso, todas. */
+    /** Todas las cotizaciones son visibles para los roles con acceso (Administración y, en lectura, Contador). */
     private function autorizar(Cotizacion $cotizacion): void
     {
-        $user = auth()->user();
-        abort_if($user->role?->nombre === 'Vendedor' && $cotizacion->user_id !== $user->id, 403, 'Esta cotización es de otro vendedor.');
     }
 
     private function reglas(): array
@@ -53,8 +51,7 @@ class CotizacionController extends Controller
 
     public function index(Request $request)
     {
-        $user = auth()->user();
-        $base = Cotizacion::query()->when($user->role?->nombre === 'Vendedor', fn ($q) => $q->where('user_id', $user->id));
+        $base = Cotizacion::query();
 
         $query = (clone $base)->with(['cliente', 'vendedor', 'almacen'])->latest('fecha')->latest('id');
 
@@ -159,7 +156,7 @@ class CotizacionController extends Controller
                 return [
                     'producto_id' => $l['producto_id'] ?? null, 'variante_id' => $l['variante_id'] ?? null,
                     'codigo' => $producto ? \App\Support\EtiquetaProducto::codigos($producto, $variante) : '',
-                    'descripcion' => ($producto ? \App\Support\EtiquetaProducto::nombre($producto) : '') . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''),
+                    'descripcion' => ($producto ? \App\Support\EtiquetaProducto::documento($producto, $variante) : '') . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''),
                     'cantidad' => $l['cantidad'] ?? 1, 'precio_unitario' => $l['precio_unitario'] ?? 0,
                 ];
             })->values();
@@ -197,8 +194,7 @@ class CotizacionController extends Controller
                 : StockAlmacen::totalEn($d->producto_id, $cotizacion->almacen_id),
         ]);
 
-        $user = auth()->user();
-        $esVendedor = $user->role?->nombre === 'Vendedor';
+        $esVendedor = false;
 
         return view('cotizaciones.show', compact('cotizacion', 'stock', 'esVendedor'));
     }

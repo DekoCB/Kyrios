@@ -35,13 +35,13 @@ class Auditoria2CFuzzEscrituraTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        return User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
     }
 
     private function valorDe(string $param, User $admin)
     {
         $mapa = [
-            'user' => fn () => User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Vendedor'])->id, 'estado' => 'activo'])->id,
+            'user' => fn () => User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo'])->id,
             'cliente' => fn () => Cliente::create(['nombre' => 'Cliente Fuzz ' . uniqid(), 'estado' => 'activo'])->id,
             'marca' => fn () => Marca::create(['nombre' => 'Marca Fuzz ' . uniqid(), 'estado' => 'activo'])->id,
             'color' => fn () => Color::create(['nombre' => 'Color Fuzz ' . uniqid(), 'estado' => 'activo'])->id,
@@ -102,8 +102,8 @@ class Auditoria2CFuzzEscrituraTest extends TestCase
             }
             // Cada ruta con un administrador vivo: se restablece por si la carga lo desactivó o cambió
             $admin->refresh();
-            if ($admin->estado !== 'activo' || !$admin->role || $admin->role->nombre !== 'Administrador') {
-                $admin->forceFill(['estado' => 'activo', 'role_id' => Role::where('nombre', 'Administrador')->value('id')])->save();
+            if ($admin->estado !== 'activo' || !$admin->role || $admin->role->nombre !== 'Administración') {
+                $admin->forceFill(['estado' => 'activo', 'role_id' => Role::where('nombre', 'Administración')->value('id')])->save();
             }
             $this->actingAs($admin->fresh());
         }

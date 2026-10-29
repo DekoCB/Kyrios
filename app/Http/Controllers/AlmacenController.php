@@ -11,11 +11,11 @@ use Illuminate\Http\Request;
 class AlmacenController extends Controller
 {
     /**
-     * Constructor - Solo Admin y Almacenero
+     * Constructor - Administración y Logística
      */
     public function __construct()
     {
-        $this->middleware('role:Administrador,Almacenero');
+        $this->middleware('role:Administración,Logística');
     }
 
     /**
@@ -39,9 +39,9 @@ class AlmacenController extends Controller
             'depositos'=> Almacen::depositos()->count(),
         ];
 
-        $canCreate = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canEdit   = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canDelete  = auth()->user()->role->nombre === 'Administrador';
+        $canCreate = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canEdit   = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canDelete  = auth()->user()->role->nombre === 'Administración';
 
         // Datos de todos los almacenes para poblar el modal de editar vía JS
         $almacenesData = Almacen::with('sucursal')->get()->map(fn($a) => [

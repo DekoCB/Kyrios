@@ -28,13 +28,13 @@ class ProductoController extends Controller
      */
     public function __construct()
     {
-        // Solo Admin y Almacenero pueden crear/editar
-        $this->middleware('role:Administrador,Almacenero')
+        // Solo Administración y Logística pueden crear/editar
+        $this->middleware('role:Administración,Logística')
                 ->except(['index', 'show', 'consultaTienda', 'buscarAjax']);
 
         
         // Solo Admin puede eliminar
-        $this->middleware('role:Administrador')->only(['destroy']);
+        $this->middleware('role:Administración')->only(['destroy']);
     }
     public function consultaTienda(Request $request)
 {
@@ -121,9 +121,9 @@ class ProductoController extends Controller
             ->get();
 
         // Verificar permisos
-        $canCreate = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canEdit   = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canDelete = auth()->user()->role->nombre === 'Administrador';
+        $canCreate = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canEdit   = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canDelete = auth()->user()->role->nombre === 'Administración';
 
         $filtros = $this->opcionesFiltrosKyrios();
 
@@ -770,8 +770,8 @@ public function validarCodigoBarras(Request $request)
     $resultados = $productos->map(function($producto) {
         return [
             'id' => $producto->id,
-            'text' => $producto->codigo . ' - ' . $producto->nombre,
-            'nombre' => $producto->nombre,
+            'text' => $producto->codigo . ' - ' . \App\Support\EtiquetaProducto::nombre($producto),
+            'nombre' => \App\Support\EtiquetaProducto::nombre($producto),
             'codigo' => $producto->codigo,
             'tipo_inventario' => $producto->tipo_inventario,
             'marca' => $producto->marca->nombre ?? '',

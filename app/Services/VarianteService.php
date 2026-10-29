@@ -124,7 +124,7 @@ class VarianteService
                 ]);
                 return [
                     'id'                  => $producto->id,
-                    'nombre'              => $producto->nombre,
+                    'nombre'              => \App\Support\EtiquetaProducto::nombre($producto),
                     'tipo_inventario'     => $producto->tipo_inventario,
                     'categoria'           => $producto->categoria->nombre ?? 'N/A',
                     'categoria_id'        => $producto->categoria_id,

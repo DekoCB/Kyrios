@@ -6,7 +6,7 @@ return [
     | Ventana de edición de comprobantes (horas)
     |--------------------------------------------------------------------------
     | Número máximo de horas desde la emisión durante las cuales un
-    | Administrador puede editar campos no contables de un comprobante.
+    | Administración puede editar campos no contables de un comprobante.
     */
     'edit_window_hours' => env('VENTA_EDIT_WINDOW_HOURS', 24),
 

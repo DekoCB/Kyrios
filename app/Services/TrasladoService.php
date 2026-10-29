@@ -67,12 +67,12 @@ class TrasladoService
         $cantidad = (int) ($linea['cantidad'] ?? 0);
 
         if ($cantidad < 1) {
-            throw new \Exception("Producto «{$producto->nombre}»: la cantidad debe ser al menos 1.");
+            throw new \Exception("Producto «" . \App\Support\EtiquetaProducto::rotulo($producto) . "»: la cantidad debe ser al menos 1.");
         }
 
         $varianteId = !empty($linea['variante_id']) ? (int) $linea['variante_id'] : null;
         if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
-            throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante que va a trasladar.");
+            throw new \Exception("Producto «" . \App\Support\EtiquetaProducto::rotulo($producto) . "»: seleccione la variante que va a trasladar.");
         }
 
         // Bloqueo de la fila: dos traslados simultáneos no pueden usar la misma existencia
@@ -84,7 +84,7 @@ class TrasladoService
 
         if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
             $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
-            $nombre = \App\Support\EtiquetaProducto::nombre($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
+            $nombre = \App\Support\EtiquetaProducto::rotulo($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
             throw new \Exception(
                 "Producto «{$nombre}»: stock insuficiente en almacén origen (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
             );
@@ -269,7 +269,7 @@ class TrasladoService
 
                 if (!$stockDestino || $stockDestino->cantidad < $movimiento->cantidad) {
                     throw new \Exception(
-                        "Producto «{$movimiento->producto->nombre}»: no hay suficiente stock en el almacén destino para devolver (disponible: " . ($stockDestino->cantidad ?? 0) . "). Probablemente ya se vendió."
+                        "Producto «" . \App\Support\EtiquetaProducto::rotulo($movimiento->producto) . "»: no hay suficiente stock en el almacén destino para devolver (disponible: " . ($stockDestino->cantidad ?? 0) . "). Probablemente ya se vendió."
                     );
                 }
             }

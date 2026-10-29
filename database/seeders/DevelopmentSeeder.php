@@ -29,36 +29,11 @@ class DevelopmentSeeder extends Seeder
         }
 
         $usuarios = [
-            [
-                'name'     => 'Vendedor Demo',
-                'email'    => 'vendedor@demo.test',
-                'password' => 'password',
-                'role'     => 'Vendedor',
-            ],
-            [
-                'name'     => 'Almacenero Demo',
-                'email'    => 'almacenero@demo.test',
-                'password' => 'password',
-                'role'     => 'Almacenero',
-            ],
-            [
-                'name'     => 'Proveedor Demo',
-                'email'    => 'proveedor@demo.test',
-                'password' => 'password',
-                'role'     => 'Proveedor',
-            ],
-            [
-                'name'     => 'Tienda Demo',
-                'email'    => 'tienda@demo.test',
-                'password' => 'password',
-                'role'     => 'Tienda',
-            ],
-            [
-                'name'     => 'Admin Demo',
-                'email'    => 'admin@demo.test',
-                'password' => 'password',
-                'role'     => 'Administrador',
-            ],
+            ['name' => 'Administración Demo', 'email' => 'admin@demo.test',      'password' => 'password', 'role' => Role::ADMINISTRACION],
+            ['name' => 'Contador Demo',       'email' => 'contador@demo.test',   'password' => 'password', 'role' => Role::CONTADOR],
+            ['name' => 'Logística Demo',      'email' => 'logistica@demo.test',  'password' => 'password', 'role' => Role::LOGISTICA],
+            ['name' => 'Operaciones Demo',    'email' => 'operaciones@demo.test', 'password' => 'password', 'role' => Role::OPERACIONES],
+            ['name' => 'Cliente Demo',        'email' => 'cliente@demo.test',    'password' => 'password', 'role' => Role::CLIENTE],
         ];
 
         foreach ($usuarios as $datos) {

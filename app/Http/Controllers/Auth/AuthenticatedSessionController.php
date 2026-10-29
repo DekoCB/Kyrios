@@ -50,13 +50,12 @@ class AuthenticatedSessionController extends Controller
         }
 
         return match($role) {
-            'Administrador' => redirect()->route('admin.dashboard'),
-            'Vendedor'      => redirect()->route('vendedor.dashboard'),
-            'Almacenero'    => redirect()->route('almacenero.dashboard'),
-            'Tienda'        => redirect()->route('tienda.dashboard'),
-            'Proveedor'     => redirect()->route('proveedor.dashboard'),
-            'Técnico'       => redirect()->route('caja-chica.index'),
-            default         => redirect()->route('dashboard'),
+            \App\Models\Role::ADMINISTRACION => redirect()->route('admin.dashboard'),
+            \App\Models\Role::CONTADOR       => redirect()->route('contador.dashboard'),
+            \App\Models\Role::LOGISTICA      => redirect()->route('logistica.dashboard'),
+            \App\Models\Role::OPERACIONES    => redirect()->route('operaciones.dashboard'),
+            \App\Models\Role::CLIENTE        => redirect()->route('cliente.dashboard'),
+            default                            => redirect()->route('dashboard'),
         };
     }
 

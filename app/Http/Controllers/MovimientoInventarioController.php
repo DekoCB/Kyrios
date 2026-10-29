@@ -11,11 +11,11 @@ use Illuminate\Http\Request;
 class MovimientoInventarioController extends Controller
 {
     /**
-     * Constructor - Solo Admin y Almacenero
+     * Constructor - Administración y Logística
      */
     public function __construct()
     {
-        $this->middleware('role:Administrador,Almacenero');
+        $this->middleware('role:Administración,Logística');
     }
 
     /**
@@ -194,7 +194,7 @@ class MovimientoInventarioController extends Controller
             'stock_actual' => $producto->stock_actual,
             'unidad_medida' => $producto->unidadMedida?->abreviatura,
             'codigo' => $producto->codigo,
-            'nombre' => $producto->nombre,
+            'nombre' => \App\Support\EtiquetaProducto::nombre($producto),
         ]);
     }
 

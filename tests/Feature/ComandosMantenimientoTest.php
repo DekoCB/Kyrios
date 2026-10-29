@@ -153,7 +153,7 @@ class ComandosMantenimientoTest extends TestCase
 
     public function test_la_purga_vacia_los_datos_de_negocio_y_conserva_usuarios_y_roles(): void
     {
-        $rol = Role::firstOrCreate(['nombre' => 'Administrador']);
+        $rol = Role::firstOrCreate(['nombre' => 'Administración']);
         $almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'principal', 'estado' => 'activo']);
         $user = User::factory()->create(['role_id' => $rol->id, 'estado' => 'activo', 'almacen_id' => $almacen->id]);
         Cliente::create(['tipo_documento' => 'DNI', 'numero_documento' => '12345678', 'nombre' => 'Cliente', 'estado' => 'activo']);

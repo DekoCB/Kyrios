@@ -265,7 +265,7 @@
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-center gap-1">
                                                 <button type="button"
-                                                        onclick="eliminarDetalle({{ $detalle->id }}, '{{ addslashes($detalle->producto->nombre) }}')"
+                                                        onclick="eliminarDetalle({{ $detalle->id }}, '{{ addslashes(\App\Support\EtiquetaProducto::nombre($detalle->producto)) }}')"
                                                         title="Eliminar producto"
                                                         class="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition text-xs btn-eliminar-detalle">
                                                     <i class="fas fa-trash"></i>

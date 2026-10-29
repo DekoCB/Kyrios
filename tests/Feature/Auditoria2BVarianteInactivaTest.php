@@ -25,7 +25,7 @@ class Auditoria2BVarianteInactivaTest extends TestCase
 
     public function test_desactivar_una_variante_con_stock_no_desfasa_el_total_del_producto(): void
     {
-        $admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($admin);
         $a = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Depósito', 'tipo' => 'principal', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT', 'nombre' => 'Luminaria', 'estado' => 'activo']);

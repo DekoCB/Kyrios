@@ -968,7 +968,7 @@ class VentaService
             if (!$stock || $stock->cantidad < $detalle['cantidad']) {
                 $producto = \App\Models\Producto::find($detalle['producto_id']);
                 $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
-                $nombre = \App\Support\EtiquetaProducto::nombre($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
+                $nombre = \App\Support\EtiquetaProducto::rotulo($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
                 throw new \Exception("Stock insuficiente para {$nombre} en este almacén. Disponible: " . ($stock->cantidad ?? 0));
             }
         }

@@ -32,6 +32,7 @@
             <a href="{{ route('cotizaciones.pdf', $c) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
                 <i class="fas fa-file-pdf text-red-500"></i> PDF
             </a>
+            @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
             @if($c->puede_editarse)
                 <a href="{{ route('cotizaciones.edit', $c) }}" class="inline-flex items-center gap-2 border border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
                     <i class="fas fa-edit"></i> Editar
@@ -72,6 +73,7 @@
                         class="ml-auto inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-sm">
                     <i class="fas fa-file-invoice"></i> Convertir en venta
                 </button>
+            @endif
             @endif
         </div>
 

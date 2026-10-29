@@ -21,7 +21,7 @@ class Auditoria2CRegresionTest extends TestCase
 
     private function admin(): User
     {
-        $u = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $u = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($u);
 
         return $u;

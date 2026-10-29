@@ -29,7 +29,7 @@ class Auditoria2BCuentasPorPagarTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($admin);
         $almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Depósito', 'tipo' => 'principal', 'estado' => 'activo']);
         $this->sucursal = Sucursal::create(['nombre' => 'Principal', 'codigo' => 'S001', 'tipo' => 'tienda', 'estado' => 'activo', 'almacen_id' => $almacen->id]);

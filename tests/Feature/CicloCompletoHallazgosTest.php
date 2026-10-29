@@ -26,7 +26,7 @@ class CicloCompletoHallazgosTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        return User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
     }
 
     public function test_el_nombre_de_la_tienda_no_repite_el_prefijo(): void
@@ -69,7 +69,7 @@ class CicloCompletoHallazgosTest extends TestCase
         $admin = $this->admin();
         $this->actingAs($admin);
         Empresa::create(['ruc' => '20000000001', 'razon_social' => 'PRUEBAS SAC', 'direccion' => 'AV. X 1', 'sunat_modo' => 'beta']);
-        $almacen = Almacen::create(['codigo' => 'ALM-S', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $almacen = Almacen::create(['codigo' => 'ALM-S', 'nombre' => 'Administración', 'tipo' => 'tienda', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT-S', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $prod = Producto::create(['codigo' => 'KY-LU2501-0001', 'nombre' => 'Ring', 'categoria_id' => $cat->id, 'tipo_inventario' => 'cantidad', 'stock_minimo' => 0, 'stock_maximo' => 100, 'estado' => 'activo']);
         StockAlmacen::fila($prod->id, $almacen->id, null)->update(['cantidad' => 10]);

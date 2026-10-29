@@ -187,7 +187,7 @@ class ReporteVentasController extends Controller
     {
         return $this->baseQuery($desde, $hasta, $almacenId, $categoriaId)
             ->selectRaw('
-                p.nombre,
+                p.id, p.codigo, p.nombre, p.nombre_fabrica, p.nombre_kyrios,
                 COALESCE(SUM(COALESCE(dv.subtotal_con_igv, ROUND(dv.subtotal * 1.18, 2))), 0) as total_ventas,
                 COALESCE(SUM(COALESCE(dv.subtotal_con_igv, ROUND(dv.subtotal * 1.18, 2)) - dv.cantidad * COALESCE(pv.costo_promedio, p.costo_promedio)), 0) as ganancia,
                 CASE WHEN SUM(COALESCE(dv.subtotal_con_igv, ROUND(dv.subtotal * 1.18, 2))) > 0
@@ -195,10 +195,15 @@ class ReporteVentasController extends Controller
                          / SUM(COALESCE(dv.subtotal_con_igv, ROUND(dv.subtotal * 1.18, 2))) * 100
                     ELSE 0 END as margen
             ')
-            ->groupBy('p.id', 'p.nombre')
+            ->groupBy('p.id', 'p.codigo', 'p.nombre', 'p.nombre_fabrica', 'p.nombre_kyrios')
             ->orderByDesc('ganancia')
             ->limit($limit)
-            ->get();
+            ->get()
+            ->map(function ($fila) {
+                $fila->nombre = \App\Support\EtiquetaProducto::nombre($fila);
+
+                return $fila;
+            });
     }
 
     private function getPorCategoria(string $desde, string $hasta, ?string $almacenId, ?string $categoriaId)
@@ -220,7 +225,7 @@ class ReporteVentasController extends Controller
             ->selectRaw('
                 p.id,
                 COALESCE(pv.sku, p.codigo) as codigo,
-                p.nombre,
+                p.nombre, p.nombre_fabrica, p.nombre_kyrios,
                 CASE
                     WHEN pv.id IS NOT NULL
                     THEN TRIM(CONCAT(COALESCE(col.nombre, ""), " ", COALESCE(pv.capacidad, "")))
@@ -241,13 +246,18 @@ class ReporteVentasController extends Controller
                 2) as total_ganancia
             ')
             ->groupBy(
-                'p.id', 'p.codigo', 'p.nombre', 'c.nombre',
+                'p.id', 'p.codigo', 'p.nombre', 'p.nombre_fabrica', 'p.nombre_kyrios', 'c.nombre',
                 'p.costo_promedio', 'pv.id', 'pv.sku', 'pv.capacidad',
                 'pv.costo_promedio', 'col.nombre'
             )
             ->orderBy('p.nombre')
             ->orderByDesc('total_ganancia')
-            ->get();
+            ->get()
+            ->map(function ($fila) {
+                $fila->nombre = \App\Support\EtiquetaProducto::nombre($fila);
+
+                return $fila;
+            });
     }
 
     // ─────────────────────────────────────────────

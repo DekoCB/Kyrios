@@ -40,10 +40,10 @@ La disponibilidad está sujeta a stock al momento de confirmar la compra.
 Forma de pago: contado o transferencia.",
     ],
 
-    // Administrador inicial (php artisan db:seed). Se lee aquí para que funcione con config:cache.
+    // Usuario de Administración inicial (php artisan db:seed). Se lee aquí para que funcione con config:cache.
     // Fuera de local/testing el seeder exige ADMIN_EMAIL y ADMIN_PASSWORD.
     'admin' => [
-        'nombre'   => env('ADMIN_NAME', 'Administrador'),
+        'nombre'   => env('ADMIN_NAME', 'Administración'),
         'email'    => env('ADMIN_EMAIL'),
         'password' => env('ADMIN_PASSWORD'),
     ],

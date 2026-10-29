@@ -46,7 +46,7 @@ class RegistrationTest extends TestCase
 
     public function test_se_puede_registrar_un_usuario_con_rol(): void
     {
-        $rol = Role::firstOrCreate(['nombre' => 'Almacenero']);
+        $rol = Role::firstOrCreate(['nombre' => 'Logística']);
 
         $this->withSession(['master_password_verified' => true])
             ->post('/register', [

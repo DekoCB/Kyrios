@@ -66,10 +66,12 @@
                             Aceptar
                         </button>
                     </div>
+                    @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                     <a href="{{ route('ventas.create') }}"
                        class="block mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium transition">
                         <i class="fas fa-plus-circle mr-1"></i> Nueva Venta
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -251,7 +253,7 @@
                     <i class="fas fa-arrow-left"></i> Volver
                 </a>
 
-                @if($venta->estado_pago === 'pendiente' && in_array(auth()->user()->role->nombre, ['Administrador', 'Tienda']))
+                @if($venta->estado_pago === 'pendiente' && in_array(auth()->user()->role->nombre, ['Administración']))
                 <div x-data="{ showModal: false }">
                     <button @click="showModal = true"
                             class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
@@ -312,24 +314,24 @@
                 {{-- Acciones: Editar / Anular / Eliminar (Admin y Tienda) --}}
                 @php
                     $rolActual       = auth()->user()->role->nombre;
-                    $puedeEditar     = in_array($rolActual, ['Administrador','Tienda'])
+                    $puedeEditar     = in_array($rolActual, ['Administración'])
                                        && $venta->estado_pago !== 'anulado'
                                        && !$venta->es_nota_credito
                                        && $venta->created_at->diffInHours(now()) <= config('ventas.edit_window_hours', 24);
                     // Anular directo: solo si NO fue aceptado por SUNAT
-                    $puedeAnular     = in_array($rolActual, ['Administrador','Tienda'])
+                    $puedeAnular     = in_array($rolActual, ['Administración'])
                                        && !in_array($venta->estado_pago, ['anulado','cotizacion'])
                                        && !$venta->es_nota_credito
                                        && $venta->puede_anular_directo;
                     // Nota de Crédito: solo si fue aceptado por SUNAT y no es cotización/NC
-                    $puedeGenerarNC  = in_array($rolActual, ['Administrador','Tienda'])
+                    $puedeGenerarNC  = in_array($rolActual, ['Administración'])
                                        && $venta->es_aceptado_sunat
                                        && !in_array($venta->estado_pago, ['anulado','cotizacion'])
                                        && !$venta->es_nota_credito;
-                    $puedeEliminar   = in_array($rolActual, ['Administrador','Tienda'])
+                    $puedeEliminar   = in_array($rolActual, ['Administración'])
                                        && $venta->estado_pago !== 'cotizacion'
                                        && !$venta->es_aceptado_sunat; // no eliminar docs aceptados por SUNAT
-                    $esTienda        = $rolActual === 'Tienda';
+                    $esTienda        = false; // ningún rol necesita ya confirmar su clave antes de editar o anular
                 @endphp
 
                 @if($puedeEditar || $puedeAnular || $puedeEliminar || $puedeGenerarNC)

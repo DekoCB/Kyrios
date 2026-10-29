@@ -486,7 +486,7 @@ class InventarioReportesController extends Controller
 
     private function exportarKardexCsv($producto, $movimientos, array $resumen, string $desde, string $hasta)
     {
-        $filename = 'kardex-'.\Illuminate\Support\Str::slug($producto->nombre).'-'.now()->format('Ymd').'.csv';
+        $filename = 'kardex-'.\Illuminate\Support\Str::slug(\App\Support\EtiquetaProducto::rotulo($producto)).'-'.now()->format('Ymd').'.csv';
 
         return response()->streamDownload(function () use ($producto, $movimientos, $resumen, $desde, $hasta) {
             $h = fopen('php://output', 'w');

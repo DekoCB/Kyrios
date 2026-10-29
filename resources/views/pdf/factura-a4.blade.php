@@ -202,7 +202,7 @@ table.items tfoot td { padding: 3px 6px; font-size: 7.5pt; }
             <td class="center">{{ $i + 1 }}</td>
             <td>{{ $d->producto?->codigo ?? '—' }}</td>
             <td>
-                {{ \App\Support\EtiquetaProducto::nombre($d->producto) }}
+                {{ \App\Support\EtiquetaProducto::documento($d->producto) }}
                 @if($d->variante)
                     <br><span style="color:#555;font-size:7pt">{{ $d->variante->nombre_completo }} · {{ $d->variante->sku }}</span>
                 @endif

@@ -30,7 +30,6 @@ class VentaController extends Controller
 
         // Base con restricciones de rol
         $base = Venta::query()
-            ->when($user->role->nombre === 'Vendedor', fn($q) => $q->where('user_id', $user->id))
             ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id));
 
         // Aplicar filtros de búsqueda
@@ -82,9 +81,9 @@ class VentaController extends Controller
         $categorias = Categoria::activas()->orderBy('nombre')->get();
 
         // Ventas solo en tiendas (puntos de venta)
-        // Admin: todas | usuario con tienda asignada: solo la suya | sin asignación: todas
+        // Usuario con tienda asignada: solo la suya | sin asignación: todas las tiendas activas
         $rolNombre = $user->role->nombre;
-        if ($rolNombre === 'Administrador') {
+        if (!$user->almacen_id) {
             $almacenes = Almacen::where('estado', 'activo')->where('tipo', 'tienda')->orderBy('nombre')->get();
         } elseif ($user->almacen_id) {
             $almacenes = Almacen::where('estado', 'activo')
@@ -93,11 +92,12 @@ class VentaController extends Controller
                 ->orderBy('nombre')
                 ->get();
         } else {
-            // Vendedor/Cajero sin tienda asignada: ve todas las tiendas activas
+            // Sin tienda asignada: ve todas las tiendas activas
             $almacenes = Almacen::where('estado', 'activo')->where('tipo', 'tienda')->orderBy('nombre')->get();
         }
 
-        $esVendedor = $rolNombre === 'Vendedor';
+        // El modo «vendedor» (pedido que cobra otro) ya no tiene un rol propio: la venta la registra Administración
+        $esVendedor = false;
 
         // Preseleccionar si solo hay un almacén disponible
         $almacenPredeterminado = $almacenes->count() === 1
@@ -243,7 +243,7 @@ class VentaController extends Controller
         $cajaAbierta    = (bool) $cajaActual;
         $cajaDiaAnterior = $cajaActual && $cajaActual->fecha->lt(today());
 
-        // Ventas pendientes de cobro para Vendedor
+        // Ventas pendientes de cobro del modo vendedor (hoy inactivo)
         $misPendientes = $esVendedor
             ? Venta::with(['cliente', 'detalles.producto', 'detalles.variante.color'])
                 ->where('user_id', $user->id)
@@ -266,11 +266,6 @@ class VentaController extends Controller
         $subtotal        = collect($validated['detalles'])->sum(fn($d) => $d['cantidad'] * $d['precio_unitario']);
         $tipoComprobante = $validated['tipo_comprobante'] ?? 'boleta';
         $condicionPago   = $validated['condicion_pago'] ?? 'contado';
-
-        // Vendedor siempre genera venta pendiente de cobro
-        if (auth()->user()->role->nombre === 'Vendedor') {
-            $condicionPago = 'pendiente_cobro';
-        }
 
         $esPendienteCobro = $condicionPago === 'pendiente_cobro';
         $esCredito        = $condicionPago === 'credito';
@@ -318,15 +313,6 @@ class VentaController extends Controller
                 return response()->json(['venta_id' => $venta->id]);
             }
 
-            // Vendedor y Cajero permanecen en el POS con modal de éxito
-            if (in_array(auth()->user()->role->nombre, ['Vendedor', 'Cajero'])) {
-                return redirect()->route('ventas.create')->with('venta_exitosa', [
-                    'codigo' => $venta->codigo,
-                    'total'  => number_format($venta->total, 2),
-                    'id'     => $venta->id,
-                ]);
-            }
-
             return redirect()->route('ventas.show', $venta)->with('success', $msg);
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
@@ -336,19 +322,8 @@ class VentaController extends Controller
         }
     }
 
-    /** Igual que la lista de ventas: un vendedor solo ve las suyas (la ruta recibe el id, no la lista). */
-    private function autorizarVenta(Venta $venta): void
-    {
-        abort_if(
-            auth()->user()->role?->nombre === 'Vendedor' && $venta->user_id !== auth()->id(),
-            403,
-            'Esta venta es de otro vendedor.'
-        );
-    }
-
     public function show(Venta $venta)
     {
-        $this->autorizarVenta($venta);
         $venta->load('vendedor', 'confirmador', 'cliente', 'almacen', 'sucursal', 'serieComprobante',
             'detalles.producto.categoria', 'detalles.producto.unidadMedida', 'detalles.variante.color',
             'guiaRemision', 'cuentaPorCobrar.cuotas');
@@ -358,7 +333,6 @@ class VentaController extends Controller
 
     public function guiaPdf(Venta $venta)
     {
-        $this->autorizarVenta($venta);
         $venta->load('cliente', 'almacen', 'detalles.producto.unidadMedida', 'detalles.variante', 'guiaRemision');
 
         $guia = $venta->guiaRemision;
@@ -384,7 +358,6 @@ class VentaController extends Controller
 
     public function pdf(Request $request, Venta $venta)
     {
-        $this->autorizarVenta($venta);
         $formato = $request->get('formato', 'a4'); // a4 | ticket
 
         $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',
@@ -646,15 +619,15 @@ class VentaController extends Controller
     }
 
     /**
-     * Verificar contraseña propia para rol Tienda antes de acción sensible.
+     * Verificar contraseña propia antes de una acción sensible (ya no la exige ningún rol: Administración no la necesita).
      * POST /ventas/{venta}/verificar-clave — devuelve JSON
      */
     public function verificarClave(Request $request, Venta $venta)
     {
         $rol = auth()->user()->role->nombre;
 
-        // Admin no necesita verificar clave
-        if ($rol === 'Administrador') {
+        // Administración no necesita verificar clave
+        if ($rol === 'Administración') {
             return response()->json(['ok' => true]);
         }
 
@@ -671,7 +644,7 @@ class VentaController extends Controller
     }
 
     /**
-     * Bitácora de auditoría — solo Administrador
+     * Bitácora de auditoría — Administración y Contador
      */
     public function bitacora(Request $request)
     {
@@ -700,16 +673,16 @@ class VentaController extends Controller
 
     /**
      * Helper: verifica si el token de clave ya fue validado para esta venta.
-     * - Admin → siempre true (no necesita clave)
-     * - Tienda → consume token de sesión (un solo uso)
-     * Retorna true si requirió clave (Tienda), false si es Admin.
+     * - Administración → no necesita clave
+     * - Cualquier otro rol que llegue aquí debe haber verificado su contraseña (token de un solo uso).
+     * Retorna true si requirió clave, false si es Administración.
      */
     private function claveTiendaVerificada(Venta $venta): bool
     {
         $rol = auth()->user()->role->nombre;
 
-        if ($rol === 'Administrador') {
-            return false; // Admin no necesita clave
+        if ($rol === 'Administración') {
+            return false; // Administración no necesita clave
         }
 
         $key       = 'venta_clave_ok.' . $venta->id;
@@ -722,12 +695,11 @@ class VentaController extends Controller
         // Consumir token (un solo uso)
         session()->forget($key);
 
-        return true; // Sí requirió clave (rol Tienda)
+        return true; // Sí requirió clave
     }
 
     public function showCredito(Venta $venta)
     {
-        $this->autorizarVenta($venta);
         if (!$venta->es_credito) {
             return redirect()->route('ventas.show', $venta)->with('error', 'Esta venta no es a crédito.');
         }
@@ -783,45 +755,4 @@ class VentaController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
-
-    public function dashboardTienda()
-{
-    $user = auth()->user();
-    
-    // Ventas del día actual
-    $ventas_dia = Venta::whereDate('fecha', today())
-        ->when($user->role->nombre === 'Vendedor', function ($query) use ($user) {
-            return $query->where('user_id', $user->id);
-        })
-        ->sum('total');
-    
-    // Otras estadísticas que puedas necesitar
-    $ventas_pendientes = Venta::where('estado_pago', 'pendiente')
-        ->when($user->role->nombre === 'Vendedor', function ($query) use ($user) {
-            return $query->where('user_id', $user->id);
-        })
-        ->count();
-    
-    $ventas_mes = Venta::whereMonth('fecha', now()->month)
-        ->whereYear('fecha', now()->year)
-        ->when($user->role->nombre === 'Vendedor', function ($query) use ($user) {
-            return $query->where('user_id', $user->id);
-        })
-        ->sum('total');
-    
-    $ultimas_ventas = Venta::with('cliente')
-        ->when($user->role->nombre === 'Vendedor', function ($query) use ($user) {
-            return $query->where('user_id', $user->id);
-        })
-        ->orderBy('created_at', 'desc')
-        ->limit(10)
-        ->get();
-    
-    return view('dashboards.tienda', compact(
-        'ventas_dia', 
-        'ventas_pendientes', 
-        'ventas_mes', 
-        'ultimas_ventas'
-    ));
-}
 }

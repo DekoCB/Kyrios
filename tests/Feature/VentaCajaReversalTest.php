@@ -48,7 +48,7 @@ class VentaCajaReversalTest extends TestCase
     {
         parent::setUp();
 
-        $this->roleAdmin = Role::firstOrCreate(['nombre' => 'Administrador']);
+        $this->roleAdmin = Role::firstOrCreate(['nombre' => 'Administración']);
 
         $uid = uniqid();
 

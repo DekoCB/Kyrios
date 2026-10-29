@@ -34,10 +34,12 @@
                     </span>
                 @endif
             </a>
+            @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
             <a href="{{ route('admin.cajas.apertura-remota') }}"
                class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition">
                 <i class="fas fa-cash-register mr-1"></i> Apertura Remota
             </a>
+            @endif
             <a href="{{ route('admin.cajas.reportes') }}"
                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
                 <i class="fas fa-chart-bar mr-1"></i> Reportes

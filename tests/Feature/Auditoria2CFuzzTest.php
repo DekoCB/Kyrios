@@ -16,7 +16,7 @@ class Auditoria2CFuzzTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        return User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
     }
 
     public static function consultasRaras(): array

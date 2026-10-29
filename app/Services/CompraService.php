@@ -223,7 +223,7 @@ class CompraService
             // La variante tiene que ser del producto de la línea: si no, el stock queda en una variante ajena
             if (!empty($detalle['variante_id'])
                 && !ProductoVariante::where('id', $detalle['variante_id'])->where('producto_id', $producto->id)->exists()) {
-                throw new \Exception("La variante seleccionada no pertenece al producto \"{$producto->nombre}\".");
+                throw new \Exception("La variante seleccionada no pertenece al producto \"" . \App\Support\EtiquetaProducto::rotulo($producto) . "\".");
             }
 
             // Clave única: producto + variante (o modelo + color para retrocompatibilidad)
@@ -233,7 +233,7 @@ class CompraService
             ]);
 
             if (in_array($clave, $combinacionesVistas)) {
-                throw new \Exception("El producto \"{$producto->nombre}\" con la misma variante está duplicado en el detalle");
+                throw new \Exception("El producto \"" . \App\Support\EtiquetaProducto::rotulo($producto) . "\" con la misma variante está duplicado en el detalle");
             }
             $combinacionesVistas[] = $clave;
         }
@@ -277,7 +277,7 @@ class CompraService
 
         if ($stock->cantidad <= $producto->stock_minimo) {
             Log::warning('Producto con stock mínimo', [
-                'producto'    => $producto->nombre,
+                'producto'    => \App\Support\EtiquetaProducto::nombre($producto),
                 'stock_actual'=> $stock->cantidad,
                 'stock_minimo'=> $producto->stock_minimo,
             ]);
@@ -369,7 +369,7 @@ class CompraService
 
                 if ($stockDisponible < $detalle->cantidad) {
                     throw new \Exception(
-                        "No se puede anular: «{$detalle->producto->nombre}» tiene {$stockDisponible} unidad(es) " .
+                        "No se puede anular: «" . \App\Support\EtiquetaProducto::rotulo($detalle->producto) . "» tiene {$stockDisponible} unidad(es) " .
                         "disponibles pero la compra registró {$detalle->cantidad}. " .
                         "Parte del stock ya fue vendida o trasladada."
                     );
@@ -484,7 +484,7 @@ class CompraService
                     // Bajar la cantidad comprada saca stock: no puede dejar el almacén en negativo
                     if ($diff < 0 && $stockAnterior < abs($diff)) {
                         throw new \Exception(
-                            "No se puede bajar la cantidad de «{$detalle->producto->nombre}»: en el almacén quedan {$stockAnterior} unidad(es) " .
+                            "No se puede bajar la cantidad de «" . \App\Support\EtiquetaProducto::rotulo($detalle->producto) . "»: en el almacén quedan {$stockAnterior} unidad(es) " .
                             "y se intenta quitar " . abs($diff) . ". Parte del stock ya salió."
                         );
                     }
@@ -613,7 +613,7 @@ class CompraService
                 // Quitar la línea saca stock: no puede dejar el almacén en negativo si esa mercadería ya salió
                 if ($stockAnterior < $detalle->cantidad) {
                     throw new \Exception(
-                        "No se puede quitar «{$detalle->producto->nombre}» de la compra: en el almacén quedan {$stockAnterior} unidad(es) " .
+                        "No se puede quitar «" . \App\Support\EtiquetaProducto::rotulo($detalle->producto) . "» de la compra: en el almacén quedan {$stockAnterior} unidad(es) " .
                         "y la línea registró {$detalle->cantidad}. Parte del stock ya salió."
                     );
                 }

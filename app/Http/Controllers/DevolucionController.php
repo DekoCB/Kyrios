@@ -16,7 +16,7 @@ class DevolucionController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('role:Administrador,Almacenero,Vendedor,Tienda');
+        $this->middleware('role:Administración,Contador');
     }
 
     public function index(Request $request)
@@ -168,16 +168,16 @@ class DevolucionController extends Controller
                     // exigirlo: una venta anulada o eliminada ya repuso su stock y devolverla lo sumaría dos veces.
                     $ventaOrigen = $detalle->venta;
                     if (!$ventaOrigen || $ventaOrigen->estado_pago !== 'pagado') {
-                        throw new \Exception("«{$detalle->producto?->nombre}»: solo se devuelven productos de ventas pagadas (esta venta está anulada, eliminada o sin cobrar).");
+                        throw new \Exception("«" . \App\Support\EtiquetaProducto::rotulo($detalle->producto) . "»: solo se devuelven productos de ventas pagadas (esta venta está anulada, eliminada o sin cobrar).");
                     }
                     if ((int) $ventaOrigen->cliente_id !== (int) $request->cliente_id) {
-                        throw new \Exception("«{$detalle->producto?->nombre}» no pertenece a una venta del cliente seleccionado.");
+                        throw new \Exception("«" . \App\Support\EtiquetaProducto::rotulo($detalle->producto) . "» no pertenece a una venta del cliente seleccionado.");
                     }
 
                     $disponible = $detalle->cantidad_disponible;
 
                     if ($disponible <= 0) {
-                        throw new \Exception("El producto «{$detalle->producto?->nombre}» ya fue devuelto en su totalidad.");
+                        throw new \Exception("El producto «" . \App\Support\EtiquetaProducto::rotulo($detalle->producto) . "» ya fue devuelto en su totalidad.");
                     }
 
                     $cantidad = min((int) $cantidadSolicitada, $disponible);
@@ -367,7 +367,7 @@ class DevolucionController extends Controller
 
                     if (!$stockAlm || $stockAlm->cantidad < $mov->cantidad) {
                         throw new \Exception(
-                            "No se puede anular: el stock de «{$mov->producto?->nombre}» ya cambió y no queda suficiente para revertir."
+                            "No se puede anular: el stock de «" . \App\Support\EtiquetaProducto::rotulo($mov->producto) . "» ya cambió y no queda suficiente para revertir."
                         );
                     }
 

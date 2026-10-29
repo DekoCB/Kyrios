@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CuentaPorPagar;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Venta;
 use App\Models\Producto;
@@ -28,23 +30,21 @@ class DashboardController extends Controller
 
     public function __construct(private CajaService $cajaService) {}
     public function index()
-{
-    $user = auth()->user();
-    $rol = $user->role->nombre;
-    
-    return match($rol) {
-        'Administrador' => redirect()->route('admin.dashboard'),
-        'Almacenero' => redirect()->route('almacenero.dashboard'),
-        'Tienda' => redirect()->route('tienda.dashboard'),
-        'Cajero' => redirect()->route('cajero.dashboard'),
-        'Vendedor' => redirect()->route('vendedor.dashboard'),
-        'Proveedor' => redirect()->route('proveedor.dashboard'),
-        'Técnico' => redirect()->route('caja-chica.index'),
-        default => abort(403, 'Rol no autorizado'),
-    };
-}
+    {
+        $rol = auth()->user()->role->nombre;
+
+        return match ($rol) {
+            Role::ADMINISTRACION => redirect()->route('admin.dashboard'),
+            Role::CONTADOR       => redirect()->route('contador.dashboard'),
+            Role::LOGISTICA      => redirect()->route('logistica.dashboard'),
+            Role::OPERACIONES    => redirect()->route('operaciones.dashboard'),
+            Role::CLIENTE        => redirect()->route('cliente.dashboard'),
+            default              => abort(403, 'Rol no autorizado'),
+        };
+    }
+
     /**
-     * Dashboard del Administrador
+     * Dashboard de Administración
      */
     public function admin(): View
     {
@@ -131,11 +131,16 @@ class DashboardController extends Controller
             ->whereNotIn('ventas.tipo_comprobante', self::TIPOS_NOTA)
             ->whereMonth('ventas.fecha', $mesActual)
             ->whereYear('ventas.fecha', $anioActual)
-            ->selectRaw('productos.nombre, SUM(detalle_ventas.cantidad) as total_vendido')
-            ->groupBy('productos.id', 'productos.nombre')
+            ->selectRaw('productos.id, productos.codigo, productos.nombre, productos.nombre_fabrica, productos.nombre_kyrios, SUM(detalle_ventas.cantidad) as total_vendido')
+            ->groupBy('productos.id', 'productos.codigo', 'productos.nombre', 'productos.nombre_fabrica', 'productos.nombre_kyrios')
             ->orderByDesc('total_vendido')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(function ($fila) {
+                $fila->nombre = \App\Support\EtiquetaProducto::nombre($fila);
+
+                return $fila;
+            });
 
         $maxVendido = $topProductos->max('total_vendido') ?: 1;
 
@@ -242,201 +247,66 @@ class DashboardController extends Controller
     }
 
     /**
-     * Dashboard del Vendedor
+     * Dashboard del Contador: lo que debe revisar a diario en la parte administrativa.
      */
-    public function vendedor(): View
+    public function contador(): View
     {
-        $user = auth()->user();
+        $hoy = now()->toDateString();
 
-        $baseQuery = fn() => Venta::where('user_id', $user->id)
-            ->whereNotIn('tipo_comprobante', array_merge(['cotizacion', 'nota_venta'], self::TIPOS_NOTA));
+        $pendientesSunat = Venta::whereIn('tipo_comprobante', ['boleta', 'factura', 'nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'])
+            ->whereIn('estado_sunat', ['pendiente_envio', 'rechazado']);
 
-        // Lo vendido no incluye ventas anuladas ni canceladas
-        $vigentes = fn() => $baseQuery()->whereNotIn('estado_pago', ['anulado', 'cancelado']);
-
-        // Ventas del día (todas del usuario)
-        $ventas_dia = $vigentes()->whereDate('fecha', today())->sum('total');
-
-        // Ventas del mes
-        $ventas_mes = $vigentes()
+        $ventasMes = Venta::where('estado_pago', 'pagado')
+            ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
             ->whereMonth('fecha', now()->month)
-            ->whereYear('fecha', now()->year)
-            ->sum('total');
+            ->whereYear('fecha', now()->year);
 
-        // Ventas pendientes de cobro
-        $ventas_pendientes = $baseQuery()
-            ->where('estado_pago', 'pendiente')
-            ->with('cliente')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $porCobrarVencidas = CuentaPorCobrar::where('estado', 'vencido');
+        $porPagarVencidas  = CuentaPorPagar::where(function ($q) use ($hoy) {
+            $q->where('estado', 'vencido')
+              ->orWhere(fn ($w) => $w->whereIn('estado', ['pendiente', 'parcial'])->whereDate('fecha_vencimiento', '<', $hoy));
+        });
 
-        $total_por_cobrar = $ventas_pendientes->sum('total');
-
-        // Clientes atendidos hoy (distintos)
-        $clientes_atendidos = $baseQuery()
-            ->whereDate('fecha', today())
-            ->whereNotNull('cliente_id')
-            ->distinct('cliente_id')
-            ->count('cliente_id');
-
-        // Productos vendidos hoy (suma de cantidades)
-        $productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', fn($q) =>
-            $q->where('user_id', $user->id)->whereDate('fecha', today())
-                ->whereNotIn('estado_pago', ['anulado', 'cancelado', 'cotizacion'])
-                ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
-        )->sum('cantidad');
-
-        // Últimas ventas
-        $ultimas_ventas = $baseQuery()
-            ->with('cliente')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        $cajaAtrasada = $this->cajaService->cajaAtrasada($user->id);
-
-        $data = [
-            'ventas_hoy'         => $ventas_dia,
-            'ventas_mes'         => $ventas_mes,
-            'clientes_atendidos' => $clientes_atendidos,
-            'productos_vendidos' => $productos_vendidos,
-            'ventas_pendientes'  => $ventas_pendientes,
-            'total_por_cobrar'   => $total_por_cobrar,
-            'tiendas'            => collect(),
-            'ultimas_ventas'     => $ultimas_ventas,
-            'caja_atrasada'      => $cajaAtrasada,
-        ];
-
-        return view('dashboards.vendedor', $data);
+        return view('dashboards.contador', [
+            'pendientes_sunat'      => (clone $pendientesSunat)->count(),
+            'rechazados_sunat'      => (clone $pendientesSunat)->where('estado_sunat', 'rechazado')->count(),
+            'ultimos_pendientes'    => (clone $pendientesSunat)->with('cliente', 'serieComprobante')->latest('fecha')->limit(8)->get(),
+            'ventas_mes_total'      => (float) (clone $ventasMes)->sum('total'),
+            'ventas_mes_cantidad'   => (clone $ventasMes)->count(),
+            'por_cobrar_vencidas'   => (clone $porCobrarVencidas)->count(),
+            'por_cobrar_monto'      => (float) (clone $porCobrarVencidas)->selectRaw('COALESCE(SUM(monto_total - monto_pagado), 0) as saldo')->value('saldo'),
+            'por_pagar_vencidas'    => (clone $porPagarVencidas)->count(),
+            'por_pagar_monto'       => (float) (clone $porPagarVencidas)->selectRaw('COALESCE(SUM(monto_total - monto_pagado), 0) as saldo')->value('saldo'),
+        ]);
     }
 
     /**
-     * Dashboard del Almacenero
+     * Dashboard de Logística: compras, proveedores e inventario.
      */
-    public function almacenero(): View
+    public function logistica(): View
     {
-        $data = [
-            'productos_stock' => 0, // Placeholder - se implementará en el módulo de inventario
-            'productos_bajo_stock' => 0,
-            'movimientos_hoy' => 0,
-            'almacenes_activos' => 0,
-        ];
-
-        return view('dashboards.almacenero', $data);
+        return view('dashboards.logistica', [
+            'productos_activos'    => Producto::where('estado', 'activo')->count(),
+            'proveedores_activos'  => Proveedor::where('estado', 'activo')->count(),
+            'compras_mes'          => Compra::whereMonth('fecha', now()->month)->whereYear('fecha', now()->year)->where('estado', '!=', 'anulado')->count(),
+            'movimientos_hoy'      => MovimientoInventario::whereDate('created_at', today())->count(),
+            'almacenes_activos'    => Almacen::where('estado', 'activo')->count(),
+        ]);
     }
 
     /**
-     * Dashboard del Proveedor
+     * Dashboard de Operaciones: la programación de tareas e instalaciones aún no existe.
      */
-    public function proveedor(): View
+    public function operaciones(): View
     {
-        $data = [
-            'ordenes_pendientes' => 0, // Placeholder - se implementará en el módulo de compras
-            'ordenes_completadas' => 0,
-            'productos_catalogo' => 0,
-            'monto_total' => 0,
-        ];
-
-        return view('dashboards.proveedor', $data);
+        return view('dashboards.operaciones');
     }
 
     /**
-     * Dashboard del Tienda
+     * Dashboard del Cliente: el portal de pedidos y seguimiento aún no existe.
      */
-    
-public function tienda()
-{
-    $user = auth()->user();
-    $hoy = now()->toDateString();
-    
-    // Calcular todas las variables que necesita la vista
-    $ventas_dia = Venta::where('user_id', $user->id)
-        ->whereDate('fecha', $hoy)
-        ->where('estado_pago', 'pagado')
-        ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
-        ->sum('total');
-    
-    $transacciones_dia = Venta::where('user_id', $user->id)
-        ->whereDate('fecha', $hoy)
-        ->where('estado_pago', 'pagado')
-        ->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
-        ->count();
-    
-    $clientes_atendidos = Venta::where('user_id', $user->id)
-        ->whereDate('fecha', $hoy)
-        ->where('estado_pago', 'pagado')
-        ->whereNotNull('cliente_id')
-        ->distinct('cliente_id')
-        ->count('cliente_id');
-    
-    // Buscar caja abierta del usuario (de hoy)
-    $caja = Caja::where('user_id', $user->id)
-        ->where('estado', 'abierta')
-        ->whereDate('fecha', $hoy)
-        ->first();
-
-    // Caja abierta de un día anterior (sin cerrar)
-    $cajaAtrasada = $this->cajaService->cajaAtrasada($user->id);
-
-    $caja_actual = $caja ? $caja->monto_final : ($cajaAtrasada ? $cajaAtrasada->monto_final : 0);
-
-    // Últimas ventas del día
-    $ultimas_ventas = Venta::where('user_id', $user->id)
-        ->whereDate('fecha', $hoy)
-        ->with('cliente')
-        ->orderBy('created_at', 'desc')
-        ->limit(10)
-        ->get();
-
-    // Cuotas de crédito vencidas o por vencer hoy (alertas para el cajero)
-    $creditosVencidos = CuotaCobro::where('estado', 'pendiente')
-        ->where('fecha_vencimiento', '<=', now()->addDays(3))
-        ->whereHas('cuentaPorCobrar', function ($q) use ($user) {
-            if ($user->almacen_id) {
-                $q->whereHas('venta', fn($v) => $v->where('almacen_id', $user->almacen_id));
-            }
-        })
-        ->with('cuentaPorCobrar.cliente')
-        ->orderBy('fecha_vencimiento')
-        ->limit(5)
-        ->get();
-
-    return view('dashboards.tienda', [
-        'ventas_dia'          => $ventas_dia,
-        'caja_actual'         => $caja_actual,
-        'caja'                => $caja,
-        'caja_atrasada'       => $cajaAtrasada,
-        'transacciones_dia'   => $transacciones_dia,
-        'clientes_atendidos'  => $clientes_atendidos,
-        'ultimas_ventas'      => $ultimas_ventas,
-        'creditos_vencidos'   => $creditosVencidos,
-    ]);
-}
-
-    /**
-     * Dashboard del Cajero
-     */
-    public function cajero(): View
+    public function cliente(): View
     {
-        $user = auth()->user();
-        $hoy  = now()->toDateString();
-
-        $caja = Caja::where('user_id', $user->id)
-            ->where('estado', 'abierta')
-            ->whereDate('fecha', $hoy)
-            ->first();
-
-        $cajaAtrasada = $this->cajaService->cajaAtrasada($user->id);
-
-        $ventasHoy = Venta::where('estado_pago', 'pagado')->whereNotIn('tipo_comprobante', self::TIPOS_NOTA)
-            ->whereDate('fecha', $hoy)
-            ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
-            ->sum('total');
-
-        $ventasPendientesCount = Venta::where('estado_pago', 'pendiente')
-            ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id))
-            ->count();
-
-        return view('dashboards.cajero', compact('caja', 'cajaAtrasada', 'ventasHoy', 'ventasPendientesCount'));
+        return view('dashboards.cliente');
     }
 }

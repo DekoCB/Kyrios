@@ -29,9 +29,9 @@ class NombresCodigosNHelperTest extends TestCase
         $this->assertSame('Cell me', EtiquetaProducto::nombre($p));
     }
 
-    public function test_sin_ningun_nombre_cae_al_codigo(): void
+    public function test_sin_ningun_nombre_dice_sin_nombre_asignado(): void
     {
-        $this->assertSame('KY-LU0000-0001', EtiquetaProducto::nombre(['nombre' => '', 'codigo' => 'KY-LU0000-0001']));
+        $this->assertSame('Sin nombre asignado', EtiquetaProducto::nombre(['nombre' => '', 'codigo' => 'KY-LU0000-0001']));
     }
 
     public function test_codigos_muestran_el_kyrios_y_el_de_fabrica(): void

@@ -15,7 +15,7 @@ class RecepcionEscanerController extends Controller
 {
     public function __construct(private EscanerService $escaner)
     {
-        $this->middleware('role:Administrador,Almacenero');
+        $this->middleware('role:Administración,Logística');
     }
 
     public function index()

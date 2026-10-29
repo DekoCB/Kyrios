@@ -85,7 +85,7 @@ class CodigoBarrasService
     {
         $data = [
             'id' => $producto->id,
-            'nombre' => $producto->nombre,
+            'nombre' => \App\Support\EtiquetaProducto::nombre($producto),
             'codigo' => $producto->codigo_barras ?? $this->generarCodigoUnico($producto),
             'precio' => $producto->precio_venta ?? 0,
             'stock' => $producto->stock_actual ?? 0,

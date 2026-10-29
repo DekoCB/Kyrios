@@ -56,10 +56,12 @@
            class="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
             <i class="fas fa-list-ol text-blue-600"></i> Gestionar Series
         </a>
+        @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
         <a href="{{ route('facturacion.configuracion') }}"
            class="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
             <i class="fas fa-cog text-gray-600"></i> Configuración
         </a>
+        @endif
         <a href="{{ route('ventas.index') }}"
            class="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition">
             <i class="fas fa-external-link-alt text-gray-400"></i> Ir a Ventas
@@ -215,7 +217,7 @@
                         </span>
                     </td>
                     <td class="px-4 py-3">
-                        @if($tieneGuia)
+                        @if($tieneGuia && auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                             <form action="{{ route('facturacion.guia-estado', $comp) }}" method="POST">
                                 @csrf @method('PATCH')
                                 <select name="estado" onchange="this.form.submit()"

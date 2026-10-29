@@ -27,7 +27,7 @@ class Auditoria2BExportacionesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
     }
 
@@ -51,7 +51,7 @@ class Auditoria2BExportacionesTest extends TestCase
     public function test_reportes_csv_con_datos_y_conteo_en_excel_y_pdf(): void
     {
         $a = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Depósito', 'tipo' => 'principal', 'estado' => 'activo']);
-        $b = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $b = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Administración', 'tipo' => 'tienda', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $p = Producto::create(['codigo' => 'KY-LU2501-0001', 'nombre' => 'Ring «Ñandú» / 30cm', 'categoria_id' => $cat->id, 'tipo_inventario' => 'cantidad', 'stock_minimo' => 0, 'stock_maximo' => 100, 'estado' => 'activo']);
         $v = ProductoVariante::create(['producto_id' => $p->id, 'sku' => 'KY-LU2501-0001', 'codigo_kyrios' => 'KY-LU2501-0001', 'acabado_1' => 'negro(a)', 'estado' => 'activo']);

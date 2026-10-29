@@ -46,7 +46,7 @@ class TrasladosTiendaAccessTest extends TestCase
 
     public function test_tienda_puede_ver_historial_stock_y_crear_traslado(): void
     {
-        $tienda = $this->makeUser('Tienda');
+        $tienda = $this->makeUser('Administración');
 
         $this->actingAs($tienda)->get(route('traslados.index'))->assertOk();
         $this->actingAs($tienda)->get(route('traslados.stock'))->assertOk();
@@ -56,12 +56,12 @@ class TrasladosTiendaAccessTest extends TestCase
 
     public function test_tienda_puede_crear_guia_de_remision_para_el_traslado(): void
     {
-        $tienda = $this->makeUser('Tienda');
+        $tienda = $this->makeUser('Administración');
 
         $this->actingAs($tienda)->get(route('guias-remision.create'))->assertOk();
     }
 
-    public function test_tienda_no_tiene_permiso_de_rol_para_anular_ni_para_acciones_sunat(): void
+    public function test_contador_y_operaciones_no_tienen_permiso_para_anular_ni_para_acciones_sunat(): void
     {
         // Verificado a nivel de definición de ruta (no HTTP): con un ID
         // inexistente, el route-model-binding de Laravel devuelve 404 antes
@@ -71,15 +71,15 @@ class TrasladosTiendaAccessTest extends TestCase
         $rolesPermitidos = fn (string $routeName) => collect(\Illuminate\Support\Facades\Route::getRoutes()->getByName($routeName)->middleware())
             ->first(fn ($m) => str_starts_with($m, 'role:'));
 
-        $this->assertStringNotContainsString('Tienda', $rolesPermitidos('traslados.anular'));
-        $this->assertStringNotContainsString('Tienda', $rolesPermitidos('guias-remision.enviar-sunat'));
-        $this->assertStringNotContainsString('Tienda', $rolesPermitidos('guias-remision.update-estado'));
-        $this->assertStringNotContainsString('Tienda', $rolesPermitidos('guias-remision.consultar-sunat'));
+        $this->assertStringNotContainsString('Contador', $rolesPermitidos('traslados.anular'));
+        $this->assertStringNotContainsString('Contador', $rolesPermitidos('guias-remision.enviar-sunat'));
+        $this->assertStringNotContainsString('Contador', $rolesPermitidos('guias-remision.update-estado'));
+        $this->assertStringNotContainsString('Contador', $rolesPermitidos('guias-remision.consultar-sunat'));
     }
 
     public function test_almacenero_conserva_acceso_completo(): void
     {
-        $almacenero = $this->makeUser('Almacenero');
+        $almacenero = $this->makeUser('Logística');
 
         $this->actingAs($almacenero)->get(route('traslados.index'))->assertOk();
         $this->actingAs($almacenero)->get(route('traslados.create'))->assertOk();

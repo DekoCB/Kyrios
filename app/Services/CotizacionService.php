@@ -115,13 +115,13 @@ class CotizacionService
                 throw new \DomainException('La variante no pertenece al producto indicado.');
             }
             if (!$variante && $producto->variantes()->where('estado', 'activo')->exists()) {
-                throw new \DomainException("«{$producto->nombre}» tiene variantes: elija una.");
+                throw new \DomainException("«" . \App\Support\EtiquetaProducto::rotulo($producto) . "» tiene variantes: elija una.");
             }
 
             $cantidad = (int) $d['cantidad'];
             $precio = (float) $d['precio_unitario'];
             if ($cantidad < 1 || $precio <= 0) {
-                throw new \DomainException("«{$producto->nombre}»: cantidad y precio deben ser mayores que cero.");
+                throw new \DomainException("«" . \App\Support\EtiquetaProducto::rotulo($producto) . "»: cantidad y precio deben ser mayores que cero.");
             }
 
             $incluyeIgv = (bool) ($d['incluye_igv'] ?? true);
@@ -135,7 +135,7 @@ class CotizacionService
                 'producto_id'      => $producto->id,
                 'variante_id'      => $variante?->id,
                 'codigo'           => $variante?->codigo_kyrios ?? $producto->codigo,
-                'descripcion'      => mb_substr(\App\Support\EtiquetaProducto::nombre($producto) . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''), 0, 255),
+                'descripcion'      => mb_substr(\App\Support\EtiquetaProducto::documento($producto, $variante) . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''), 0, 255),
                 'cantidad'         => $cantidad,
                 'precio_unitario'  => $sinIgv,
                 'precio_con_igv'   => $conIgv,
@@ -244,8 +244,7 @@ class CotizacionService
                 throw new \DomainException('Solo se vende desde una tienda activa: edite la cotización y elija una tienda antes de convertirla.');
             }
 
-            // Un vendedor no cobra: su venta queda pendiente para el cajero (misma regla que el POS)
-            $condicion = $usuario->role?->nombre === 'Vendedor' ? 'pendiente_cobro' : ($opciones['condicion'] ?? 'contado');
+            $condicion = $opciones['condicion'] ?? 'contado';
             $pendiente = $condicion === 'pendiente_cobro';
             $metodo = $opciones['metodo_pago'] ?? null;
             if (!$pendiente && !in_array($metodo, ['efectivo', 'transferencia', 'yape', 'plin', 'mixto'], true)) {

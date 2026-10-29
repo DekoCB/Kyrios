@@ -39,7 +39,7 @@ class VentasCajaAuditoriaTest extends TestCase
 
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'tienda', 'estado' => 'activo']);
         $this->sucursal = Sucursal::create(['codigo' => 'SUC-A', 'nombre' => 'Sucursal A', 'tipo' => 'tienda', 'almacen_id' => $this->almacen->id, 'estado' => 'activo']);
-        $this->admin = $this->usuario('Administrador');
+        $this->admin = $this->usuario('Administración');
         $this->actingAs($this->admin);
 
         $categoria = Categoria::create(['codigo' => 'CAT-LU', 'nombre' => 'Luminaria', 'estado' => 'activo']);
@@ -154,11 +154,11 @@ class VentasCajaAuditoriaTest extends TestCase
 
     public function test_el_panel_del_cajero_con_una_caja_atrasada_enlaza_a_una_ruta_valida(): void
     {
-        $cajero = $this->usuario('Cajero');
+        $cajero = $this->usuario('Administración');
         $caja = app(CajaService::class)->abrirCaja($cajero->id, $this->almacen->id, 20);
         $caja->update(['fecha' => now()->subDays(2)->toDateString()]);
 
-        $this->actingAs($cajero)->get(route('cajero.dashboard'))->assertOk()
+        $this->actingAs($cajero)->get(route('admin.dashboard'))->assertOk()
             ->assertSee('sin cerrar')->assertSee(route('caja.actual'), false);
     }
 
@@ -201,10 +201,10 @@ class VentasCajaAuditoriaTest extends TestCase
         $this->assertEquals(50.0, (float) CuentaPorCobrar::where('venta_id', $uno->id)->first()->monto_pagado);
     }
 
-    public function test_un_cajero_no_mueve_la_caja_de_otro_usuario(): void
+    public function test_un_usuario_ajeno_no_mueve_la_caja_de_otro(): void
     {
-        $duenio = $this->usuario('Cajero');
-        $ajeno = $this->usuario('Cajero');
+        $duenio = $this->usuario('Administración');
+        $ajeno = $this->usuario('Contador');
         $caja = app(CajaService::class)->abrirCaja($duenio->id, $this->almacen->id, 100);
         $ingreso = ['caja_id' => $caja->id, 'monto' => 10, 'concepto' => 'Prueba', 'metodo_pago' => 'efectivo'];
         $gasto = ['caja_id' => $caja->id, 'monto' => 5, 'concepto' => 'Prueba', 'categoria_gasto' => 'otros'];
@@ -303,20 +303,4 @@ class VentasCajaAuditoriaTest extends TestCase
         $this->get(route('ventas.index'))->assertOk()->assertSee('Sin cliente');
     }
 
-    public function test_un_vendedor_solo_abre_sus_propias_ventas(): void
-    {
-        $uno = $this->usuario('Vendedor');
-        $otro = $this->usuario('Vendedor');
-        $venta = app(VentaService::class)->crearVenta([
-            'user_id' => $uno->id, 'cliente_id' => $this->cliente->id, 'almacen_id' => $this->almacen->id, 'sucursal_id' => $this->sucursal->id,
-            'fecha' => now()->toDateString(), 'subtotal' => 0, 'igv' => 0, 'total' => 0, 'tipo_comprobante' => 'nota_venta', 'estado_pago' => 'pendiente', 'condicion_pago' => 'contado',
-        ], [['producto_id' => $this->producto->id, 'variante_id' => $this->variante->id, 'cantidad' => 1, 'precio_unitario' => 118, 'incluye_igv' => true]]);
-
-        $this->actingAs($otro)->get(route('ventas.show', $venta))->assertForbidden();
-        $this->actingAs($otro)->get(route('ventas.pdf', ['venta' => $venta->id, 'formato' => 'a4']))->assertForbidden();
-        $this->actingAs($otro)->get(route('ventas.guia-pdf', $venta))->assertForbidden();
-
-        $this->actingAs($uno)->get(route('ventas.show', $venta))->assertOk();
-        $this->actingAs($this->admin)->get(route('ventas.show', $venta))->assertOk();
-    }
 }

@@ -31,10 +31,10 @@ class Auditoria2CNotasCreditoTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
 
-        $almacen = Almacen::create(['codigo' => 'ALM-N', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $almacen = Almacen::create(['codigo' => 'ALM-N', 'nombre' => 'Administración', 'tipo' => 'tienda', 'estado' => 'activo']);
         $sucursal = Sucursal::create(['nombre' => 'Principal', 'codigo' => 'S001', 'tipo' => 'tienda', 'estado' => 'activo', 'almacen_id' => $almacen->id]);
         $almacen->update(['sucursal_id' => $sucursal->id]);
         foreach ([['01', 'FA01'], ['03', 'BA01'], ['07', 'FC01'], ['07', 'BC01']] as [$tipo, $serie]) {

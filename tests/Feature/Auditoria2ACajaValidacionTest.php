@@ -27,7 +27,7 @@ class Auditoria2ACajaValidacionTest extends TestCase
         parent::setUp();
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'tienda', 'estado' => 'activo']);
         Sucursal::create(['codigo' => 'SUC-A', 'nombre' => 'Sucursal A', 'tipo' => 'tienda', 'almacen_id' => $this->almacen->id, 'estado' => 'activo']);
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo', 'almacen_id' => $this->almacen->id]);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo', 'almacen_id' => $this->almacen->id]);
         $this->actingAs($this->admin);
         $this->caja = app(CajaService::class)->abrirCaja($this->admin->id, $this->almacen->id, 100);
     }
@@ -83,7 +83,7 @@ class Auditoria2ACajaValidacionTest extends TestCase
     public function test_la_apertura_remota_valida_monto_y_observaciones(): void
     {
         $this->caja->update(['estado' => 'cerrada']);
-        $otro = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Cajero'])->id, 'estado' => 'activo', 'almacen_id' => $this->almacen->id]);
+        $otro = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo', 'almacen_id' => $this->almacen->id]);
 
         $r = $this->post(route('admin.cajas.apertura-remota.store'), [
             'sucursal_id' => Sucursal::first()->id, 'user_id' => $otro->id, 'monto_inicial' => 99999999999, 'observaciones' => str_repeat('ñ', 70000),

@@ -3,11 +3,7 @@
 @php
     $empresa  = \App\Models\Empresa::instancia();
     $user     = auth()->user();
-    $dashboard = match($role) {
-        'Vendedor' => route('vendedor.dashboard'),
-        'Tienda'   => route('tienda.dashboard'),
-        default    => route('admin.dashboard'),
-    };
+    $dashboard = route('admin.dashboard');
     $iniciales = collect(explode(' ', $user->name))->take(2)->map(fn($p) => strtoupper($p[0] ?? ''))->implode('');
 
     $navItems = [
@@ -16,9 +12,7 @@
         ['icon' => 'fa-list',           'label' => 'Historial',   'href' => route('ventas.index'),    'active' => request()->routeIs('ventas.index')],
         ['icon' => 'fa-users',          'label' => 'Clientes',    'href' => route('clientes.index'),  'active' => request()->routeIs('clientes.*')],
     ];
-    if ($role === 'Tienda') {
-        $navItems[] = ['icon' => 'fa-cash-register', 'label' => 'Mi Caja', 'href' => route('caja.actual'), 'active' => request()->routeIs('caja.*')];
-    }
+    $navItems[] = ['icon' => 'fa-cash-register', 'label' => 'Mi Caja', 'href' => route('caja.actual'), 'active' => request()->routeIs('caja.*')];
 @endphp
 
 {{-- Mobile hamburger --}}

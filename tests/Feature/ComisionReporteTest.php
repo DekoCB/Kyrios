@@ -46,8 +46,8 @@ class ComisionReporteTest extends TestCase
     // ══════════════════════════════════════════════════════════════════════
     public function test_reporte_de_comisiones_carga_correctamente_con_resumen_mensual(): void
     {
-        $roleAdmin = Role::firstOrCreate(['nombre' => 'Administrador']);
-        Role::firstOrCreate(['nombre' => 'Vendedor']);
+        $roleAdmin = Role::firstOrCreate(['nombre' => 'Administración']);
+        Role::firstOrCreate(['nombre' => 'Administración']);
 
         $uid   = uniqid();
         $admin = User::create([

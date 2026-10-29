@@ -45,7 +45,7 @@
                     </span>
                 </div>
                 <div class="flex items-center gap-2">
-                    @if($compra->estado != 'anulado')
+                    @if($compra->estado != 'anulado' && in_array(auth()->user()->role->nombre, [\App\Models\Role::ADMINISTRACION, \App\Models\Role::LOGISTICA], true))
                         <a href="{{ route('compras.edit', $compra) }}"
                            class="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition text-sm flex items-center gap-1.5">
                             <i class="fas fa-edit"></i>Editar
@@ -532,7 +532,7 @@
                                     Total gastos: <strong class="text-white">S/ {{ number_format($gastosPen, 2) }}</strong>
                                 </span>
                             @endif
-                            @if(auth()->user()->role->nombre === 'Administrador')
+                            @if(auth()->user()->role->nombre === 'Administración')
                             <form action="{{ route('compras.recalcular-prorrateo', $compra) }}" method="POST">
                                 @csrf
                                 <button type="submit"

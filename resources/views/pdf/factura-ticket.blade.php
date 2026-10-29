@@ -172,7 +172,7 @@ table.items th:last-child, table.items td:last-child { padding-right: 0; }
         <tr>
             <td>{{ $d->producto?->codigo }}</td>
             <td>
-                {{ \App\Support\EtiquetaProducto::nombre($d->producto) }}
+                {{ \App\Support\EtiquetaProducto::documento($d->producto) }}
                 @if($d->variante)<br><span style="font-size:6pt;color:#555">{{ $d->variante->nombre_completo }}</span>@endif
             </td>
             <td class="c">{{ $d->cantidad }}</td>

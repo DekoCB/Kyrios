@@ -34,7 +34,7 @@ class Auditoria2BCompraEliminarDetalleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Depósito', 'tipo' => 'principal', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT-X', 'nombre' => 'Luminaria', 'estado' => 'activo']);

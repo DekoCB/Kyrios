@@ -16,7 +16,7 @@ class SucursalController extends Controller
 {
     public function __construct(protected SucursalService $sucursalService)
     {
-        $this->middleware('role:Administrador');
+        $this->middleware('role:Administración');
     }
 
     // ── HU-02: Listado ─────────────────────────────────────────────────────────

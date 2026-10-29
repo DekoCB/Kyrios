@@ -17,7 +17,7 @@
 
         <div class="flex flex-wrap items-center gap-2 mb-6">
             <a href="{{ route('inventario.categorias.index') }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-arrow-left"></i> Volver</a>
-            @if(in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero'], true))
+            @if(in_array(auth()->user()->role->nombre, ['Administración', 'Logística'], true))
                 <a href="{{ route('inventario.categorias.edit', $categoria) }}" class="inline-flex items-center gap-2 border border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-edit"></i> Editar</a>
             @endif
         </div>

@@ -22,12 +22,11 @@
                     default     => ['bg-gray-100 text-gray-600',    'fa-warehouse', ucfirst($almacen->tipo)],
                 };
                 $roleBadge = [
-                    'Administrador' => 'bg-purple-100 text-purple-700',
-                    'Almacenero'    => 'bg-blue-100 text-blue-700',
-                    'Cajero'        => 'bg-orange-100 text-orange-700',
-                    'Proveedor'     => 'bg-teal-100 text-teal-700',
-                    'Tienda'        => 'bg-emerald-100 text-emerald-700',
-                    'Vendedor'      => 'bg-amber-100 text-amber-700',
+                    'Administración' => 'bg-purple-100 text-purple-700',
+                    'Logística'    => 'bg-blue-100 text-blue-700',
+                    'Contador'        => 'bg-orange-100 text-orange-700',
+                    'Operaciones'     => 'bg-teal-100 text-teal-700',
+                    'Cliente'        => 'bg-emerald-100 text-emerald-700',
                 ];
                 // Combinar encargado + trabajadores sin duplicar
                 $personal = $almacen->trabajadores->keyBy('id');

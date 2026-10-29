@@ -137,10 +137,12 @@
                     <span class="text-red-500 font-medium">· filtro activo</span>
                 @endif
             </p>
+            @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
             <a href="{{ route('devoluciones.create') }}"
                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition">
                 <i class="fas fa-undo-alt"></i> Nueva Devolución
             </a>
+            @endif
         </div>
 
         {{-- Tabla --}}

@@ -73,7 +73,7 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_alta_y_edicion_guardan_las_listas_y_se_pueden_quitar_todas(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
 
         $this->post(route('clientes.store'), ['nombre' => 'Ana', 'estado' => 'activo', 'listas_difusion' => ['', 'arquitecto', 'mama', 'mama']])
             ->assertSessionHasNoErrors();
@@ -90,7 +90,7 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_una_lista_inventada_se_rechaza(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
 
         $this->post(route('clientes.store'), ['nombre' => 'Ana', 'estado' => 'activo', 'listas_difusion' => ['vip']])
             ->assertSessionHasErrors('listas_difusion.0');
@@ -99,7 +99,7 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_el_alta_rapida_por_json_sin_listas_sigue_funcionando_y_no_borra_las_existentes(): void
     {
-        $this->como('Vendedor');
+        $this->como('Administración');
 
         $this->postJson(route('clientes.store'), ['nombre' => 'Rápido', 'estado' => 'activo'])->assertOk()->assertJsonStructure(['id', 'nombre']);
         $this->assertNull(Cliente::first()->listas_difusion);
@@ -113,7 +113,7 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_el_listado_filtra_por_lista_y_muestra_los_contadores(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         $this->cliente('Ana Arquitecta', ['listas_difusion' => ['arquitecto', 'mujer']]);
         $this->cliente('Beto Hombre', ['listas_difusion' => ['hombre']]);
         $this->cliente('Carla Nada');
@@ -132,7 +132,7 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_el_resumen_cuenta_incluidos_sin_celular_y_repetidos(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         $this->cliente('Con celular', ['telefono' => '999 111 222', 'listas_difusion' => ['mama']]);
         $this->cliente('Repetida', ['telefono' => '+51 999111222', 'listas_difusion' => ['mama']]);
         $this->cliente('Fijo solo', ['telefono' => '6830567', 'listas_difusion' => ['mama']]);
@@ -148,7 +148,7 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_la_exportacion_para_whatsapp_trae_solo_celulares_validos_en_formato_internacional(): void
     {
-        $this->como('Vendedor');
+        $this->como('Administración');
         $this->cliente('Ana López', ['telefono' => '999 111 222', 'listas_difusion' => ['arquitecto', 'mujer']]);
         $this->cliente('Sin celular', ['telefono' => '6830567', 'listas_difusion' => ['arquitecto']]);
 
@@ -164,10 +164,10 @@ class ClientesDifusionDTest extends TestCase
 
     public function test_exportar_sin_elegir_lista_avisa_y_los_roles_sin_acceso_no_entran(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         $this->get(route('clientes.difusion.exportar'))->assertRedirect(route('clientes.index'))->assertSessionHas('error');
 
-        $this->como('Almacenero');
+        $this->como('Logística');
         $this->get(route('clientes.difusion.exportar', ['listas' => ['mama']]))->assertForbidden();
         $this->getJson(route('clientes.difusion.resumen', ['listas' => ['mama']]))->assertForbidden();
     }

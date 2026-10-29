@@ -118,7 +118,7 @@ class ProductoVariante extends Model
 
     public function getDescripcionCorta(): string
     {
-        $nombre = $this->producto?->nombre ?? 'Producto';
+        $nombre = $this->producto ? \App\Support\EtiquetaProducto::nombre($this->producto) : 'Producto';
         $variante = $this->nombre_completo;
         return $variante !== 'Variante base' ? "{$nombre} — {$variante}" : $nombre;
     }

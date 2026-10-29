@@ -63,20 +63,18 @@
                     @php
                         $avatarColors = ['from-blue-600 to-blue-400','from-purple-600 to-purple-400','from-emerald-600 to-emerald-400','from-orange-500 to-orange-300','from-rose-500 to-rose-300','from-teal-600 to-teal-400'];
                         $roleBadge = [
-                            'Administrador' => 'bg-purple-100 text-purple-800 border-purple-200',
-                            'Almacenero'    => 'bg-blue-100 text-blue-800 border-blue-200',
-                            'Cajero'        => 'bg-orange-100 text-orange-800 border-orange-200',
-                            'Proveedor'     => 'bg-teal-100 text-teal-800 border-teal-200',
-                            'Tienda'        => 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                            'Vendedor'      => 'bg-amber-100 text-amber-800 border-amber-200',
+                            'Administración' => 'bg-purple-100 text-purple-800 border-purple-200',
+                            'Logística'    => 'bg-blue-100 text-blue-800 border-blue-200',
+                            'Contador'        => 'bg-orange-100 text-orange-800 border-orange-200',
+                            'Operaciones'     => 'bg-teal-100 text-teal-800 border-teal-200',
+                            'Cliente'        => 'bg-emerald-100 text-emerald-800 border-emerald-200',
                         ];
                         $roleIcon = [
-                            'Administrador' => 'fa-crown',
-                            'Almacenero'    => 'fa-warehouse',
-                            'Cajero'        => 'fa-cash-register',
-                            'Proveedor'     => 'fa-truck',
-                            'Tienda'        => 'fa-store',
-                            'Vendedor'      => 'fa-handshake',
+                            'Administración' => 'fa-crown',
+                            'Logística'    => 'fa-warehouse',
+                            'Contador'        => 'fa-calculator',
+                            'Operaciones'     => 'fa-tools',
+                            'Cliente'        => 'fa-user-tag',
                         ];
                         $rn  = $user->role?->nombre ?? '';
                         $rc  = $roleBadge[$rn] ?? 'bg-gray-100 text-gray-700 border-gray-200';
@@ -262,12 +260,11 @@
                                 @foreach($roles as $role)
                                 @php
                                     $ccfg = [
-                                        'Administrador' => ['icon'=>'fa-crown',        'border'=>'hover:border-purple-400','checked'=>'peer-checked:border-purple-500 peer-checked:bg-purple-50','badge'=>'bg-purple-500','text'=>'text-purple-700'],
-                                        'Almacenero'    => ['icon'=>'fa-warehouse',     'border'=>'hover:border-blue-400',  'checked'=>'peer-checked:border-blue-500 peer-checked:bg-blue-50',  'badge'=>'bg-blue-500',  'text'=>'text-blue-700'],
-                                        'Cajero'        => ['icon'=>'fa-cash-register', 'border'=>'hover:border-orange-400','checked'=>'peer-checked:border-orange-500 peer-checked:bg-orange-50','badge'=>'bg-orange-500','text'=>'text-orange-700'],
-                                        'Proveedor'     => ['icon'=>'fa-truck',         'border'=>'hover:border-teal-400',  'checked'=>'peer-checked:border-teal-500 peer-checked:bg-teal-50',  'badge'=>'bg-teal-500',  'text'=>'text-teal-700'],
-                                        'Tienda'        => ['icon'=>'fa-store',         'border'=>'hover:border-emerald-400','checked'=>'peer-checked:border-emerald-500 peer-checked:bg-emerald-50','badge'=>'bg-emerald-500','text'=>'text-emerald-700'],
-                                        'Vendedor'      => ['icon'=>'fa-handshake',     'border'=>'hover:border-amber-400', 'checked'=>'peer-checked:border-amber-500 peer-checked:bg-amber-50', 'badge'=>'bg-amber-500', 'text'=>'text-amber-700'],
+                                        'Administración' => ['icon'=>'fa-crown',        'border'=>'hover:border-purple-400','checked'=>'peer-checked:border-purple-500 peer-checked:bg-purple-50','badge'=>'bg-purple-500','text'=>'text-purple-700'],
+                                        'Logística'    => ['icon'=>'fa-warehouse',     'border'=>'hover:border-blue-400',  'checked'=>'peer-checked:border-blue-500 peer-checked:bg-blue-50',  'badge'=>'bg-blue-500',  'text'=>'text-blue-700'],
+                                        'Contador'        => ['icon'=>'fa-calculator', 'border'=>'hover:border-orange-400','checked'=>'peer-checked:border-orange-500 peer-checked:bg-orange-50','badge'=>'bg-orange-500','text'=>'text-orange-700'],
+                                        'Operaciones'     => ['icon'=>'fa-tools',         'border'=>'hover:border-teal-400',  'checked'=>'peer-checked:border-teal-500 peer-checked:bg-teal-50',  'badge'=>'bg-teal-500',  'text'=>'text-teal-700'],
+                                        'Cliente'        => ['icon'=>'fa-user-tag',         'border'=>'hover:border-emerald-400','checked'=>'peer-checked:border-emerald-500 peer-checked:bg-emerald-50','badge'=>'bg-emerald-500','text'=>'text-emerald-700'],
                                     ][$role->nombre] ?? ['icon'=>'fa-user','border'=>'hover:border-gray-400','checked'=>'peer-checked:border-gray-500 peer-checked:bg-gray-50','badge'=>'bg-gray-500','text'=>'text-gray-700'];
                                 @endphp
                                 <label class="relative cursor-pointer">
@@ -442,12 +439,11 @@
                                 @foreach($roles as $role)
                                 @php
                                     $ecfg = [
-                                        'Administrador' => ['icon'=>'fa-crown',        'border'=>'hover:border-purple-400','checked'=>'peer-checked:border-purple-500 peer-checked:bg-purple-50','badge'=>'bg-purple-500','text'=>'text-purple-700'],
-                                        'Almacenero'    => ['icon'=>'fa-warehouse',     'border'=>'hover:border-blue-400',  'checked'=>'peer-checked:border-blue-500 peer-checked:bg-blue-50',  'badge'=>'bg-blue-500',  'text'=>'text-blue-700'],
-                                        'Cajero'        => ['icon'=>'fa-cash-register', 'border'=>'hover:border-orange-400','checked'=>'peer-checked:border-orange-500 peer-checked:bg-orange-50','badge'=>'bg-orange-500','text'=>'text-orange-700'],
-                                        'Proveedor'     => ['icon'=>'fa-truck',         'border'=>'hover:border-teal-400',  'checked'=>'peer-checked:border-teal-500 peer-checked:bg-teal-50',  'badge'=>'bg-teal-500',  'text'=>'text-teal-700'],
-                                        'Tienda'        => ['icon'=>'fa-store',         'border'=>'hover:border-emerald-400','checked'=>'peer-checked:border-emerald-500 peer-checked:bg-emerald-50','badge'=>'bg-emerald-500','text'=>'text-emerald-700'],
-                                        'Vendedor'      => ['icon'=>'fa-handshake',     'border'=>'hover:border-amber-400', 'checked'=>'peer-checked:border-amber-500 peer-checked:bg-amber-50', 'badge'=>'bg-amber-500', 'text'=>'text-amber-700'],
+                                        'Administración' => ['icon'=>'fa-crown',        'border'=>'hover:border-purple-400','checked'=>'peer-checked:border-purple-500 peer-checked:bg-purple-50','badge'=>'bg-purple-500','text'=>'text-purple-700'],
+                                        'Logística'    => ['icon'=>'fa-warehouse',     'border'=>'hover:border-blue-400',  'checked'=>'peer-checked:border-blue-500 peer-checked:bg-blue-50',  'badge'=>'bg-blue-500',  'text'=>'text-blue-700'],
+                                        'Contador'        => ['icon'=>'fa-calculator', 'border'=>'hover:border-orange-400','checked'=>'peer-checked:border-orange-500 peer-checked:bg-orange-50','badge'=>'bg-orange-500','text'=>'text-orange-700'],
+                                        'Operaciones'     => ['icon'=>'fa-tools',         'border'=>'hover:border-teal-400',  'checked'=>'peer-checked:border-teal-500 peer-checked:bg-teal-50',  'badge'=>'bg-teal-500',  'text'=>'text-teal-700'],
+                                        'Cliente'        => ['icon'=>'fa-user-tag',         'border'=>'hover:border-emerald-400','checked'=>'peer-checked:border-emerald-500 peer-checked:bg-emerald-50','badge'=>'bg-emerald-500','text'=>'text-emerald-700'],
                                     ][$role->nombre] ?? ['icon'=>'fa-user','border'=>'hover:border-gray-400','checked'=>'peer-checked:border-gray-500 peer-checked:bg-gray-50','badge'=>'bg-gray-500','text'=>'text-gray-700'];
                                 @endphp
                                 <label class="relative cursor-pointer">

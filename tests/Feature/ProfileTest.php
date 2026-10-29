@@ -12,7 +12,7 @@ class ProfileTest extends TestCase
 
     public function test_la_pagina_de_perfil_carga_con_sus_datos(): void
     {
-        $user = User::factory()->create(['role_id' => \App\Models\Role::firstOrCreate(['nombre' => 'Administrador'])->id]);
+        $user = User::factory()->create(['role_id' => \App\Models\Role::firstOrCreate(['nombre' => 'Administración'])->id]);
 
         $this->actingAs($user)->get('/profile')->assertOk()->assertSee($user->email)->assertSee('Cambiar contraseña');
     }

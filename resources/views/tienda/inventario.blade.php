@@ -167,7 +167,7 @@
                             @php
                                 $otrasTiendas = collect($fila->stocks)
                                     ->filter(fn($stock, $almacenId) => $almacenId != $tiendaActual->id && $stock->cantidad > 0);
-                                $etiqueta = $producto->nombre . ($fila->variante ? ' — ' . $fila->variante->nombre_completo : '');
+                                $etiqueta = \App\Support\EtiquetaProducto::nombre($producto) . ($fila->variante ? ' — ' . $fila->variante->nombre_completo : '');
                             @endphp
 
                             @if($otrasTiendas->count() > 0)

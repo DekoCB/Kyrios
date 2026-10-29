@@ -19,7 +19,7 @@ class Auditoria2BBuscadoresTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
         Cliente::create(['tipo_documento' => 'DNI', 'numero_documento' => '41340629', 'nombre' => 'Cesar Lee Polick', 'estado' => 'activo']);
         Proveedor::create(['ruc' => '20555666771', 'razon_social' => 'Iluminacion Import SAC', 'estado' => 'activo']);
     }

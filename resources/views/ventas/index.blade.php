@@ -145,11 +145,13 @@
                         <p class="text-xs text-gray-400">{{ $ventas->total() }} registros en total</p>
                     </div>
                 </div>
+                @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                 <a href="{{ route('ventas.create') }}"
                    class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
                     <i class="fas fa-plus"></i>
                     Nueva Venta
                 </a>
+                @endif
             </div>
 
             {{-- Table --}}
@@ -251,10 +253,12 @@
                                     </div>
                                     <p class="font-semibold text-gray-500 text-base">No hay ventas registradas</p>
                                     <p class="text-sm mt-1 text-gray-400">Usa el botón "Nueva Venta" para crear la primera</p>
+                                    @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                                     <a href="{{ route('ventas.create') }}"
                                        class="mt-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
                                         <i class="fas fa-plus"></i> Nueva Venta
                                     </a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

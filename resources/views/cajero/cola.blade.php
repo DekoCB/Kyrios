@@ -19,7 +19,7 @@
          x-init="iniciarPolling()">
 
         <div class="flex items-center justify-between mb-1">
-            <a href="{{ route('cajero.dashboard') }}" class="text-sm text-gray-500 hover:text-blue-700">
+            <a href="{{ route('admin.dashboard') }}" class="text-sm text-gray-500 hover:text-blue-700">
                 <i class="fas fa-arrow-left mr-1"></i> Mi Panel
             </a>
         </div>

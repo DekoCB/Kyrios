@@ -42,11 +42,11 @@ class Auditoria2BInvariantesStockTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
 
         $this->a = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Depósito', 'tipo' => 'principal', 'estado' => 'activo']);
-        $this->b = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $this->b = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Administración', 'tipo' => 'tienda', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT-INV', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $this->producto = Producto::create(['codigo' => 'KY-LU2501-0001', 'nombre' => 'Ring', 'categoria_id' => $cat->id,
             'tipo_inventario' => 'cantidad', 'stock_minimo' => 0, 'stock_maximo' => 1000, 'estado' => 'activo']);

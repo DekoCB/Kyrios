@@ -15,11 +15,11 @@ use Illuminate\Support\Facades\DB;
 class CuentaPorPagarController extends Controller
 {
     /**
-     * Constructor - Solo Admin y Almacenero pueden ver cuentas
+     * Constructor - Administración, Contador y Logística (las rutas afinan quién escribe)
      */
     public function __construct()
     {
-        $this->middleware('role:Administrador,Almacenero');
+        $this->middleware('role:Administración,Contador,Logística');
     }
 
     /**

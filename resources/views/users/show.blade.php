@@ -29,10 +29,10 @@
                     <h2 class="text-2xl font-bold">{{ $user->name }}</h2>
                     <p class="text-blue-200">{{ $user->email }}</p>
                     <span class="inline-flex mt-2 px-3 py-1 text-sm font-semibold rounded-full 
-                        @if($user->role->nombre == 'Administrador') bg-purple-200 text-purple-900
-                        @elseif($user->role->nombre == 'Almacenero') bg-blue-200 text-blue-900
-                        @elseif($user->role->nombre == 'Tienda') bg-green-200 text-green-900
-                        @elseif($user->role->nombre == 'Vendedor') bg-yellow-200 text-yellow-900
+                        @if($user->role->nombre == 'Administración') bg-purple-200 text-purple-900
+                        @elseif($user->role->nombre == 'Logística') bg-blue-200 text-blue-900
+                        @elseif($user->role->nombre == 'Contador') bg-green-200 text-green-900
+                        @elseif($user->role->nombre == 'Operaciones') bg-yellow-200 text-yellow-900
                         @else bg-gray-200 text-gray-900
                         @endif">
                         {{ $user->role->nombre }}

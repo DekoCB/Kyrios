@@ -87,7 +87,7 @@ class CajaChicaService
 
             $mov = $caja->movimientos()->create($this->camposGasto($datos) + [
                 'tipo' => 'gasto', 'user_id' => $user->id,
-                'estado' => $user->role?->nombre === 'Administrador' ? 'aprobado' : 'pendiente',
+                'estado' => $user->role?->nombre === 'Administración' ? 'aprobado' : 'pendiente',
             ]);
 
             $this->guardarAdjuntos($mov, $archivos);
@@ -115,7 +115,7 @@ class CajaChicaService
             }
 
             $mov->update($this->camposGasto($datos) + [
-                'estado' => $user->role?->nombre === 'Administrador' ? $mov->estado : 'pendiente',
+                'estado' => $user->role?->nombre === 'Administración' ? $mov->estado : 'pendiente',
                 'motivo_revision' => null,
             ]);
             $this->guardarAdjuntos($mov, $archivos);

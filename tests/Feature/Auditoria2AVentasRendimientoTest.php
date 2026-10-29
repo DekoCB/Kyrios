@@ -22,8 +22,8 @@ class Auditoria2AVentasRendimientoTest extends TestCase
 
     public function test_pos_con_muchos_productos_hace_pocas_consultas(): void
     {
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
-        Almacen::create(['codigo' => 'ALM-T', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
+        Almacen::create(['codigo' => 'ALM-T', 'nombre' => 'Administración', 'tipo' => 'tienda', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT-P', 'nombre' => 'Luminaria', 'estado' => 'activo']);
 
         for ($i = 1; $i <= 100; $i++) {
@@ -45,8 +45,8 @@ class Auditoria2AVentasRendimientoTest extends TestCase
 
     public function test_el_precio_de_respaldo_sigue_siendo_el_de_mayor_prioridad_vigente(): void
     {
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
-        $a = Almacen::create(['codigo' => 'ALM-T', 'nombre' => 'Tienda', 'tipo' => 'tienda', 'estado' => 'activo']);
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
+        $a = Almacen::create(['codigo' => 'ALM-T', 'nombre' => 'Administración', 'tipo' => 'tienda', 'estado' => 'activo']);
         $cat = Categoria::create(['codigo' => 'CAT-P', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $p = Producto::create(['codigo' => 'KY-LU2501-0001', 'nombre' => 'Ring', 'categoria_id' => $cat->id, 'tipo_inventario' => 'cantidad', 'stock_minimo' => 0, 'stock_maximo' => 10, 'estado' => 'activo']);
         // Solo hay precios por almacén (no entran en la carga normal) y uno vencido

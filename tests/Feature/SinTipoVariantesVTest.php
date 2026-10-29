@@ -31,7 +31,7 @@ class SinTipoVariantesVTest extends TestCase
         $this->seed(KyriosCatalogoSeeder::class);
         $this->categoria = Categoria::create(['codigo' => 'CAT-LU', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $this->unidad = UnidadMedida::create(['nombre' => 'Unidad', 'abreviatura' => 'UND', 'categoria' => 'unidad', 'permite_decimales' => false]);
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
     }
 
     private function datos(array $extra = []): array

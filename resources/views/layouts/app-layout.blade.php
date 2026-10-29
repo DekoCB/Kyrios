@@ -39,9 +39,9 @@
                     <div class="flex items-center space-x-4">
                         <!-- Rol Badge -->
                         <span class="px-3 py-1 text-xs font-semibold rounded-full
-                            @if(auth()->user()->role->nombre == 'Administrador') bg-red-100 text-red-800
-                            @elseif(auth()->user()->role->nombre == 'Vendedor') bg-green-100 text-green-800
-                            @elseif(auth()->user()->role->nombre == 'Almacenero') bg-blue-100 text-blue-800
+                            @if(auth()->user()->role->nombre == 'Administración') bg-red-100 text-red-800
+                            @elseif(auth()->user()->role->nombre == 'Contador') bg-green-100 text-green-800
+                            @elseif(auth()->user()->role->nombre == 'Logística') bg-blue-100 text-blue-800
                             @else bg-purple-100 text-purple-800
                             @endif">
                             <i class="fas fa-user-tag mr-1"></i>

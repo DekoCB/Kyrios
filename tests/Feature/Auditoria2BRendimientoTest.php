@@ -21,7 +21,7 @@ class Auditoria2BRendimientoTest extends TestCase
 
     public function test_pantallas_con_catalogo_grande_hacen_pocas_consultas(): void
     {
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
         $cat = Categoria::create(['codigo' => 'CAT', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $unidad = UnidadMedida::first() ?? UnidadMedida::create(['nombre' => 'Unidad', 'abreviatura' => 'UND', 'estado' => 'activo']);
 

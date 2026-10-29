@@ -40,7 +40,7 @@ class CotizacionesTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = $this->usuario('Administrador');
+        $this->admin = $this->usuario('Administración');
         $this->actingAs($this->admin);
 
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'tienda', 'estado' => 'activo']);
@@ -350,20 +350,6 @@ class CotizacionesTest extends TestCase
         $this->assertSame('pendiente', $c->fresh()->venta->estado_pago);
     }
 
-    public function test_un_vendedor_convierte_y_su_venta_queda_pendiente_de_cobro(): void
-    {
-        $vendedor = $this->usuario('Vendedor');
-        $c = $this->crear($this->dni, null, $vendedor);
-
-        $this->actingAs($vendedor)
-            ->post(route('cotizaciones.convertir', $c), ['tipo_comprobante' => 'nota_venta', 'condicion' => 'contado', 'metodo_pago' => 'efectivo'])
-            ->assertSessionHasNoErrors();
-
-        $venta = $c->fresh()->venta;
-        $this->assertSame('pendiente', $venta->estado_pago, 'el vendedor no cobra: lo hace el cajero');
-        $this->assertSame($vendedor->id, $venta->user_id);
-    }
-
     // ── PDF, búsquedas y permisos ─────────────────────────────────────────
 
     public function test_el_pdf_se_genera(): void
@@ -420,23 +406,9 @@ class CotizacionesTest extends TestCase
         $this->assertSame(1, $total(['cliente_id' => $this->ruc->id]));
     }
 
-    public function test_un_vendedor_solo_ve_y_abre_sus_cotizaciones(): void
-    {
-        $vendedor = $this->usuario('Vendedor');
-        $mia = $this->crear($this->dni, null, $vendedor);
-        $ajena = $this->crear($this->ruc);
-
-        $this->actingAs($vendedor);
-        $this->assertSame(1, $this->get(route('cotizaciones.index'))->viewData('cotizaciones')->total());
-        $this->get(route('cotizaciones.show', $mia))->assertOk();
-        $this->get(route('cotizaciones.show', $ajena))->assertForbidden();
-        $this->post(route('cotizaciones.estado', $ajena), ['estado' => 'aceptada'])->assertForbidden();
-        $this->post(route('cotizaciones.convertir', $ajena), ['tipo_comprobante' => 'nota_venta', 'condicion' => 'pendiente_cobro'])->assertForbidden();
-    }
-
     public function test_un_almacenero_no_tiene_acceso_al_modulo(): void
     {
-        $this->actingAs($this->usuario('Almacenero'));
+        $this->actingAs($this->usuario('Logística'));
 
         $this->get(route('cotizaciones.index'))->assertForbidden();
         $this->get(route('cotizaciones.create'))->assertForbidden();

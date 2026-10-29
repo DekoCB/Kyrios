@@ -32,7 +32,7 @@ class CotizacionDetalle extends Model
         $variante = $this->relationLoaded('variante') ? $this->variante : null;
         $detalle = $variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : '';
 
-        return \App\Support\EtiquetaProducto::nombre($this->producto) . $detalle;
+        return \App\Support\EtiquetaProducto::documento($this->producto, $variante) . $detalle;
     }
 
     /** Código Kyrios y de fábrica de la línea. */

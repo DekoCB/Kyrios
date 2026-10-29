@@ -17,13 +17,13 @@ class Auditoria2CPermisosEscrituraTest extends TestCase
 
     /** prefijo de ruta => roles que SÍ pueden escribir */
     private const PERMITIDOS = [
-        'users'            => ['Administrador'],
-        'admin/'           => ['Administrador'],
-        'catalogo/'        => ['Administrador', 'Almacenero'],
-        'clientes'         => ['Administrador', 'Vendedor', 'Tienda', 'Cajero'],
+        'users'            => ['Administración'],
+        'admin/'           => ['Administración'],
+        'catalogo/'        => ['Administración', 'Logística'],
+        'clientes'         => ['Administración', 'Administración', 'Administración', 'Administración'],
     ];
 
-    private const ROLES = ['Administrador', 'Vendedor', 'Tienda', 'Cajero', 'Almacenero', 'Proveedor', 'Técnico'];
+    private const ROLES = ['Administración', 'Administración', 'Administración', 'Administración', 'Logística', 'Cliente', 'Operaciones'];
 
     public static function roles(): array
     {
@@ -55,7 +55,7 @@ class Auditoria2CPermisosEscrituraTest extends TestCase
             }
         }
 
-        if ($rol === 'Administrador') {
+        if ($rol === 'Administración') {
             $this->assertSame(0, $revisadas);
         } else {
             $this->assertGreaterThan(10, $revisadas);
@@ -63,13 +63,13 @@ class Auditoria2CPermisosEscrituraTest extends TestCase
         $this->assertSame([], $indebidos, "El rol {$rol} no debería poder escribir:\n" . implode("\n", $indebidos));
     }
 
-    public function test_un_vendedor_recibe_403_al_tocar_registros_reales(): void
+    public function test_un_rol_sin_permiso_recibe_403_al_tocar_registros_reales(): void
     {
-        $objetivo = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Cajero'])->id, 'estado' => 'activo']);
+        $objetivo = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $marca = \App\Models\Catalogo\Marca::create(['nombre' => 'Marca Real', 'estado' => 'activo']);
         $sucursal = \App\Models\Sucursal::create(['nombre' => 'Sucursal Real', 'codigo' => 'S777', 'tipo' => 'tienda', 'estado' => 'activo']);
 
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Vendedor'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Operaciones'])->id, 'estado' => 'activo']));
 
         $this->delete(route('users.destroy', $objetivo))->assertForbidden();
         $this->put(route('users.update', $objetivo), ['name' => 'X'])->assertForbidden();

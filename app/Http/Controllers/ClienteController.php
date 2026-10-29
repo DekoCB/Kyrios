@@ -72,9 +72,9 @@ class ClienteController extends Controller
             'prospectos' => Cliente::prospectos()->count(),
         ];
 
-        $canCreate = in_array($this->rol(), ['Administrador', 'Vendedor', 'Tienda', 'Cajero'], true);
+        $canCreate = $this->rol() === 'Administración';
         $canEdit   = $canCreate;
-        $canDelete = $this->rol() === 'Administrador';
+        $canDelete = $this->rol() === 'Administración';
 
         $conteoListas = $this->conteoListas();
 
@@ -189,8 +189,8 @@ class ClienteController extends Controller
         ];
         $resumen['ticket_promedio'] = $resumen['ventas'] > 0 ? $resumen['total_comprado'] / $resumen['ventas'] : 0.0;
 
-        $canEdit = in_array($this->rol(), ['Administrador', 'Vendedor', 'Tienda', 'Cajero'], true);
-        $canDelete = $this->rol() === 'Administrador';
+        $canEdit = $this->rol() === 'Administración';
+        $canDelete = $this->rol() === 'Administración';
 
         return view('clientes.show', compact('cliente', 'ventas', 'cotizaciones', 'resumen', 'canEdit', 'canDelete'));
     }

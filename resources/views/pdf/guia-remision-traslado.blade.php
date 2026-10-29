@@ -282,7 +282,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <td style="text-align:center; font-weight:bold">{{ $mov->cantidad }}</td>
                 <td style="text-align:center">{{ $mov->producto?->unidadMedida?->abreviatura ?? 'UND' }}</td>
                 <td style="font-family:monospace; font-size:6.5pt">{{ $mov->producto?->codigo ?? '—' }}</td>
-                <td><span style="font-weight:bold">{{ $mov->producto ? \App\Support\EtiquetaProducto::nombre($mov->producto) : '—' }}</span></td>
+                <td><span style="font-weight:bold">{{ $mov->producto ? \App\Support\EtiquetaProducto::documento($mov->producto) : '—' }}</span></td>
             </tr>
             @endforeach
         </tbody>

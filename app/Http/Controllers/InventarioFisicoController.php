@@ -28,7 +28,7 @@ class InventarioFisicoController extends Controller
             ->withCount('detalles')
             ->withCount(['detalles as contados_count' => fn($q) => $q->whereNotNull('stock_fisico')]);
 
-        if ($user->role->nombre !== 'Administrador' && $user->almacen_id) {
+        if ($user->role->nombre !== 'Administración' && $user->almacen_id) {
             $query->where('almacen_id', $user->almacen_id);
         }
 

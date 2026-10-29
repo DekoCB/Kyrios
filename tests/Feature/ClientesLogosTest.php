@@ -34,7 +34,7 @@ class ClientesLogosTest extends TestCase
 
     public function test_alta_con_todos_los_datos_y_ficha(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
 
         $this->post(route('clientes.store'), $this->datos())->assertSessionHasNoErrors();
 
@@ -45,7 +45,7 @@ class ClientesLogosTest extends TestCase
 
     public function test_el_formato_del_documento_depende_del_tipo(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
 
         $this->post(route('clientes.store'), $this->datos(['numero_documento' => '123']))->assertSessionHasErrors('numero_documento');
         $this->post(route('clientes.store'), $this->datos(['tipo_documento' => 'RUC', 'numero_documento' => '12345678901']))->assertSessionHasErrors('numero_documento');
@@ -55,7 +55,7 @@ class ClientesLogosTest extends TestCase
 
     public function test_no_se_repite_el_documento(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         $this->post(route('clientes.store'), $this->datos());
 
         $this->post(route('clientes.store'), $this->datos(['nombre' => 'Otro']))->assertSessionHasErrors('numero_documento');
@@ -64,7 +64,7 @@ class ClientesLogosTest extends TestCase
 
     public function test_edicion_y_busqueda(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         $c = Cliente::create($this->datos());
         Cliente::create($this->datos(['numero_documento' => '87654321', 'nombre' => 'María López', 'email' => null, 'telefono' => null, 'contacto' => null]));
 
@@ -80,7 +80,7 @@ class ClientesLogosTest extends TestCase
 
     public function test_no_se_elimina_un_cliente_con_historial(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         $libre = Cliente::create($this->datos());
         $this->delete(route('clientes.destroy', $libre))->assertRedirect(route('clientes.index'));
         $this->assertNull(Cliente::find($libre->id));
@@ -88,7 +88,7 @@ class ClientesLogosTest extends TestCase
 
     public function test_exportar_csv(): void
     {
-        $this->como('Administrador');
+        $this->como('Administración');
         Cliente::create($this->datos());
 
         $r = $this->get(route('clientes.exportar'))->assertOk();
@@ -100,29 +100,29 @@ class ClientesLogosTest extends TestCase
 
     public function test_roles_con_acceso_a_clientes(): void
     {
-        foreach (['Vendedor', 'Cajero', 'Tienda'] as $rol) {
+        foreach (['Administración', 'Administración', 'Administración'] as $rol) {
             $this->como($rol);
             $this->get(route('clientes.index'))->assertOk();
         }
-        $this->como('Almacenero');
+        $this->como('Logística');
         $this->get(route('clientes.index'))->assertForbidden();
     }
 
-    public function test_solo_el_administrador_elimina(): void
+    public function test_solo_administracion_elimina(): void
     {
         $c = Cliente::create($this->datos());
-        $this->como('Vendedor');
+        $this->como('Contador');
         $this->delete(route('clientes.destroy', $c))->assertForbidden();
         $this->assertNotNull(Cliente::find($c->id));
     }
 
     public function test_el_menu_de_cada_rol_compila_y_muestra_cotizaciones_y_clientes(): void
     {
-        foreach (['Administrador', 'Vendedor', 'Cajero', 'Tienda'] as $rol) {
+        foreach (['Administración', 'Administración', 'Administración', 'Administración'] as $rol) {
             $this->como($rol);
             $this->get(route('clientes.index'))->assertOk()->assertSee('Cotizaciones')->assertSee('Clientes');
         }
-        foreach (['Almacenero', 'Proveedor'] as $rol) {
+        foreach (['Logística', 'Cliente'] as $rol) {
             $this->como($rol);
             $this->assertLessThan(500, $this->get(route('profile.edit'))->getStatusCode());
         }

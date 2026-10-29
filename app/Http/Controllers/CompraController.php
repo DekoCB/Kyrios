@@ -646,7 +646,7 @@ class CompraController extends Controller
             return response()->json([
                 'success'         => true,
                 'id'              => $producto->id,
-                'nombre'          => $producto->nombre,
+                'nombre'          => \App\Support\EtiquetaProducto::nombre($producto),
                 'tipo_inventario' => $producto->tipo_inventario,
                 'categoria'       => $producto->categoria?->nombre,
                 'marca'           => $producto->marca?->nombre,
@@ -697,7 +697,7 @@ public function getProductoDetalle($id)
         return response()->json([
             'success'         => true,
             'id'              => $producto->id,
-            'nombre'          => $producto->nombre,
+            'nombre'          => \App\Support\EtiquetaProducto::nombre($producto),
             'codigo'          => $producto->codigo,
             'tipo_inventario' => $producto->tipo_inventario,
             'marca_id'        => $producto->marca_id,

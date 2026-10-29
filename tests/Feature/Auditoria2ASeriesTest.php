@@ -34,7 +34,7 @@ class Auditoria2ASeriesTest extends TestCase
         $almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'tienda', 'estado' => 'activo']);
         $this->sucursal = Sucursal::create(['codigo' => 'SUC-A', 'nombre' => 'Sucursal A', 'tipo' => 'tienda', 'almacen_id' => $almacen->id, 'estado' => 'activo']);
         $almacen->update(['sucursal_id' => $this->sucursal->id]);
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo', 'almacen_id' => $almacen->id]);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo', 'almacen_id' => $almacen->id]);
         $this->actingAs($this->admin);
     }
 

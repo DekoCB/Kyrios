@@ -45,11 +45,11 @@ class ComisionVendedorTest extends TestCase
     {
         parent::setUp();
 
-        $this->roleAdmin    = Role::firstOrCreate(['nombre' => 'Administrador']);
-        $this->roleVendedor = Role::firstOrCreate(['nombre' => 'Vendedor']);
-        Role::firstOrCreate(['nombre' => 'Almacenero']);
-        Role::firstOrCreate(['nombre' => 'Tienda']);
-        Role::firstOrCreate(['nombre' => 'Cajero']);
+        $this->roleAdmin    = Role::firstOrCreate(['nombre' => 'Administración']);
+        $this->roleVendedor = Role::firstOrCreate(['nombre' => 'Administración']);
+        Role::firstOrCreate(['nombre' => 'Logística']);
+        Role::firstOrCreate(['nombre' => 'Administración']);
+        Role::firstOrCreate(['nombre' => 'Administración']);
 
         $uid = uniqid();
 

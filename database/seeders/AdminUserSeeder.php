@@ -14,22 +14,22 @@ class AdminUserSeeder extends Seeder
      * Idempotente: usa updateOrCreate por email.
      *
      * Configurar en .env:
-     *   ADMIN_NAME="Administrador"
+     *   ADMIN_NAME="Administración"
      *   ADMIN_EMAIL="admin@tuempresa.com"
      *   ADMIN_PASSWORD="cambiar_en_produccion"
      */
     public function run(): void
     {
-        $adminRole = Role::where('nombre', 'Administrador')->first();
+        $adminRole = Role::where('nombre', Role::ADMINISTRACION)->first();
 
         if (!$adminRole) {
-            $this->command->error('❌ Rol Administrador no encontrado. Ejecuta RoleSeeder primero.');
+            $this->command->error('❌ Rol Administración no encontrado. Ejecuta RoleSeeder primero.');
             return;
         }
 
         $esLocal  = app()->environment(['local', 'development', 'testing']);
         $email    = config('kyrios.admin.email') ?: ($esLocal ? 'admin@importaciones.com' : null);
-        $nombre   = config('kyrios.admin.nombre') ?: 'Administrador';
+        $nombre   = config('kyrios.admin.nombre') ?: 'Administración';
         $password = config('kyrios.admin.password') ?: ($esLocal ? 'Admin1234!' : null);
 
         // En producción no existe una clave por defecto: sin credenciales propias no se crea el administrador.

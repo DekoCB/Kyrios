@@ -18,7 +18,7 @@ class CajaController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isAdmin = $user->role->nombre === 'Administrador';
+        $isAdmin = $user->role->nombre === 'Administración';
 
         $query = Caja::with(['usuario', 'almacen', 'sucursal'])
             // Movimientos de devolución/anulación son egresos ligados a una venta;
@@ -83,7 +83,7 @@ class CajaController extends Controller
         $cajaAtrasada = $this->cajaService->cajaAtrasada();
 
         // Admin sin almacén fijo: puede elegir en qué almacén trabajar
-        if (!$almacen && $user->role->nombre === 'Administrador') {
+        if (!$almacen && $user->role->nombre === 'Administración') {
             $almacenes = \App\Models\Almacen::where('estado', 'activo')
                 ->orderBy('nombre')
                 ->get();
@@ -141,7 +141,7 @@ class CajaController extends Controller
     public function show(Caja $caja)
     {
         $user = auth()->user();
-        $isAdmin = $user->role->nombre === 'Administrador';
+        $isAdmin = $user->role->nombre === 'Administración';
 
         if (!$isAdmin && $caja->user_id !== $user->id) {
             abort(403, 'No tienes acceso a esta caja.');
@@ -166,7 +166,7 @@ class CajaController extends Controller
 
         $caja = Caja::findOrFail($validated['caja_id']);
 
-        if ($caja->user_id !== auth()->id() && auth()->user()->role->nombre !== 'Administrador') {
+        if ($caja->user_id !== auth()->id() && auth()->user()->role->nombre !== 'Administración') {
             abort(403);
         }
 
@@ -189,7 +189,7 @@ class CajaController extends Controller
     {
         $caja = Caja::findOrFail($cajaId);
 
-        if ($caja->user_id !== auth()->id() && auth()->user()->role->nombre !== 'Administrador') {
+        if ($caja->user_id !== auth()->id() && auth()->user()->role->nombre !== 'Administración') {
             abort(403, 'No tienes acceso a esta caja.');
         }
     }

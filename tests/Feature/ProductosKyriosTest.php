@@ -34,7 +34,7 @@ class ProductosKyriosTest extends TestCase
         parent::setUp();
 
         $this->seed(KyriosCatalogoSeeder::class);
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->categoria = Categoria::create(['codigo' => 'CAT-LU', 'nombre' => 'Luminaria', 'estado' => 'activo']);
         $this->unidad = UnidadMedida::create(['nombre' => 'Unidad', 'abreviatura' => 'UND', 'categoria' => 'unidad', 'permite_decimales' => false]);
         $this->actingAs($this->admin);
@@ -271,11 +271,11 @@ class ProductosKyriosTest extends TestCase
 
     // ── Permisos ──────────────────────────────────────────────────────────
 
-    public function test_un_vendedor_no_puede_crear_productos_ni_subir_imagenes(): void
+    public function test_un_contador_no_puede_crear_productos_ni_subir_imagenes(): void
     {
         $v = $this->crear($this->datosProducto('LU', 'LEDS-C4', 'colgante'))->variantes()->first();
 
-        $vendedor = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Vendedor'])->id, 'estado' => 'activo']);
+        $vendedor = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Contador'])->id, 'estado' => 'activo']);
         $this->actingAs($vendedor);
 
         $this->get(route('inventario.productos.create'))->assertForbidden();

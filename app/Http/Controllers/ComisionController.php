@@ -27,17 +27,17 @@ class ComisionController extends Controller
         ])->latest()->get();
         $bonusReglas = BonusRegla::with(['producto', 'categoria', 'usuario'])->latest()->get();
 
-        $vendedores = User::whereHas('role', fn($q) => $q->whereIn('nombre', ['Vendedor', 'Tienda', 'Cajero']))->orderBy('name')->get();
+        $vendedores = User::whereHas('role', fn($q) => $q->whereIn('nombre', [\App\Models\Role::ADMINISTRACION]))->orderBy('name')->get();
         $categorias = Categoria::orderBy('nombre')->get();
 
         $productosRaw = Producto::where('estado', 'activo')
             ->with(['precios' => fn($q) => $q->where('tipo_precio', 'venta_regular')->where('activo', true)->orderByDesc('prioridad')])
             ->orderBy('nombre')
-            ->get(['id', 'nombre', 'codigo', 'costo_promedio']);
+            ->get(['id', 'nombre', 'nombre_fabrica', 'nombre_kyrios', 'codigo', 'costo_promedio']);
 
         $productos = $productosRaw->map(fn($p) => (object)[
             'id'             => $p->id,
-            'nombre'         => $p->nombre,
+            'nombre'         => \App\Support\EtiquetaProducto::nombre($p),
             'codigo'         => $p->codigo,
             'costo_promedio' => (float) ($p->costo_promedio ?? 0),
             'precio_venta'   => (float) ($p->precios->first()?->precio ?? 0),
@@ -221,7 +221,7 @@ class ComisionController extends Controller
 
     public function reporte(Request $request)
     {
-        $vendedores = User::whereHas('role', fn($q) => $q->whereIn('nombre', ['Vendedor', 'Tienda', 'Cajero']))->orderBy('name')->get();
+        $vendedores = User::whereHas('role', fn($q) => $q->whereIn('nombre', [\App\Models\Role::ADMINISTRACION]))->orderBy('name')->get();
 
         // ── Comisiones ──
         $queryComision = ComisionDetalleVenta::with(['vendedor', 'detalleVenta.venta', 'detalleVenta.producto', 'regla']);
@@ -331,42 +331,6 @@ class ComisionController extends Controller
         $progreso = app(BonusService::class)->progresoMetas();
 
         return view('comisiones.progreso-bonos', compact('progreso'));
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    //  MIS COMISIONES (Vendedor / Cajero / Tienda)
-    // ══════════════════════════════════════════════════════════════════
-
-    public function misComisiones(Request $request)
-    {
-        $userId = auth()->id();
-
-        $queryComision = ComisionDetalleVenta::with(['detalleVenta.venta', 'detalleVenta.producto', 'regla'])
-            ->where('user_id', $userId);
-
-        if ($request->filled('estado'))      $queryComision->where('estado', $request->estado);
-        if ($request->filled('fecha_desde')) $queryComision->whereHas('detalleVenta.venta', fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde));
-        if ($request->filled('fecha_hasta')) $queryComision->whereHas('detalleVenta.venta', fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta));
-
-        $comisiones = $queryComision->latest()->paginate(20, ['*'], 'pc')->withQueryString();
-
-        $queryBonus = BonusLiquidacion::with(['regla', 'detalleVenta.venta', 'detalleVenta.producto'])
-            ->where('user_id', $userId);
-
-        if ($request->filled('estado'))      $queryBonus->where('estado', $request->estado);
-        if ($request->filled('fecha_desde')) $queryBonus->whereDate('created_at', '>=', $request->fecha_desde);
-        if ($request->filled('fecha_hasta')) $queryBonus->whereDate('created_at', '<=', $request->fecha_hasta);
-
-        $bonos = $queryBonus->latest()->paginate(20, ['*'], 'pb')->withQueryString();
-
-        $totales = [
-            'comision_pendiente' => ComisionDetalleVenta::where('user_id', $userId)->where('estado', 'pendiente')->sum('monto_comision'),
-            'comision_pagado'    => ComisionDetalleVenta::where('user_id', $userId)->where('estado', 'pagado')->sum('monto_comision'),
-            'bonus_pendiente'    => BonusLiquidacion::where('user_id', $userId)->where('estado', 'pendiente')->sum('monto_bonus'),
-            'bonus_pagado'       => BonusLiquidacion::where('user_id', $userId)->where('estado', 'pagado')->sum('monto_bonus'),
-        ];
-
-        return view('comisiones.mis-comisiones', compact('comisiones', 'bonos', 'totales'));
     }
 
     public function marcarPagado(Request $request)

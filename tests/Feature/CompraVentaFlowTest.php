@@ -44,9 +44,9 @@ class CompraVentaFlowTest extends TestCase
         parent::setUp();
 
         // Roles: firstOrCreate para no fallar si ya existen
-        $this->roleAdmin = Role::firstOrCreate(['nombre' => 'Administrador']);
-        Role::firstOrCreate(['nombre' => 'Almacenero']);
-        Role::firstOrCreate(['nombre' => 'Tienda']);
+        $this->roleAdmin = Role::firstOrCreate(['nombre' => 'Administración']);
+        Role::firstOrCreate(['nombre' => 'Logística']);
+        Role::firstOrCreate(['nombre' => 'Administración']);
 
         // Datos únicos por test usando uniqid
         $uid = uniqid();

@@ -38,7 +38,7 @@ class AuditoriaCompraStockTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = $this->usuario('Administrador');
+        $this->admin = $this->usuario('Administración');
         $this->actingAs($this->admin);
         $this->a = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'principal', 'estado' => 'activo']);
         $this->b = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Local B', 'tipo' => 'tienda', 'estado' => 'activo']);
@@ -56,7 +56,7 @@ class AuditoriaCompraStockTest extends TestCase
 
     private function comprar(string $forma = 'contado', int $dias = 0, int $cantidad = 10): void
     {
-        $proveedor = Proveedor::first() ?? Proveedor::create(['ruc' => '20100000001', 'razon_social' => 'Proveedor', 'estado' => 'activo']);
+        $proveedor = Proveedor::first() ?? Proveedor::create(['ruc' => '20100000001', 'razon_social' => 'Cliente', 'estado' => 'activo']);
 
         app(CompraService::class)->registrarCompra([
             'codigo' => 'C-' . uniqid(), 'proveedor_id' => $proveedor->id, 'user_id' => $this->admin->id, 'almacen_id' => $this->a->id,
@@ -126,7 +126,7 @@ class AuditoriaCompraStockTest extends TestCase
     public function test_tienda_ve_la_ficha_de_un_producto_y_la_consulta(): void
     {
         $this->comprar();
-        $this->actingAs($this->usuario('Tienda'));
+        $this->actingAs($this->usuario('Administración'));
 
         $this->get(route('tienda.producto.ver', $this->producto))->assertOk()->assertSee('Local A');
         $this->get(route('inventario.productos.consulta-tienda'))->assertOk();
@@ -300,12 +300,12 @@ class AuditoriaCompraStockTest extends TestCase
 
     public function test_un_usuario_tienda_sin_almacen_no_rompe_el_inventario_ni_las_solicitudes(): void
     {
-        $tienda = $this->usuario('Tienda');
+        $tienda = $this->usuario('Administración');
         $tienda->update(['almacen_id' => null]);
         $this->actingAs($tienda);
 
-        $this->get(route('tienda.inventario.ver'))->assertRedirect(route('tienda.dashboard'))->assertSessionHas('error');
-        $this->get(route('tienda.inventario.solicitudes'))->assertRedirect(route('tienda.dashboard'));
+        $this->get(route('tienda.inventario.ver'))->assertRedirect(route('admin.dashboard'))->assertSessionHas('error');
+        $this->get(route('tienda.inventario.solicitudes'))->assertRedirect(route('admin.dashboard'));
         $this->postJson(route('tienda.inventario.solicitar-traslado'), [
             'producto_id' => $this->producto->id, 'variante_id' => $this->v1->id, 'almacen_origen_id' => $this->a->id, 'cantidad' => 1,
         ])->assertStatus(422);

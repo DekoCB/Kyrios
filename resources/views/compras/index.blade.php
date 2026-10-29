@@ -153,9 +153,11 @@
                     <i class="fas fa-list mr-2 text-blue-600"></i>Historial de Compras
                     <span class="text-sm font-normal text-gray-500 ml-2">({{ $compras->total() }} en total)</span>
                 </h3>
+                @if(in_array(auth()->user()->role->nombre, [\App\Models\Role::ADMINISTRACION, \App\Models\Role::LOGISTICA], true))
                 <a href="{{ route('compras.create') }}" class="bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm">
                     <i class="fas fa-plus mr-2"></i>Nueva Compra
                 </a>
+                @endif
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">

@@ -37,10 +37,12 @@
     <div class="bg-white rounded-xl shadow-sm p-4 mb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <h2 class="text-lg font-bold text-gray-800">Series Configuradas</h2>
+            @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
             <button @click="abrirCrear()"
                 class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
                 <i class="fas fa-plus"></i>Nueva Serie
             </button>
+            @endif
         </div>
         <form method="GET" class="flex gap-3">
             <select name="sucursal_id" class="rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500">
@@ -98,6 +100,7 @@
                     </td>
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-3">
+                            @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                             <button @click="abrirEditar({{ $serie->id }}, '{{ addslashes($serie->tipo_nombre) }}', {{ $serie->correlativo_actual }}, '{{ $serie->formato_impresion }}', {{ $serie->activo ? 'true' : 'false' }}, '{{ $serie->serie }}')"
                                 class="text-yellow-600 hover:text-yellow-800 transition" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -109,6 +112,7 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>

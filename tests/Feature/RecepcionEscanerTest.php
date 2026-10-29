@@ -30,7 +30,7 @@ class RecepcionEscanerTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'principal', 'estado' => 'activo']);
 
         $categoria = Categoria::create(['codigo' => 'CAT-LU', 'nombre' => 'Luminaria', 'estado' => 'activo']);
@@ -56,13 +56,13 @@ class RecepcionEscanerTest extends TestCase
     {
         $this->get(route('inventario.recepcion.index'))->assertOk()->assertSee('Recepción con escáner');
 
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Almacenero'])->id, 'estado' => 'activo']))
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Logística'])->id, 'estado' => 'activo']))
             ->get(route('inventario.recepcion.index'))->assertOk();
     }
 
-    public function test_un_vendedor_no_tiene_acceso(): void
+    public function test_un_contador_no_tiene_acceso(): void
     {
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Vendedor'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Contador'])->id, 'estado' => 'activo']));
 
         $this->get(route('inventario.recepcion.index'))->assertForbidden();
         $this->getJson(route('inventario.recepcion.buscar', ['codigo' => 'KY-LU2501-0001']))->assertForbidden();

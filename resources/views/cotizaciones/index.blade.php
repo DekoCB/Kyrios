@@ -69,9 +69,11 @@
                 <a href="{{ route('cotizaciones.index') }}" class="text-sm text-gray-500 hover:text-gray-800"><i class="fas fa-redo mr-1"></i>Limpiar</a>
                 <div class="flex gap-2">
                     <button class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-search mr-1"></i>Filtrar</button>
+                    @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                     <a href="{{ route('cotizaciones.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">
                         <i class="fas fa-plus mr-1"></i>Nueva cotización
                     </a>
+                    @endif
                 </div>
             </div>
         </form>
@@ -109,7 +111,7 @@
                             <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                                 <a href="{{ route('cotizaciones.show', $c) }}" class="text-blue-600 hover:text-blue-800 mr-3" title="Ver"><i class="fas fa-eye"></i></a>
                                 <a href="{{ route('cotizaciones.pdf', $c) }}" target="_blank" class="text-gray-500 hover:text-gray-800 mr-3" title="PDF"><i class="fas fa-file-pdf"></i></a>
-                                @if($c->puede_editarse)
+                                @if($c->puede_editarse && auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                                     <a href="{{ route('cotizaciones.edit', $c) }}" class="text-yellow-600 hover:text-yellow-800" title="Editar"><i class="fas fa-edit"></i></a>
                                 @endif
                             </td>
@@ -119,7 +121,7 @@
                             <td colspan="8" class="px-6 py-14 text-center text-gray-500">
                                 <i class="fas fa-file-contract text-4xl mb-3 text-gray-300"></i>
                                 <p class="font-medium">No hay cotizaciones con esos filtros</p>
-                                <a href="{{ route('cotizaciones.create') }}" class="inline-block mt-3 text-blue-600 hover:underline text-sm">Crear la primera cotización</a>
+                                @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)<a href="{{ route('cotizaciones.create') }}" class="inline-block mt-3 text-blue-600 hover:underline text-sm">Crear la primera cotización</a>@endif
                             </td>
                         </tr>
                     @endforelse

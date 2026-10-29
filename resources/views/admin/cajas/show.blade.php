@@ -28,16 +28,18 @@
             <p class="text-sm text-gray-500">{{ $caja->fecha?->format('d/m/Y') }}</p>
         </div>
         <div class="flex items-center gap-2">
-            @if($caja->estado === 'abierta')
+            @if($caja->estado === 'abierta' && auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                 <button @click="modalForzar = true"
                         class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition">
                     <i class="fas fa-lock mr-1"></i> Forzar Cierre
                 </button>
             @endif
+            @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
             <button @click="modalAjustar = true"
                     class="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-medium hover:bg-yellow-600 transition">
                 <i class="fas fa-balance-scale mr-1"></i> Ajustar
             </button>
+            @endif
             <a href="{{ route('admin.cajas.index') }}"
                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition">
                 <i class="fas fa-arrow-left mr-1"></i> Volver

@@ -28,7 +28,7 @@
                 <h1 class="text-2xl font-bold text-gray-900">Gestión de Crédito</h1>
                 <p class="text-gray-500 text-sm mt-0.5">{{ $venta->cliente?->nombre }} · {{ $venta->codigo }}</p>
             </div>
-            @if(in_array(auth()->user()->role->nombre, ['Administrador', 'Tienda']) && $cuenta->estado !== 'pagado' && $cuenta->estado !== 'anulado')
+            @if(in_array(auth()->user()->role->nombre, ['Administración', 'Contador']) && $cuenta->estado !== 'pagado' && $cuenta->estado !== 'anulado')
             <button @click="showPagoModal = true; cuotaId = null; montoCuota = {{ $cuenta->saldo_pendiente }};"
                     class="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-sm">
                 <i class="fas fa-plus-circle"></i> Registrar Pago
@@ -101,7 +101,7 @@
                             <span class="text-sm font-mono font-semibold {{ $cuota->estado === 'pagado' ? 'text-green-600 line-through' : ($vencida ? 'text-red-600' : 'text-gray-700') }}">
                                 S/ {{ number_format($cuota->monto, 2) }}
                             </span>
-                            @if($cuota->estado === 'pendiente' && in_array(auth()->user()->role->nombre, ['Administrador', 'Tienda']) && $cuenta->estado !== 'anulado')
+                            @if($cuota->estado === 'pendiente' && in_array(auth()->user()->role->nombre, ['Administración', 'Contador']) && $cuenta->estado !== 'anulado')
                             <button @click="showPagoModal = true; cuotaId = {{ $cuota->id }}; montoCuota = {{ $cuota->monto }};"
                                     class="text-xs bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 px-2.5 py-1 rounded-lg font-semibold transition">
                                 Pagar

@@ -66,8 +66,8 @@
                     @php
                         $colores = ['pendiente' => 'bg-yellow-100 text-yellow-800', 'confirmado' => 'bg-green-100 text-green-800', 'anulado' => 'bg-red-100 text-red-800'];
                         $rolActual = auth()->user()->role->nombre;
-                        $puedeGestionarAnulacion = in_array($rolActual, ['Administrador', 'Almacenero']);
-                        $puedeEliminar = $rolActual === 'Administrador';
+                        $puedeGestionarAnulacion = in_array($rolActual, ['Administración', 'Logística']);
+                        $puedeEliminar = $rolActual === 'Administración';
                     @endphp
 
                     @forelse($traslados as $guia => $movimientos)

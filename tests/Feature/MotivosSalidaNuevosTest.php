@@ -39,7 +39,7 @@ class MotivosSalidaNuevosTest extends TestCase
     public function test_la_pantalla_de_salida_con_escaner_los_ofrece(): void
     {
         $this->seed(CatalogoSeeder::class);
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
 
         $r = $this->get(route('inventario.salida.index'))->assertOk();
         foreach (self::NUEVOS as $nombre) {

@@ -25,7 +25,7 @@ class Auditoria2ACajaChicaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
         $this->servicio = app(CajaChicaService::class);
         $this->caja = $this->servicio->abrir(['tipo' => 'general', 'nombre' => 'Caja chica', 'monto_inicial' => 100], $this->admin);

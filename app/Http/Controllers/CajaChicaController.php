@@ -27,7 +27,7 @@ class CajaChicaController extends Controller
 
     private function esAdmin(): bool
     {
-        return auth()->user()->role?->nombre === 'Administrador';
+        return auth()->user()->role?->nombre === 'Administración';
     }
 
     /** Admin: cualquier caja. Resto: solo la suya. */
@@ -90,7 +90,7 @@ class CajaChicaController extends Controller
     private function usuariosAsignables()
     {
         return User::with('role')->where('estado', 'activo')
-            ->whereHas('role', fn ($q) => $q->where('nombre', '!=', 'Proveedor'))
+            ->whereHas('role', fn ($q) => $q->whereIn('nombre', \App\Models\Role::INTERNOS))
             ->orderBy('name')->get();
     }
 

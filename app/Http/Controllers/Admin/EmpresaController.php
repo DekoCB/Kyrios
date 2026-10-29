@@ -13,7 +13,7 @@ class EmpresaController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('role:Administrador');
+        $this->middleware('role:Administración');
     }
 
     public function consultarRuc(string $ruc)

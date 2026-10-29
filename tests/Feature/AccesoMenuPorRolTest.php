@@ -30,7 +30,7 @@ class AccesoMenuPorRolTest extends TestCase
 
     public static function roles(): array
     {
-        return [['Administrador'], ['Vendedor'], ['Almacenero'], ['Tienda'], ['Cajero'], ['Proveedor'], ['Técnico']];
+        return [['Administración'], ['Administración'], ['Logística'], ['Administración'], ['Administración'], ['Cliente'], ['Operaciones']];
     }
 
     /** @dataProvider roles */

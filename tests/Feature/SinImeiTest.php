@@ -33,7 +33,7 @@ class SinImeiTest extends TestCase
 
     public function test_las_pantallas_principales_no_hablan_de_imei(): void
     {
-        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']));
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']));
 
         foreach (['admin.dashboard', 'inventario.productos.index', 'inventario.productos.create', 'compras.create', 'ventas.create', 'traslados.create', 'inventario.movimientos.create'] as $ruta) {
             if (!Route::has($ruta)) {

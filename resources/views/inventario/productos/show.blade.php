@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $producto->nombre }} - {{ config('app.name') }}</title>
+    <title>{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }} - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
@@ -18,13 +18,13 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">Detalle del Producto</h1>
-                    <p class="text-sm text-gray-600 mt-1">Información completa de {{ $producto->nombre }}</p>
+                    <p class="text-sm text-gray-600 mt-1">Información completa de {{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
                 </div>
                 <div class="flex space-x-2">
                     <a href="{{ route('inventario.productos.index') }}" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                         <i class="fas fa-arrow-left mr-2"></i>Volver
                     </a>
-                    @if(in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']))
+                    @if(in_array(auth()->user()->role->nombre, ['Administración', 'Logística']))
                         <a href="{{ route('inventario.productos.edit', $producto) }}" class="px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800">
                             <i class="fas fa-edit mr-2"></i>Editar
                         </a>
@@ -53,7 +53,7 @@
                     <div class="p-6 bg-gray-50 border-b" x-data="{ fotos: @js($fotos), actual: 0, fallo: false }">
                         <div class="flex justify-center">
                             <template x-if="fotos.length && !fallo">
-                                <img :src="fotos[actual]" alt="{{ $producto->nombre }}" class="max-h-64 w-full object-contain" x-on:error="fallo = true">
+                                <img :src="fotos[actual]" alt="{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}" class="max-h-64 w-full object-contain" x-on:error="fallo = true">
                             </template>
                             <div x-show="!fotos.length || fallo" class="h-48 w-48 bg-gray-200 rounded-lg flex items-center justify-center" @if($fotos->isNotEmpty()) style="display:none" @endif>
                                 <i class="fas fa-box text-6xl text-gray-400"></i>
@@ -72,7 +72,7 @@
 
                     <!-- Información básica -->
                     <div class="p-6">
-                        <h2 class="text-xl font-bold text-gray-900">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</h2>
+                        <h2 class="text-xl font-bold {{ \App\Support\EtiquetaProducto::tieneNombre($producto) ? 'text-gray-900' : 'text-gray-400 italic' }}">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</h2>
                         @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
                             <p class="text-sm text-gray-500 mb-4">Nombre de fábrica: <span class="font-medium text-gray-700">{{ $producto->nombre_fabrica }}</span></p>
                         @else
@@ -201,7 +201,7 @@
                             Variantes
                             <span class="ml-2 bg-white/20 text-white text-xs px-2 py-0.5 rounded-full">{{ $producto->variantesActivas->count() }}</span>
                         </h3>
-                        @if(in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']))
+                        @if(in_array(auth()->user()->role->nombre, ['Administración', 'Logística']))
                         <a href="{{ route('inventario.productos.variantes', $producto) }}"
                            class="text-xs text-indigo-200 hover:text-white transition">
                             Gestionar <i class="fas fa-arrow-right ml-1"></i>
@@ -342,7 +342,7 @@
                 @endif
 
                 <!-- Información de costos (solo administradores) -->
-                @if(auth()->user()->role->nombre === 'Administrador')
+                @if(auth()->user()->role->nombre === 'Administración')
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
                     <div class="bg-yellow-600 px-6 py-3">
                         <h3 class="text-white font-semibold">

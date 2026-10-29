@@ -24,7 +24,7 @@
                 <span class="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1.5 rounded-lg">
                     <i class="fas fa-ban mr-1"></i> Devolución Anulada
                 </span>
-            @elseif(in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero', 'Tienda']))
+            @elseif(in_array(auth()->user()->role->nombre, ['Administración']))
                 <button type="button" onclick="document.getElementById('modalAnularDevolucion').classList.remove('hidden')"
                         class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition">
                     <i class="fas fa-ban"></i> Anular Devolución
@@ -32,7 +32,7 @@
             @endif
         </div>
 
-        @if(!$estaAnulada && in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero', 'Tienda']))
+        @if(!$estaAnulada && in_array(auth()->user()->role->nombre, ['Administración']))
         {{-- Modal confirmación anular --}}
         <div id="modalAnularDevolucion" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">

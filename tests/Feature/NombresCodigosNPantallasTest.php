@@ -32,7 +32,7 @@ class NombresCodigosNPantallasTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
         $this->almacen = Almacen::create(['codigo' => 'ALM-T', 'nombre' => 'Tienda Central', 'tipo' => 'tienda', 'estado' => 'activo']);
         $this->producto = $this->crearProducto('KY-LU2501-0001', 'Ring', 'Oxygen', '25-0573-N3-B8');

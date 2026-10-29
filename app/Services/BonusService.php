@@ -198,7 +198,7 @@ class BonusService
             // A quién aplica: producto_usuario -> solo ese vendedor; producto/categoria -> todos.
             $vendedores = $regla->tipo_aplicacion === 'producto_usuario'
                 ? User::where('id', $regla->user_id)->get()
-                : User::whereHas('role', fn($q) => $q->whereIn('nombre', ['Vendedor', 'Tienda', 'Cajero']))->get();
+                : User::whereHas('role', fn($q) => $q->whereIn('nombre', [\App\Models\Role::ADMINISTRACION]))->get();
 
             foreach ($vendedores as $vendedor) {
                 $unidades = $this->contarUnidadesPeriodo(

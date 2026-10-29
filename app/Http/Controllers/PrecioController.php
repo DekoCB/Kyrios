@@ -15,11 +15,11 @@ use Illuminate\Support\Facades\DB;
 class PrecioController extends Controller
 {
     /**
-     * Constructor - Solo Admin y Almacenero pueden gestionar precios
+     * Constructor - Solo Administración y Logística pueden gestionar precios
      */
     public function __construct()
     {
-        $this->middleware('role:Administrador,Almacenero');
+        $this->middleware('role:Administración,Logística');
     }
 
     /**

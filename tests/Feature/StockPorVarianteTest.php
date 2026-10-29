@@ -39,7 +39,7 @@ class StockPorVarianteTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administrador'])->id, 'estado' => 'activo']);
+        $this->admin = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Administración'])->id, 'estado' => 'activo']);
         $this->actingAs($this->admin);
 
         $this->a = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'principal', 'estado' => 'activo']);
@@ -73,7 +73,7 @@ class StockPorVarianteTest extends TestCase
 
     private function comprar(Almacen $almacen, array $cantidades): void
     {
-        $proveedor = Proveedor::first() ?? Proveedor::create(['ruc' => '20100000001', 'razon_social' => 'Proveedor', 'estado' => 'activo']);
+        $proveedor = Proveedor::first() ?? Proveedor::create(['ruc' => '20100000001', 'razon_social' => 'Cliente', 'estado' => 'activo']);
 
         $detalles = [];
         foreach ($cantidades as $varianteId => $cantidad) {

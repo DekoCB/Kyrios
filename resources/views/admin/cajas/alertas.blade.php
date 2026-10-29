@@ -123,7 +123,7 @@
                                    class="px-3 py-1.5 text-xs font-medium border {{ $color['border'] }} {{ $color['icon_txt'] }} rounded-lg hover:opacity-80 transition">
                                     Ver caja →
                                 </a>
-                                @if($alerta['caja']->estado === 'abierta')
+                                @if($alerta['caja']->estado === 'abierta' && auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
                                     <a href="{{ route('admin.cajas.show', $alerta['caja']->id) }}"
                                        class="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
                                         Forzar cierre

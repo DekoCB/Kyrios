@@ -292,16 +292,16 @@
                                         $danos = $producto->variantesActivas->pluck('estado_dano')->filter(fn ($d) => $d && $d !== 'ninguno')->countBy();
                                     @endphp
                                     @if($producto->imagen)
-                                        <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}" class="h-12 w-12 rounded-lg object-cover mr-3">
+                                        <img src="{{ $producto->imagen_url }}" alt="{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}" class="h-12 w-12 rounded-lg object-cover mr-3">
                                     @elseif($imgVariante)
-                                        <img src="{{ $imgVariante->url }}" alt="{{ $producto->nombre }}" class="h-12 w-12 rounded-lg object-cover mr-3">
+                                        <img src="{{ $imgVariante->url }}" alt="{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}" class="h-12 w-12 rounded-lg object-cover mr-3">
                                     @else
                                         <div class="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center mr-3">
                                             <i class="fas fa-box text-gray-400"></i>
                                         </div>
                                     @endif
                                     <div>
-                                        <p class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
+                                        <p class="text-sm font-medium {{ \App\Support\EtiquetaProducto::tieneNombre($producto) ? 'text-gray-900' : 'text-gray-400 italic' }}">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
                                         @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
                                             <p class="text-xs text-gray-500">Fábrica: {{ $producto->nombre_fabrica }}</p>
                                         @endif
@@ -415,7 +415,7 @@
                                     @endif
 
                                     <!-- Ver stock por almacén -->
-                                    <a href="{{ route('traslados.stock', ['buscar' => $producto->nombre]) }}"
+                                    <a href="{{ route('traslados.stock', ['buscar' => \App\Support\EtiquetaProducto::tieneNombre($producto) ? \App\Support\EtiquetaProducto::nombrePrincipal($producto) : $producto->codigo]) }}"
                                        class="text-teal-600 hover:text-teal-900"
                                        title="Ver stock por almacén">
                                         <i class="fas fa-boxes"></i>
@@ -539,7 +539,7 @@
                                         </div>
                                     @endif
                                     <div>
-                                        <p class="font-medium text-gray-700 line-through">{{ $p->nombre }}</p>
+                                        <p class="font-medium text-gray-700 line-through">{{ \App\Support\EtiquetaProducto::nombre($p) }}</p>
                                         <p class="text-xs text-gray-400">{{ $p->codigo }}</p>
                                     </div>
                                 </div>
@@ -562,7 +562,7 @@
                             @if($canDelete)
                             <td class="px-4 py-3 text-center">
                                 <form action="{{ route('inventario.productos.reactivar', $p) }}" method="POST" class="inline"
-                                      data-confirm="¿Reactivar el producto {{ $p->nombre }}?">
+                                      data-confirm="¿Reactivar el producto {{ \App\Support\EtiquetaProducto::nombre($p) }}?">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit"

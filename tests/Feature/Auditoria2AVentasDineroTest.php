@@ -41,7 +41,7 @@ class Auditoria2AVentasDineroTest extends TestCase
         $this->almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'tienda', 'estado' => 'activo']);
         $this->sucursal = Sucursal::create(['codigo' => 'SUC-A', 'nombre' => 'Sucursal A', 'tipo' => 'tienda', 'almacen_id' => $this->almacen->id, 'estado' => 'activo']);
         $this->almacen->update(['sucursal_id' => $this->sucursal->id]);
-        $this->admin = $this->usuario('Administrador');
+        $this->admin = $this->usuario('Administración');
         $this->actingAs($this->admin);
 
         $cat = Categoria::create(['codigo' => 'CAT-LU', 'nombre' => 'Luminaria', 'estado' => 'activo']);
@@ -302,7 +302,7 @@ class Auditoria2AVentasDineroTest extends TestCase
     {
         $otra = Almacen::create(['codigo' => 'ALM-B', 'nombre' => 'Local B', 'tipo' => 'tienda', 'estado' => 'activo']);
         app(EscanerService::class)->recibir($otra->id, [['variante_id' => $this->variante->id, 'cantidad' => 30]], $this->admin->id);
-        $this->actingAs($this->usuario('Tienda'));
+        $this->actingAs(tap($this->usuario('Administración'), fn ($u) => $u->update(['almacen_id' => $this->almacen->id])));
 
         $this->post(route('ventas.store'), $this->datos(['almacen_id' => $otra->id]))->assertSessionHasErrors('almacen_id');
         $this->assertSame(0, Venta::count());

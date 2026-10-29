@@ -10,18 +10,83 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class EtiquetaProducto
 {
-    /** Nombre Kyrios (o, si no hay, el nombre guardado / el de fábrica). */
+    /** Texto que se muestra cuando un producto no tiene ningún nombre (solo un código en el campo nombre). */
+    public const SIN_NOMBRE = 'Sin nombre asignado';
+
+    /**
+     * Nombre que se muestra a una persona: el nombre K; si no hay, el de fábrica; si tampoco, el nombre guardado
+     * solo cuando es un nombre escrito a mano (no un código); y si nada de eso existe, «Sin nombre asignado».
+     */
     public static function nombrePrincipal($producto): string
     {
         $k = self::texto($producto, 'nombre_kyrios');
         $f = self::texto($producto, 'nombre_fabrica');
         $n = self::texto($producto, 'nombre');
 
-        return $k ?: ($n && !self::esCodigo($producto, $n) ? $n : ($f ?: ($n ?: self::texto($producto, 'codigo'))));
+        if ($k !== '') {
+            return $k;
+        }
+        if ($f !== '') {
+            return $f;
+        }
+
+        return $n !== '' && !self::esCodigo($producto, $n) ? $n : self::SIN_NOMBRE;
+    }
+
+    /** ¿El producto tiene algún nombre real (K, de fábrica o escrito a mano que no sea un código)? */
+    public static function tieneNombre($producto): bool
+    {
+        return self::nombrePrincipal($producto) !== self::SIN_NOMBRE;
+    }
+
+    /**
+     * Descripción para documentos tributarios (comprobantes, XML a SUNAT, guías, líneas guardadas): nunca dice
+     * «Sin nombre asignado»; si no hay nombre usa el código de fábrica o el Kyrios.
+     */
+    public static function nombreParaDocumento($producto, $variante = null): string
+    {
+        $nombre = self::nombrePrincipal($producto);
+        if ($nombre !== self::SIN_NOMBRE) {
+            return $nombre;
+        }
+
+        $codigo = $variante !== null && $variante !== [] ? (self::texto($variante, 'codigo_fabricante') ?: self::texto($variante, 'codigo_kyrios')) : '';
+        if ($codigo === '') {
+            $variantes = self::variantesCargadas($producto);
+            if (is_iterable($variantes)) {
+                foreach ($variantes as $v) {
+                    $codigo = self::texto($v, 'codigo_fabricante') ?: self::texto($v, 'codigo_kyrios');
+                    if ($codigo !== '') {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $codigo ?: (self::texto($producto, 'nombre') ?: (self::texto($producto, 'codigo') ?: 'Producto'));
+    }
+
+    /**
+     * Igual que nombre() («Ring (fábrica: Oxygen)») pero para documentos que salen del sistema (comprobantes,
+     * guías, cotizaciones): sin nombre usa el código en lugar de «Sin nombre asignado».
+     */
+    public static function documento($producto, $variante = null): string
+    {
+        return self::tieneNombre($producto) ? self::nombre($producto) : self::nombreParaDocumento($producto, $variante);
+    }
+
+    /**
+     * Para mensajes de error dirigidos a una persona: el nombre o, si no tiene, el código que lo identifica
+     * («Sin nombre asignado» no sirve para saber de qué producto se habla).
+     */
+    public static function rotulo($producto): string
+    {
+        return self::tieneNombre($producto) ? self::nombrePrincipal($producto) : self::nombreParaDocumento($producto);
     }
 
     /**
      * «Ring (fábrica: Oxygen)». Si solo existe uno de los dos nombres, o son iguales, se muestra uno solo.
+     * Sin ningún nombre: «Sin nombre asignado».
      */
     public static function nombre($producto): string
     {
@@ -172,7 +237,11 @@ class EtiquetaProducto
         return mb_strtolower(preg_replace('/\s+/', ' ', trim($t)));
     }
 
-    /** ¿El «nombre» guardado es en realidad un código (el de fábrica o el Kyrios)? */
+    /**
+     * ¿El «nombre» guardado es en realidad un código (el del producto o cualquiera de fábrica, Kyrios o Excel de sus
+     * variantes)? Con las variantes cargadas se comparan en memoria; si no, contra el conjunto de códigos del sistema,
+     * que se lee una sola vez por solicitud.
+     */
     private static function esCodigo($producto, string $nombre): bool
     {
         $n = self::normalizar($nombre);
@@ -180,14 +249,46 @@ class EtiquetaProducto
             return true;
         }
         $variantes = self::variantesCargadas($producto);
-        if (is_iterable($variantes)) {
+        if (is_iterable($variantes) && !(is_countable($variantes) && count($variantes) === 0)) {
             foreach ($variantes as $v) {
-                if ($n === self::normalizar(self::texto($v, 'codigo_fabricante')) || $n === self::normalizar(self::texto($v, 'codigo_kyrios'))) {
-                    return true;
+                foreach (['codigo_fabricante', 'codigo_kyrios', 'codigo_excel', 'sku'] as $campo) {
+                    if ($n === self::normalizar(self::texto($v, $campo))) {
+                        return true;
+                    }
                 }
             }
         }
 
-        return false;
+        return isset(self::codigosConocidos()[$n]);
+    }
+
+    /** Todos los códigos del sistema normalizados (clave = código). Una consulta por solicitud; ver olvidarCodigos(). */
+    private static function codigosConocidos(): array
+    {
+        $app = app();
+        if (!$app->bound('etiqueta.codigos')) {
+            $set = [];
+            foreach (['codigo_fabricante', 'codigo_kyrios', 'codigo_excel'] as $columna) {
+                foreach (\Illuminate\Support\Facades\DB::table('producto_variantes')->whereNotNull($columna)->pluck($columna) as $c) {
+                    $set[self::normalizar((string) $c)] = true;
+                }
+            }
+            foreach (\Illuminate\Support\Facades\DB::table('productos')->whereNotNull('codigo')->pluck('codigo') as $c) {
+                $set[self::normalizar((string) $c)] = true;
+            }
+            unset($set['']);
+            $app->instance('etiqueta.codigos', $set);
+        }
+
+        return $app->make('etiqueta.codigos');
+    }
+
+    /** Descarta el conjunto de códigos en memoria (útil tras crear o cambiar códigos dentro de la misma solicitud). */
+    public static function olvidarCodigos(): void
+    {
+        $app = app();
+        if ($app->bound('etiqueta.codigos')) {
+            unset($app['etiqueta.codigos']);
+        }
     }
 }

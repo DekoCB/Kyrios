@@ -13,7 +13,7 @@
     <x-sidebar :role="auth()->user()->role->nombre" />
 
     <div class="md:ml-64 p-4 md:p-8">
-        <x-header title="Editar Producto" subtitle="Actualiza la información de {{ $producto->nombre }}" />
+        <x-header title="Editar Producto" subtitle="Actualiza la información de {{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}" />
 
         <div class="max-w-5xl mx-auto">
             <!-- Resumen del producto -->
@@ -135,6 +135,7 @@
                                         <i class="fas fa-magic mr-2"></i>Sugerir
                                     </button>
                                 </div>
+                                <p class="text-xs text-gray-500 mt-1">Si lo dejas igual al código se mostrará «Sin nombre asignado».</p>
                                 @error('nombre')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
@@ -364,7 +365,7 @@
                             </label>
                             @if($producto->imagen)
                                 <div class="mb-2 flex items-center space-x-3">
-                                    <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}"
+                                    <img src="{{ $producto->imagen_url }}" alt="{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}"
                                          class="h-20 w-20 object-cover rounded-lg border-2 border-gray-200">
                                     <span class="text-xs text-gray-500">Imagen actual</span>
                                 </div>

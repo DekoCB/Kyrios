@@ -13,11 +13,11 @@ class CategoriaController extends Controller
      */
     public function __construct()
     {
-        // Solo Admin y Almacenero pueden crear/editar
-        $this->middleware('role:Administrador,Almacenero')->except(['index', 'show']);
+        // Solo Administración y Logística pueden crear/editar
+        $this->middleware('role:Administración,Logística')->except(['index', 'show']);
         
         // Solo Admin puede eliminar
-        $this->middleware('role:Administrador')->only(['destroy']);
+        $this->middleware('role:Administración')->only(['destroy']);
     }
 
     /**
@@ -30,9 +30,9 @@ class CategoriaController extends Controller
             ->get();
         
         // Verificar si el usuario puede crear categorías
-        $canCreate = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canEdit = in_array(auth()->user()->role->nombre, ['Administrador', 'Almacenero']);
-        $canDelete = auth()->user()->role->nombre === 'Administrador';
+        $canCreate = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canEdit = in_array(auth()->user()->role->nombre, ['Administración', 'Logística']);
+        $canDelete = auth()->user()->role->nombre === 'Administración';
         
         return view('inventario.categorias.index', compact('categorias', 'canCreate', 'canEdit', 'canDelete'));
     }

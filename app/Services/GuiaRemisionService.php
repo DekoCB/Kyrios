@@ -251,12 +251,12 @@ class GuiaRemisionService
         $cantidad = (int) ($linea['cantidad'] ?? 0);
 
         if ($cantidad < 1) {
-            throw new \Exception("Producto «{$producto->nombre}»: la cantidad debe ser al menos 1.");
+            throw new \Exception("Producto «" . \App\Support\EtiquetaProducto::rotulo($producto) . "»: la cantidad debe ser al menos 1.");
         }
 
         $varianteId = !empty($linea['variante_id']) ? (int) $linea['variante_id'] : null;
         if (!$varianteId && $producto->variantes()->where('estado', 'activo')->exists()) {
-            throw new \Exception("Producto «{$producto->nombre}»: seleccione la variante.");
+            throw new \Exception("Producto «" . \App\Support\EtiquetaProducto::rotulo($producto) . "»: seleccione la variante.");
         }
 
         // Bloqueo de la fila: dos guías simultáneas no pueden usar la misma existencia
@@ -268,7 +268,7 @@ class GuiaRemisionService
 
         if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
             $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
-            $nombre = \App\Support\EtiquetaProducto::nombre($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
+            $nombre = \App\Support\EtiquetaProducto::rotulo($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
             throw new \Exception(
                 "Producto «{$nombre}»: stock insuficiente (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
             );

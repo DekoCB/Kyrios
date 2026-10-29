@@ -108,7 +108,7 @@ class StoreVentaRequest extends FormRequest
                 return;
             }
             $usuario = $this->user();
-            if ($usuario && $usuario->role?->nombre !== 'Administrador' && $usuario->almacen_id && (int) $usuario->almacen_id !== (int) $almacen->id) {
+            if ($usuario && $usuario->almacen_id && (int) $usuario->almacen_id !== (int) $almacen->id) {
                 $v->errors()->add('almacen_id', 'Solo puede vender desde la tienda que tiene asignada.');
             }
         });

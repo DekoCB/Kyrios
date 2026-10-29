@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Códigos de Barras - {{ $producto->nombre }} - {{ config('app.name') }}</title>
+    <title>Códigos de Barras - {{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }} - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
@@ -18,7 +18,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900">Códigos de Barras</h1>
-                    <p class="text-sm text-gray-600 mt-1">Gestiona los códigos de barras de {{ $producto->nombre }}</p>
+                    <p class="text-sm text-gray-600 mt-1">Gestiona los códigos de barras de {{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
                 </div>
                 <a href="{{ route('inventario.productos.show', $producto) }}" class="text-gray-600 hover:text-gray-900">
                     <i class="fas fa-arrow-left mr-2"></i>Volver al producto
@@ -94,7 +94,7 @@
                     <div class="p-4">
                         <div class="flex justify-center mb-4">
                             @if($producto->imagen)
-                                <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}" class="h-32 w-32 object-cover rounded-lg border-2 border-gray-200">
+                                <img src="{{ $producto->imagen_url }}" alt="{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}" class="h-32 w-32 object-cover rounded-lg border-2 border-gray-200">
                             @else
                                 <div class="h-32 w-32 rounded-lg bg-gray-200 flex items-center justify-center">
                                     <i class="fas fa-box text-4xl text-gray-400"></i>
@@ -109,7 +109,7 @@
                             </div>
                             <div>
                                 <span class="font-medium text-gray-700">Nombre:</span>
-                                <span class="text-gray-900 ml-2">{{ $producto->nombre }}</span>
+                                <span class="text-gray-900 ml-2">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</span>
                             </div>
                             <div>
                                 <span class="font-medium text-gray-700">Categoría:</span>
@@ -560,7 +560,7 @@
             const mostrarNombre  = document.getElementById('mostrar_nombre').checked;
             const mostrarDesc    = document.getElementById('mostrar_descripcion').checked;
             const mostrarTexto   = document.getElementById('mostrar_codigo_texto').checked;
-            const productoNombre = @json($producto->nombre);
+            const productoNombre = @json(\App\Support\EtiquetaProducto::nombre($producto));
 
             // Expandir copias
             const etiquetas = [];

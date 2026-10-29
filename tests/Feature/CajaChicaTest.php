@@ -24,8 +24,8 @@ class CajaChicaTest extends TestCase
     {
         parent::setUp();
         Storage::fake(CajaChicaService::DISCO);
-        $this->admin = $this->usuario('Administrador');
-        $this->tecnico = $this->usuario('Técnico');
+        $this->admin = $this->usuario('Administración');
+        $this->tecnico = $this->usuario('Operaciones');
     }
 
     private function usuario(string $rol): User
@@ -198,7 +198,7 @@ class CajaChicaTest extends TestCase
     public function test_cada_persona_solo_ve_su_caja_y_sus_archivos(): void
     {
         $caja = $this->caja();
-        $otro = $this->usuario('Técnico');
+        $otro = $this->usuario('Operaciones');
         $this->actingAs($this->tecnico)->post(route('caja-chica.gasto', $caja), $this->gasto());
         $adjunto = CajaChicaAdjunto::first();
 
@@ -271,7 +271,7 @@ class CajaChicaTest extends TestCase
         $this->actingAs($this->tecnico);
         $this->get(route('caja-chica.index'))->assertOk()->assertSee('Mi caja chica');
         $this->get(route('caja-chica.show', $caja))->assertOk()->assertSee('Registrar gasto');
-        $this->get('/dashboard')->assertRedirect(route('caja-chica.index'));
+        $this->get('/dashboard')->assertRedirect(route('operaciones.dashboard'));
     }
 
     public function test_el_menu_del_admin_tiene_caja_chica_dentro_de_caja_y_mi_perfil_en_administracion(): void

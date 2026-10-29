@@ -13,7 +13,7 @@ class FacturacionElectronicaController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('role:Administrador');
+        $this->middleware('role:Administración,Contador');
     }
 
     public function index(Request $request)
@@ -321,7 +321,7 @@ class FacturacionElectronicaController extends Controller
         // Líneas de detalle
         foreach ($venta->detalles as $i => $det) {
             $linea   = $i + 1;
-            $nombre  = $det->producto ? \App\Support\EtiquetaProducto::nombrePrincipal($det->producto) : 'Producto';
+            $nombre  = $det->producto ? \App\Support\EtiquetaProducto::nombreParaDocumento($det->producto) : 'Producto';
             if ($det->variante?->nombre_completo) {
                 $nombre .= ' - ' . $det->variante->nombre_completo;
             }

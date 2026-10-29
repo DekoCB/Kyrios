@@ -17,13 +17,13 @@ class TiendaController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('role:Tienda');
+        $this->middleware('role:Administración');
     }
 
     /** Un usuario Tienda sin almacén no puede ver ni pedir stock: se le avisa en vez de fallar. */
     private function sinAlmacen()
     {
-        return redirect()->route('tienda.dashboard')
+        return redirect()->route('admin.dashboard')
             ->with('error', 'Tu usuario no tiene un almacén asignado. Pide al administrador que te asigne uno.');
     }
 

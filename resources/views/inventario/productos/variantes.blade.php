@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Variantes · {{ $producto->nombre }}</title>
+    <title>Variantes · {{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -92,7 +92,7 @@
         <div class="flex items-center text-sm text-gray-500 mb-4">
             <a href="{{ route('inventario.productos.index') }}" class="hover:text-blue-900">Productos</a>
             <i class="fas fa-chevron-right mx-2 text-xs"></i>
-            <a href="{{ route('inventario.productos.show', $producto) }}" class="hover:text-blue-900 truncate max-w-xs">{{ $producto->nombre }}</a>
+            <a href="{{ route('inventario.productos.show', $producto) }}" class="hover:text-blue-900 truncate max-w-xs">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</a>
             <i class="fas fa-chevron-right mx-2 text-xs"></i>
             <span class="text-gray-700 font-medium">Variantes</span>
         </div>
@@ -122,7 +122,7 @@
                     <div class="p-5 space-y-3 text-sm">
                         <div>
                             <p class="text-xs text-gray-400 uppercase tracking-wide">Nombre</p>
-                            <p class="font-semibold text-gray-900">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
+                            <p class="font-semibold {{ \App\Support\EtiquetaProducto::tieneNombre($producto) ? 'text-gray-900' : 'text-gray-400 italic' }}">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
                             @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
                                 <p class="text-xs text-gray-500">Nombre de fábrica: {{ $producto->nombre_fabrica }}</p>
                             @endif
