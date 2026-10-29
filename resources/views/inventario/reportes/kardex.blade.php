@@ -46,7 +46,7 @@
                     <select name="producto_id" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">— Seleccionar producto —</option>
                         @foreach($productosList as $prod)
-                            <option value="{{ $prod->id }}" {{ $productoId == $prod->id ? 'selected' : '' }}>{{ $prod->nombre }}</option>
+                            <option value="{{ $prod->id }}" {{ $productoId == $prod->id ? 'selected' : '' }}>{{ $prod->codigo }} · {{ \App\Support\EtiquetaProducto::nombre($prod) }}</option>
                         @endforeach
                     </select>
                 </div>

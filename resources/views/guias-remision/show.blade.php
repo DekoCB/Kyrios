@@ -172,7 +172,8 @@
                         @forelse($guia->detalles as $det)
                         <tr>
                             <td class="px-4 py-3">
-                                <p class="font-medium text-gray-800">{{ $det->producto?->nombre }}</p>
+                                <p class="font-medium text-gray-800">{{ \App\Support\EtiquetaProducto::nombre($det->producto) }}</p>
+                                <p class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($det->producto, $det->variante) }}</p>
                                 @if($det->variante)
                                     <p class="text-xs text-gray-500">{{ $det->variante->nombre_completo }}</p>
                                 @endif

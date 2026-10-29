@@ -207,7 +207,7 @@
             row.appendChild(thumb(l.imagen));
             var info = el('div', 'rx-grow');
             info.appendChild(el('div', 'rx-name', l.nombre || 'Producto'));
-            var sub = el('div', 'rx-sub'); sub.appendChild(el('span', 'rx-code', l.codigo_kyrios));
+            var sub = el('div', 'rx-sub'); sub.appendChild(el('span', 'rx-code', l.codigos || l.codigo_kyrios));
             if (l.detalle && l.detalle !== 'Variante base') sub.appendChild(document.createTextNode(' · ' + l.detalle));
             if (l.marca) sub.appendChild(document.createTextNode(' · ' + l.marca));
             if (SALIDA) sub.appendChild(document.createTextNode(' · Stock: ' + l.stock_almacen));
@@ -258,7 +258,7 @@
         var b = el('button', 'rx-item'); b.type = 'button';
         b.appendChild(thumb(v.imagen));
         var t = el('div', 'rx-grow'); t.appendChild(el('div', 'rx-name', v.nombre || 'Producto'));
-        t.appendChild(el('div', 'rx-sub', v.codigo_kyrios + (v.detalle && v.detalle !== 'Variante base' ? ' · ' + v.detalle : '') + (v.marca ? ' · ' + v.marca : '')));
+        t.appendChild(el('div', 'rx-sub', (v.codigos || v.codigo_kyrios) + (v.detalle && v.detalle !== 'Variante base' ? ' · ' + v.detalle : '') + (v.marca ? ' · ' + v.marca : '')));
         b.appendChild(t); b.onclick = onclick; return b;
     }
     function showChoose(list) {

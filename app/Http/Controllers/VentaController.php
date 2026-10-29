@@ -176,6 +176,7 @@ class VentaController extends Controller
                 // Stock de la variante en cada almacén (la pantalla de venta lo usa por tienda)
                 'stock_por_almacen' => ($stockVariantePorAlmacen[$v->id] ?? collect())->toArray(),
                 'nombre_completo'   => $v->nombre_completo,
+                'codigos'           => \App\Support\EtiquetaProducto::codigos($p, $v),
                 'tiene_stock'       => $v->tieneStock(),
                 ];
             });
@@ -184,8 +185,14 @@ class VentaController extends Controller
 
             return [
                 'id'               => $p->id,
-                'nombre'           => $p->nombre,
+                'nombre'           => \App\Support\EtiquetaProducto::nombre($p),
                 'codigo'           => $p->codigo,
+                'codigos'          => \App\Support\EtiquetaProducto::codigos(['codigo' => $p->codigo, 'variantes' => $p->variantesActivas]),
+                // Todo lo que el vendedor puede teclear o escanear para encontrarlo (nombres y códigos de producto y variantes)
+                'texto_busqueda'   => mb_strtolower(implode(' ', array_filter(array_merge(
+                    [$p->nombre, $p->nombre_kyrios, $p->nombre_fabrica, $p->codigo],
+                    $p->variantesActivas->flatMap(fn ($v) => [$v->codigo_kyrios, $v->codigo_fabricante, $v->codigo_excel, $v->sku])->all()
+                )))),
                 'codigo_barras'    => $p->codigo_barras ?? null,
                 'categoria_id'     => $p->categoria_id,
                 'tipo_inventario'  => $p->tipo_inventario,
@@ -470,7 +477,7 @@ class VentaController extends Controller
             'detalles'      => $v->detalles->map(fn($d) => [
                 'id'       => $d->id,
                 'cantidad' => $d->cantidad,
-                'producto' => trim(($d->producto?->nombre ?? '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
+                'producto' => trim(($d->producto ? \App\Support\EtiquetaProducto::nombre($d->producto) : '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
                 'subtotal' => round((float) $d->subtotal_con_igv, 2),
             ])->values(),
         ])->values());
@@ -533,7 +540,7 @@ class VentaController extends Controller
             'items_count' => $v->detalles->count(),
             'detalles'    => $v->detalles->map(fn($d) => [
                 'id'       => $d->id,
-                'producto' => trim(($d->producto?->nombre ?? '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
+                'producto' => trim(($d->producto ? \App\Support\EtiquetaProducto::nombre($d->producto) : '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
                 'cantidad' => $d->cantidad,
                 'subtotal' => (float) $d->subtotal_con_igv,
             ])->values(),

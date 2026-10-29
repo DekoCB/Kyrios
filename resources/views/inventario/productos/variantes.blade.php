@@ -122,7 +122,10 @@
                     <div class="p-5 space-y-3 text-sm">
                         <div>
                             <p class="text-xs text-gray-400 uppercase tracking-wide">Nombre</p>
-                            <p class="font-semibold text-gray-900">{{ $producto->nombre }}</p>
+                            <p class="font-semibold text-gray-900">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
+                            @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
+                                <p class="text-xs text-gray-500">Nombre de fábrica: {{ $producto->nombre_fabrica }}</p>
+                            @endif
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -321,6 +324,7 @@
                                                     @if($variante->alto)<span>Alto {{ rtrim(rtrim($variante->alto, '0'), '.') }} mm</span>@endif
                                                 </div>
                                             @endif
+                                            @include('inventario.productos.partials.atributos-variante-resumen', ['variante' => $variante])
                                             <div class="flex items-center gap-4 mt-1 text-xs text-gray-500">
                                                 @if($variante->color)
                                                     <span><i class="fas fa-circle mr-1 text-gray-300"></i>{{ $variante->color->nombre }}</span>
@@ -352,7 +356,7 @@
                                             <button type="button"
                                                     @click="openEdit({{ \Illuminate\Support\Js::from(array_merge(
                                                         ['id' => $variante->id, 'color_id' => $variante->color_id ?? '', 'capacidad' => $variante->capacidad ?? '', 'stock_minimo' => $variante->stock_minimo, 'codigo_kyrios' => $variante->codigo_kyrios],
-                                                        collect(['codigo_fabricante','codigo_excel','acabado_1','acabado_2','tamano','diametro','alto','ancho','profundidad','alto_suspendido','diametro_agujero','socket','num_lamparas','potencia_w','lumenes','temperatura_color','tonalidad_luz','estado_dano','observacion_dano'])
+                                                        collect(['codigo_fabricante','codigo_excel','acabado_1','acabado_2','tamano','diametro','alto','ancho','profundidad','alto_suspendido','diametro_agujero','socket','num_lamparas','potencia_w','lumenes','temperatura_color','tonalidad_luz','tipo_lampara','angulo_haz','protocolo_regulacion','eficiencia_luminica','garantia_meses','vida_util_horas','ip','cri','otros','estado_dano','observacion_dano'])
                                                             ->mapWithKeys(fn ($c) => [$c => $variante->{$c} ?? ''])->all()
                                                     )) }})"
                                                     class="text-indigo-400 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50 transition"

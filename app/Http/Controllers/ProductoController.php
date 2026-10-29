@@ -62,7 +62,7 @@ class ProductoController extends Controller
     {
         $almacenFiltroId = $request->filled('almacen_id') ? (int) $request->almacen_id : null;
 
-        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantesActivas.color', 'variantesActivas.imagenPrincipal']);
+        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantes:id,producto_id,codigo_fabricante,codigo_kyrios', 'variantesActivas.color', 'variantesActivas.imagenPrincipal']);
 
         if ($almacenFiltroId) {
             $query->with(['stockAlmacenes' => fn($q) => $q->where('almacen_id', $almacenFiltroId)]);
@@ -135,10 +135,19 @@ class ProductoController extends Controller
      */
     private function aplicarFiltrosKyrios($query, Request $request): void
     {
-        foreach (['tipo_producto_id', 'tipo_luminaria_id', 'marca_id', 'fuente_luz', 'uso', 'linea', 'procedencia'] as $col) {
+        foreach (['tipo_producto_id', 'tipo_luminaria_id', 'marca_id', 'uso', 'linea', 'procedencia'] as $col) {
             if ($request->filled($col)) {
                 $query->where($col, $request->input($col));
             }
+        }
+        // Fuente de luz / IP: el dato puede estar en el producto o en alguna de sus variantes
+        if ($request->filled('fuente_luz')) {
+            $fuente = $request->input('fuente_luz');
+            $query->where(fn ($q) => $q->where('fuente_luz', $fuente)->orWhereHas('variantes', fn ($v) => $v->where('tipo_lampara', $fuente)));
+        }
+        if ($request->filled('ip')) {
+            $ip = $request->input('ip');
+            $query->where(fn ($q) => $q->where('ip', $ip)->orWhereHas('variantes', fn ($v) => $v->where('ip', $ip)));
         }
         foreach (['estilo' => 'estilos', 'instalacion' => 'tipos_instalacion', 'proyecto' => 'tipos_proyecto'] as $param => $col) {
             if ($request->filled($param)) {
@@ -179,7 +188,7 @@ class ProductoController extends Controller
             'tipos'         => TipoProducto::activos()->orderBy('nombre')->get(['id', 'nombre']),
             'luminarias'    => TipoLuminaria::activos()->orderBy('nombre')->get(['id', 'nombre']),
             'marcas'        => Marca::where('estado', 'activo')->orderBy('nombre')->get(['id', 'nombre']),
-            'fuentes_luz'   => $plano($distinto('productos', 'fuente_luz')),
+            'fuentes_luz'   => $plano($distinto('productos', 'fuente_luz')->merge($distinto('producto_variantes', 'tipo_lampara'))->unique()->sort()->values()),
             'usos'          => $plano($distinto('productos', 'uso')),
             'lineas'        => $plano($distinto('productos', 'linea')),
             'estilos'       => $json('estilos', 'estilos'),
@@ -219,6 +228,10 @@ class ProductoController extends Controller
             'acabado_1' => 'nullable|string|max:60', 'acabado_2' => 'nullable|string|max:60',
             'tamano' => 'nullable|string|max:20', 'socket' => 'nullable|string|max:30', 'num_lamparas' => 'nullable|string|max:10',
             'tonalidad_luz' => 'nullable|string|max:40',
+            'tipo_lampara' => 'nullable|string|max:60', 'angulo_haz' => 'nullable|string|max:40',
+            'protocolo_regulacion' => 'nullable|string|max:120', 'eficiencia_luminica' => 'nullable|numeric|min:0|max:9999',
+            'garantia_meses' => 'nullable|integer|min:0|max:600', 'vida_util_horas' => 'nullable|integer|min:0|max:1000000',
+            'ip' => 'nullable|string|max:10', 'cri' => 'nullable|string|max:10', 'otros' => 'nullable|string|max:2000',
             'diametro' => 'nullable|numeric|min:0', 'alto' => 'nullable|numeric|min:0', 'ancho' => 'nullable|numeric|min:0',
             'profundidad' => 'nullable|numeric|min:0', 'alto_suspendido' => 'nullable|numeric|min:0',
             'diametro_agujero' => 'nullable|numeric|min:0', 'potencia_w' => 'nullable|numeric|min:0', 'lumenes' => 'nullable|numeric|min:0',
@@ -309,6 +322,10 @@ public function create()
     $codigoPrimeraVariante = null;
     $varianteInicial = (array) ($validated['variante_inicial'] ?? []);
     unset($validated['variante_inicial']);
+    // Sin tipo elegido: el producto queda como «Sin tipo» (código ST)
+    if (empty($validated['tipo_producto_id'])) {
+        $validated['tipo_producto_id'] = TipoProducto::where('codigo', 'ST')->value('id');
+    }
     if (!empty($validated['tipo_producto_id'])) {
         [$codigoPrimeraVariante, $correlativoPrimera] = app(CodigoKyriosService::class)->generar(
             TipoProducto::findOrFail($validated['tipo_producto_id']),

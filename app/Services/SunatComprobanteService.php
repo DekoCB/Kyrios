@@ -213,7 +213,7 @@ class SunatComprobanteService
 
         $details = [];
         foreach ($venta->detalles as $det) {
-            $nombre = $det->producto?->nombre ?? 'Producto';
+            $nombre = $det->producto ? \App\Support\EtiquetaProducto::nombrePrincipal($det->producto) : 'Producto';
             if ($det->variante?->nombre_completo) $nombre .= ' - ' . $det->variante->nombre_completo;
 
             $precioSinIgv  = round((float) $det->precio_unitario, 4);
@@ -291,7 +291,7 @@ class SunatComprobanteService
 
         $details = [];
         foreach ($venta->detalles as $det) {
-            $nombre = $det->producto?->nombre ?? 'Producto';
+            $nombre = $det->producto ? \App\Support\EtiquetaProducto::nombrePrincipal($det->producto) : 'Producto';
             if ($det->variante?->nombre_completo) $nombre .= ' - ' . $det->variante->nombre_completo;
 
             $precioSinIgv = round((float) $det->precio_unitario, 4);

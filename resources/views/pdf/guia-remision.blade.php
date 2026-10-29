@@ -327,7 +327,7 @@ table.items tfoot td { background:#e8edf5; font-weight:bold; padding:2px 4px;
                 <td style="text-align:center">{{ $detalle->producto?->unidadMedida?->abreviatura ?? 'UND' }}</td>
                 <td style="font-family:monospace; font-size:6.5pt">{{ $detalle->producto?->codigo ?? '—' }}</td>
                 <td>
-                    <span style="font-weight:bold">{{ $detalle->producto?->nombre }}</span>
+                    <span style="font-weight:bold">{{ \App\Support\EtiquetaProducto::nombre($detalle->producto) }}</span>
                     @if($detalle->variante)
                         <span style="color:#44413A; font-size:6.5pt"> · {{ $detalle->variante->nombre_completo }}</span>
                     @endif

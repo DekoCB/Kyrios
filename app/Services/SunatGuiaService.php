@@ -258,7 +258,7 @@ class SunatGuiaService
             $detail = new DespatchDetail();
             $detail->setCantidad((float) $det->cantidad)
                 ->setUnidad($det->producto?->unidadMedida?->codigo_sunat ?? 'NIU')
-                ->setDescripcion($det->producto?->nombre ?? 'Producto')
+                ->setDescripcion($det->producto ? \App\Support\EtiquetaProducto::nombrePrincipal($det->producto) : 'Producto')
                 ->setCodigo($det->producto?->codigo ?? '');
             $details[] = $detail;
         }

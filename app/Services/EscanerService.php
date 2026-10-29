@@ -50,7 +50,7 @@ class EscanerService
             $variantes = ProductoVariante::activas()->whereIn('producto_id', $productoIds)->get();
         }
 
-        return $variantes->load(['producto:id,nombre,nombre_fabrica,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal']);
+        return $variantes->load(['producto:id,codigo,nombre,nombre_fabrica,nombre_kyrios,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal']);
     }
 
     public function formatear(ProductoVariante $v): array
@@ -58,7 +58,8 @@ class EscanerService
         return [
             'id'                => $v->id,
             'producto_id'       => $v->producto_id,
-            'nombre'            => $v->producto?->nombre,
+            'nombre'            => $v->producto ? \App\Support\EtiquetaProducto::nombre($v->producto) : null,
+            'codigos'           => \App\Support\EtiquetaProducto::codigos($v->producto, $v),
             'marca'             => $v->producto?->marca?->nombre,
             'codigo_kyrios'     => $v->codigo_kyrios ?? $v->sku,
             'codigo_fabricante' => $v->codigo_fabricante,

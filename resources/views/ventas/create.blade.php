@@ -197,6 +197,7 @@
                             </div>
                             <div class="p-2">
                                 <p class="text-[11px] text-gray-700 dark:text-gray-200 font-medium line-clamp-2 leading-tight mb-1" x-text="producto.nombre"></p>
+                                <p class="text-[9px] text-gray-400 font-mono truncate mb-1" x-text="producto.codigos" :title="producto.codigos"></p>
                                 <div class="flex items-center justify-between gap-1">
                                     <div>
                                         <p class="text-sm font-bold"
@@ -237,6 +238,7 @@
                                     </div>
                                     <div class="p-2">
                                         <p class="text-[11px] text-gray-500 font-medium line-clamp-2 leading-tight mb-1" x-text="producto.nombre"></p>
+                                        <p class="text-[9px] text-gray-400 font-mono truncate mb-1" x-text="producto.codigos" :title="producto.codigos"></p>
                                         <p class="text-xs font-bold text-gray-400" x-text="'S/ ' + producto.precio_venta.toFixed(2)"></p>
                                     </div>
                                 </div>
@@ -1303,6 +1305,7 @@
                             </template>
                             <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" x-text="v.nombre_completo"></span>
                         </div>
+                        <p class="text-[10px] text-gray-400 font-mono truncate -mt-1 mb-1" x-text="v.codigos" :title="v.codigos"></p>
                         <div class="flex items-center justify-between text-xs mt-1">
                             <div>
                                 <span class="font-semibold"
@@ -1911,7 +1914,7 @@ function posApp() {
             'items_count' => $v->detalles->count(),
             'detalles'    => $v->detalles->map(fn($d) => [
                 'id'       => $d->id,
-                'producto' => trim(($d->producto?->nombre ?? '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
+                'producto' => trim(($d->producto ? \App\Support\EtiquetaProducto::nombre($d->producto) : '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
                 'cantidad' => $d->cantidad,
                 'subtotal' => (float) $d->subtotal_con_igv,
             ])->values()->all(),
@@ -1939,6 +1942,7 @@ function posApp() {
                 if (this.busqueda.trim()) {
                     const s = this.busqueda.toLowerCase();
                     return p.nombre.toLowerCase().includes(s) ||
+                           (p.texto_busqueda && p.texto_busqueda.includes(s)) ||
                            (p.codigo && p.codigo.toLowerCase().includes(s)) ||
                            (p.codigo_barras && String(p.codigo_barras).includes(s));
                 }

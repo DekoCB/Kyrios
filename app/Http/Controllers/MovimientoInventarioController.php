@@ -23,7 +23,7 @@ class MovimientoInventarioController extends Controller
      */
     public function index(Request $request)
     {
-        $query = MovimientoInventario::with(['producto', 'almacen', 'usuario']);
+        $query = MovimientoInventario::with(['producto', 'variante', 'almacen', 'usuario']);
         
         if ($request->filled('tipo_movimiento')) {
             $query->where('tipo_movimiento', $request->tipo_movimiento);
@@ -47,7 +47,7 @@ class MovimientoInventarioController extends Controller
         
         $movimientos = $query->latest()->paginate(20);
         
-        $productos = Producto::activos()->orderBy('nombre')->get(['id', 'codigo', 'nombre']);
+        $productos = Producto::activos()->orderBy('nombre')->get(['id', 'codigo', 'nombre', 'nombre_fabrica', 'nombre_kyrios']);
         $almacenes = Almacen::activos()->orderBy('nombre')->get(['id', 'codigo', 'nombre', 'tipo']);
 
         $stats = [
@@ -169,7 +169,7 @@ class MovimientoInventarioController extends Controller
      */
     public function show(MovimientoInventario $movimiento)
     {
-        $movimiento->load(['producto', 'almacen', 'almacenDestino', 'usuario']);
+        $movimiento->load(['producto', 'variante', 'almacen', 'almacenDestino', 'usuario']);
         return view('inventario.movimientos.show', compact('movimiento'));
     }
 

@@ -176,7 +176,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600 text-xs max-w-[160px] truncate">
                                 @if($regla->tipo_aplicacion === 'producto_usuario')
-                                    {{ $regla->producto?->nombre }} — {{ $regla->usuario?->name }}
+                                    {{ \App\Support\EtiquetaProducto::nombre($regla->producto) }} — {{ $regla->usuario?->name }}
                                 @elseif($regla->tipo_aplicacion === 'categoria_usuario')
                                     {{ $regla->categoria?->nombre }} — {{ $regla->usuario?->name }}
                                 @else
@@ -303,7 +303,7 @@
                             </td>
                             <td class="px-4 py-3 text-gray-600 text-xs max-w-[150px] truncate">
                                 @if($bonus->tipo_aplicacion === 'producto_usuario')
-                                    {{ $bonus->producto?->nombre }} — {{ $bonus->usuario?->name }}
+                                    {{ \App\Support\EtiquetaProducto::nombre($bonus->producto) }} — {{ $bonus->usuario?->name }}
                                 @else
                                     {{ $bonus->producto?->nombre ?? $bonus->categoria?->nombre ?? '—' }}
                                 @endif

@@ -112,7 +112,7 @@
                             @foreach($movimientos as $mov)
                                 <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-lg border font-medium bg-blue-50 border-blue-200 text-blue-700">
                                     <i class="fas fa-box text-[10px]"></i>
-                                    {{ $mov->producto->nombre }}
+                                    {{ \App\Support\EtiquetaProducto::nombre($mov->producto) }}
                                     <span class="font-mono text-gray-400">×{{ $mov->cantidad }}</span>
                                 </span>
                             @endforeach
@@ -161,7 +161,8 @@
                                 <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                                     <i class="fas fa-box mr-1"></i>Producto
                                 </span>
-                                <span class="font-semibold text-sm text-gray-800">{{ $mov->producto->nombre }}</span>
+                                <span class="font-semibold text-sm text-gray-800">{{ \App\Support\EtiquetaProducto::nombre($mov->producto) }}</span>
+                                <span class="block text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($mov->producto, $mov->variante) }}</span>
                                 <span class="font-mono text-xs text-gray-400">{{ $mov->producto->codigo }}</span>
                             </div>
                             <span class="text-sm font-bold text-gray-700">

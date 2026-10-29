@@ -19,12 +19,18 @@
 $catalogoJson = $productos->map(fn($p) => [
     'id'              => $p->id,
     'codigo'          => $p->codigo,
-    'nombre'          => $p->nombre,
+    'nombre'          => \App\Support\EtiquetaProducto::nombre($p),
+    'codigos'         => \App\Support\EtiquetaProducto::codigos(['codigo' => $p->codigo, 'variantes' => $p->variantesActivas]),
+    // Todo lo que se puede teclear para encontrarlo: nombres y códigos del producto y de sus variantes
+    'busqueda'        => mb_strtolower(implode(' ', array_filter(array_merge(
+        [$p->nombre, $p->nombre_kyrios, $p->nombre_fabrica, $p->codigo],
+        $p->variantesActivas->flatMap(fn ($v) => [$v->codigo_kyrios, $v->codigo_fabricante, $v->codigo_excel, $v->sku])->all()
+    )))),
     'stock_actual'    => (int)($p->stock_actual ?? 0),
     'unidad'          => $p->unidadMedida?->abreviatura ?? 'UND',
     'variantes'       => $p->variantesActivas->map(fn ($v) => [
         'id'      => $v->id,
-        'codigo'  => $v->codigo_kyrios ?? $v->sku,
+        'codigo'  => \App\Support\EtiquetaProducto::codigos($p, $v),
         'detalle' => $v->nombre_completo,
         'stock'   => $stockVariantes[$v->id] ?? [],
     ])->values(),
@@ -84,7 +90,7 @@ $catalogoJson = $productos->map(fn($p) => [
              }
              const q = this.query.toLowerCase();
              this.resultados = this.catalogo
-                 .filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
+                 .filter(p => (p.busqueda || '').includes(q) || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
                      || (p.variantes || []).some(v => v.codigo.toLowerCase().includes(q)))
                  .slice(0, 10);
              this.abierto = this.resultados.length > 0;
@@ -323,7 +329,7 @@ $catalogoJson = $productos->map(fn($p) => [
                                             <div class="flex items-center justify-between">
                                                 <div>
                                                     <p class="text-sm font-medium text-gray-900" x-text="p.nombre"></p>
-                                                    <p class="text-xs text-gray-400" x-text="p.codigo"></p>
+                                                    <p class="text-xs text-gray-400 font-mono" x-text="p.codigos || p.codigo"></p>
                                                 </div>
                                                 <div class="text-right shrink-0 ml-3">
                                                     <span class="text-xs font-semibold text-emerald-700"

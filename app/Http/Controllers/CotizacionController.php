@@ -125,7 +125,7 @@ class CotizacionController extends Controller
             return redirect()->route('cotizaciones.show', $cotizacion)->with('error', 'Solo se puede editar una cotización pendiente.');
         }
 
-        return view('cotizaciones.form', $this->datosFormulario($cotizacion->load(['detalles', 'cliente'])));
+        return view('cotizaciones.form', $this->datosFormulario($cotizacion->load(['detalles.producto', 'detalles.variante', 'cliente'])));
     }
 
     public function update(Request $request, Cotizacion $cotizacion)
@@ -158,14 +158,14 @@ class CotizacionController extends Controller
 
                 return [
                     'producto_id' => $l['producto_id'] ?? null, 'variante_id' => $l['variante_id'] ?? null,
-                    'codigo' => $variante?->codigo_kyrios ?? $producto?->codigo,
-                    'descripcion' => ($producto?->nombre ?? '') . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''),
+                    'codigo' => $producto ? \App\Support\EtiquetaProducto::codigos($producto, $variante) : '',
+                    'descripcion' => ($producto ? \App\Support\EtiquetaProducto::nombre($producto) : '') . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''),
                     'cantidad' => $l['cantidad'] ?? 1, 'precio_unitario' => $l['precio_unitario'] ?? 0,
                 ];
             })->values();
         } else {
             $lineas = ($cotizacion?->detalles ?? collect())->map(fn ($d) => [
-                'producto_id' => $d->producto_id, 'variante_id' => $d->variante_id, 'codigo' => $d->codigo, 'descripcion' => $d->descripcion,
+                'producto_id' => $d->producto_id, 'variante_id' => $d->variante_id, 'codigo' => $d->codigos_mostrar, 'descripcion' => $d->nombre_mostrar,
                 'cantidad' => $d->cantidad, 'precio_unitario' => (float) $d->precio_con_igv,
             ])->values();
         }
@@ -206,7 +206,7 @@ class CotizacionController extends Controller
     public function pdf(Cotizacion $cotizacion)
     {
         $this->autorizar($cotizacion);
-        $cotizacion->load(['cliente', 'vendedor', 'almacen', 'sucursal', 'detalles']);
+        $cotizacion->load(['cliente', 'vendedor', 'almacen', 'sucursal', 'detalles.producto', 'detalles.variante']);
 
         $empresa = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
         $sucursal = $cotizacion->sucursal ?? Sucursal::where('almacen_id', $cotizacion->almacen_id)->first();
@@ -318,12 +318,13 @@ class CotizacionController extends Controller
                     ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', "%{$q}%")->orWhere('nombre_fabrica', 'like', "%{$q}%")
                         ->orWhere('nombre_kyrios', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"));
             })
-            ->with(['producto:id,codigo,nombre,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal'])
+            ->with(['producto:id,codigo,nombre,nombre_fabrica,nombre_kyrios,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal'])
             ->orderBy('producto_id')->limit(20)->get();
 
         $sinVariantes = Producto::where('estado', 'activo')
             ->whereDoesntHave('variantesActivas')
-            ->where(fn ($w) => $w->where('nombre', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"))
+            ->where(fn ($w) => $w->where('nombre', 'like', "%{$q}%")->orWhere('nombre_fabrica', 'like', "%{$q}%")
+                ->orWhere('nombre_kyrios', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"))
             ->with('marca:id,nombre')->limit(10)->get();
 
         $precios = ProductoPrecio::where('tipo_precio', 'venta_regular')->where('activo', true)->whereNull('almacen_id')
@@ -340,8 +341,8 @@ class CotizacionController extends Controller
         $items = $variantes->map(fn ($v) => [
             'producto_id' => $v->producto_id,
             'variante_id' => $v->id,
-            'codigo'      => $v->codigo_kyrios ?? $v->sku,
-            'nombre'      => $v->producto->nombre,
+            'codigo'      => \App\Support\EtiquetaProducto::codigos($v->producto, $v),
+            'nombre'      => \App\Support\EtiquetaProducto::nombre($v->producto),
             'detalle'     => $v->nombre_completo !== 'Variante base' ? $v->nombre_completo : null,
             'marca'       => $v->producto->marca?->nombre,
             'imagen'      => $v->imagenPrincipal?->url,
@@ -354,7 +355,7 @@ class CotizacionController extends Controller
             'producto_id' => $p->id,
             'variante_id' => null,
             'codigo'      => $p->codigo,
-            'nombre'      => $p->nombre,
+            'nombre'      => \App\Support\EtiquetaProducto::nombre($p),
             'detalle'     => null,
             'marca'       => $p->marca?->nombre,
             'imagen'      => $p->imagen_url,

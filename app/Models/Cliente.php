@@ -24,6 +24,7 @@ class Cliente extends Model
         'notas',
         'estado',
         'segmento',
+        'listas_difusion',
         'especialidad',
         'cargo',
         'empresa',
@@ -42,6 +43,7 @@ class Cliente extends Model
 
     protected $casts = [
         'fecha_cumpleanos' => 'date',
+        'listas_difusion'  => 'array',
         'verificado_at'    => 'datetime',
         'comision'         => 'decimal:2',
     ];
@@ -50,6 +52,20 @@ class Cliente extends Model
     public const SEGMENTOS = [
         'ARQ' => 'Arquitecto', 'ING' => 'Ingeniero', 'DIS' => 'Diseñador', 'DEC' => 'Decorador',
         'PN' => 'Persona natural', 'PJ' => 'Persona jurídica', 'CF' => 'Cliente final', 'NEG' => 'Negocio',
+    ];
+
+    /** Listas de difusión de WhatsApp (un cliente puede estar en varias). */
+    public const LISTAS_DIFUSION = [
+        'arquitecto'    => 'Arquitecto/a',
+        'ingeniero'     => 'Ingeniero/a',
+        'disenador'     => 'Diseñador/a',
+        'decorador'     => 'Decorador/a',
+        'cliente_final' => 'Clientes finales',
+        'paisajista'    => 'Paisajista',
+        'mama'          => 'Mamá',
+        'papa'          => 'Papá',
+        'mujer'         => 'Mujer',
+        'hombre'        => 'Hombre',
     ];
 
     /** Notas de crédito/débito: ajustan una venta, no cuentan como compra. */
@@ -94,6 +110,50 @@ class Cliente extends Model
                 ->orWhere('contacto', 'like', $like)
                 ->orWhere('empresa', 'like', $like);
         });
+    }
+
+    /** Clientes que están en alguna de las listas indicadas (claves de LISTAS_DIFUSION). */
+    public function scopeEnListas($query, array $claves)
+    {
+        $claves = array_values(array_intersect($claves, array_keys(self::LISTAS_DIFUSION)));
+        if (!$claves) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($claves) {
+            foreach ($claves as $clave) {
+                // JSON_CONTAINS existe en MariaDB 10.2+ y MySQL 5.7+; el valor se compara como texto JSON
+                $q->orWhereRaw('JSON_CONTAINS(listas_difusion, ?)', [json_encode($clave)]);
+            }
+        });
+    }
+
+    /** Etiquetas legibles de las listas del cliente, en el orden de LISTAS_DIFUSION. */
+    public function getEtiquetasDifusionAttribute(): array
+    {
+        $propias = (array) $this->listas_difusion;
+
+        return array_values(array_filter(
+            self::LISTAS_DIFUSION,
+            fn ($etiqueta, $clave) => in_array($clave, $propias, true),
+            ARRAY_FILTER_USE_BOTH
+        ));
+    }
+
+    /** Celular peruano de 9 dígitos que empieza con 9, o null si no hay uno válido (acepta +51 y separadores). */
+    public function celularWhatsapp(): ?string
+    {
+        foreach (preg_split('/[\/,;|]+/', (string) $this->telefono) as $trozo) {
+            $digitos = preg_replace('/\D+/', '', $trozo);
+            if (strlen($digitos) === 11 && str_starts_with($digitos, '519')) {
+                $digitos = substr($digitos, 2);
+            }
+            if (preg_match('/^9\d{8}$/', $digitos)) {
+                return $digitos;
+            }
+        }
+
+        return null;
     }
 
     /** Contacto todavía sin documento: no se le puede emitir comprobante hasta completarlo. */

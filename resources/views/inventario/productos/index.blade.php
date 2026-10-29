@@ -280,6 +280,10 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="text-sm font-medium text-gray-900">{{ $producto->codigo }}</span>
+                                @php $codigosFab = $producto->variantesActivas->pluck('codigo_fabricante')->filter()->unique()->values(); @endphp
+                                @if($codigosFab->isNotEmpty())
+                                    <p class="text-xs text-gray-500" title="Código del fabricante">Fáb.: {{ $codigosFab->take(2)->implode(', ') }}@if($codigosFab->count() > 2) +{{ $codigosFab->count() - 2 }}@endif</p>
+                                @endif
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
@@ -297,10 +301,11 @@
                                         </div>
                                     @endif
                                     <div>
-                                        <p class="text-sm font-medium text-gray-900">{{ $producto->nombre }}</p>
-                                        @if($producto->tipoProducto)
-                                            <p class="text-xs text-gray-500">{{ $producto->tipoProducto->nombre }}@if($producto->tipoLuminaria) · {{ $producto->tipoLuminaria->nombre }}@endif</p>
+                                        <p class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</p>
+                                        @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
+                                            <p class="text-xs text-gray-500">Fábrica: {{ $producto->nombre_fabrica }}</p>
                                         @endif
+                                        <p class="text-xs text-gray-500">{{ $producto->tipoProducto->nombre ?? 'Sin tipo' }}@if($producto->tipoLuminaria) · {{ $producto->tipoLuminaria->nombre }}@endif</p>
                                         @if($producto->codigo_barras)
                                             <p class="text-xs text-gray-500">CB: {{ $producto->codigo_barras }}</p>
                                         @endif

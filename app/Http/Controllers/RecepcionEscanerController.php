@@ -81,9 +81,10 @@ class RecepcionEscanerController extends Controller
             ->where(function ($w) use ($q) {
                 $w->where('codigo_kyrios', 'like', "%{$q}%")->orWhere('codigo_fabricante', 'like', "%{$q}%")
                     ->orWhere('codigo_excel', 'like', "%{$q}%")
-                    ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', "%{$q}%")->orWhere('nombre_fabrica', 'like', "%{$q}%"));
+                    ->orWhereHas('producto', fn ($p) => $p->where('nombre', 'like', "%{$q}%")->orWhere('nombre_fabrica', 'like', "%{$q}%")
+                        ->orWhere('nombre_kyrios', 'like', "%{$q}%")->orWhere('codigo', 'like', "%{$q}%"));
             })
-            ->with(['producto:id,nombre,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal'])
+            ->with(['producto:id,codigo,nombre,nombre_fabrica,nombre_kyrios,marca_id', 'producto.marca:id,nombre', 'imagenPrincipal'])
             ->limit(15)->get();
 
         return response()->json($variantes->map(fn ($v) => $this->conStock($this->escaner->formatear($v), $request))->values());

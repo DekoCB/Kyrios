@@ -114,7 +114,7 @@ table.items tbody td.right  { text-align: right; }
     <thead>
         <tr>
             <th class="center" style="width:24px">Ítem</th>
-            <th style="width:78px">Código</th>
+            <th style="width:118px">Código</th>
             <th>Descripción</th>
             <th class="center" style="width:34px">Cant.</th>
             <th class="right" style="width:62px">P. unit.</th>
@@ -125,8 +125,8 @@ table.items tbody td.right  { text-align: right; }
         @foreach($cotizacion->detalles as $i => $d)
         <tr>
             <td class="center">{{ $i + 1 }}</td>
-            <td>{{ $d->codigo ?? '—' }}</td>
-            <td>{{ $d->descripcion }}</td>
+            <td>{{ $d->codigos_mostrar ?: '—' }}</td>
+            <td>{{ $d->nombre_mostrar }}</td>
             <td class="center">{{ $d->cantidad }}</td>
             <td class="right">S/ {{ number_format($d->precio_con_igv, 2) }}</td>
             <td class="right">S/ {{ number_format($d->subtotal_con_igv, 2) }}</td>

@@ -85,7 +85,8 @@
                         {{ $solicitud->documento_referencia ?? ('SOL-' . str_pad($solicitud->id, 6, '0', STR_PAD_LEFT)) }}
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">{{ $solicitud->producto->nombre }}</div>
+                        <div class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($solicitud->producto) }}</div>
+                        <div class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($solicitud->producto, $solicitud->variante ?? null) }}</div>
                         <div class="text-xs text-gray-500">
                             {{ $solicitud->producto->codigo }}
                             @if($solicitud->variante)

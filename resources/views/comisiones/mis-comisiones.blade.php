@@ -139,7 +139,7 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-gray-700 max-w-[160px] truncate">
-                                {{ $c->detalleVenta?->producto?->nombre ?? '—' }}
+                                {{ $c->detalleVenta?->producto ? \App\Support\EtiquetaProducto::nombre($c->detalleVenta?->producto) : '—' }}
                             </td>
                             <td class="px-4 py-3">
                                 <span class="text-xs text-gray-500">{{ $c->regla?->nombre ?? '—' }}</span>

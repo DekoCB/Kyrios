@@ -268,7 +268,7 @@ class GuiaRemisionService
 
         if (!$stockOrigen || $stockOrigen->cantidad < $cantidad) {
             $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
-            $nombre = $producto->nombre . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
+            $nombre = \App\Support\EtiquetaProducto::nombre($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
             throw new \Exception(
                 "Producto «{$nombre}»: stock insuficiente (disponible: " . ($stockOrigen->cantidad ?? 0) . ")."
             );

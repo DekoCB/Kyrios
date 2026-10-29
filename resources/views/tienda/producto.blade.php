@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $producto->nombre }} - {{ config('app.name') }}</title>
+    <title>{{ \App\Support\EtiquetaProducto::nombre($producto) }} - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
@@ -13,7 +13,7 @@
     <x-sidebar :role="auth()->user()->role->nombre" />
 
     <div class="md:ml-64 p-4 md:p-8">
-        <x-header :title="$producto->nombre" :subtitle="'Stock en todos los almacenes · ' . $producto->codigo" />
+        <x-header :title="\App\Support\EtiquetaProducto::nombre($producto)" :subtitle="'Stock en todos los almacenes · ' . \App\Support\EtiquetaProducto::codigos($producto)" />
 
         <div class="mb-6">
             <a href="{{ route('tienda.inventario.ver') }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-arrow-left"></i> Volver al inventario</a>

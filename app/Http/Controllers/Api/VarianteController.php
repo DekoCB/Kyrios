@@ -30,7 +30,7 @@ class VarianteController extends Controller
             'success'   => true,
             'producto'  => [
                 'id'              => $producto->id,
-                'nombre'          => $producto->nombre,
+                'nombre'          => \App\Support\EtiquetaProducto::nombre($producto),
                 'tipo_inventario' => $producto->tipo_inventario,
                 'codigo'          => $producto->codigo,
             ],
@@ -52,7 +52,7 @@ class VarianteController extends Controller
             'variante' => $this->varianteService->formatearVariante($variante),
             'producto' => [
                 'id'              => $variante->producto->id,
-                'nombre'          => $variante->producto->nombre,
+                'nombre'          => \App\Support\EtiquetaProducto::nombre($variante->producto),
                 'tipo_inventario' => $variante->producto->tipo_inventario,
                 'marca'           => $variante->producto->marca?->nombre,
                 'modelo'          => $variante->producto->modelo?->nombre,

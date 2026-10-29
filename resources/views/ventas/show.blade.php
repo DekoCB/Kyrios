@@ -996,7 +996,8 @@
                             <td class="px-4 py-4 text-center text-sm text-gray-500 font-medium">{{ $i + 1 }}</td>
                             <td class="px-4 py-4 text-sm font-mono text-gray-700">{{ $detalle->producto->codigo ?? '—' }}</td>
                             <td class="px-4 py-4">
-                                <span class="font-semibold text-gray-900">{{ $detalle->producto->nombre }}</span>
+                                <span class="font-semibold text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($detalle->producto) }}</span>
+                                <span class="block text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($detalle->producto, $detalle->variante) }}</span>
                                 @if($detalle->variante)
                                     <div class="flex items-center gap-1.5 mt-0.5">
                                         @if($detalle->variante->color?->codigo_hex)

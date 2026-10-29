@@ -23,6 +23,28 @@ class CotizacionDetalle extends Model
         'subtotal_con_igv' => 'decimal:2',
     ];
 
+    /** Nombre K y de fábrica de la línea (en vivo desde el producto; si no hay, el texto guardado al cotizar). */
+    public function getNombreMostrarAttribute(): string
+    {
+        if (!$this->relationLoaded('producto') || !$this->producto) {
+            return (string) $this->descripcion;
+        }
+        $variante = $this->relationLoaded('variante') ? $this->variante : null;
+        $detalle = $variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : '';
+
+        return \App\Support\EtiquetaProducto::nombre($this->producto) . $detalle;
+    }
+
+    /** Código Kyrios y de fábrica de la línea. */
+    public function getCodigosMostrarAttribute(): string
+    {
+        if (!$this->relationLoaded('producto') || !$this->producto) {
+            return (string) $this->codigo;
+        }
+
+        return \App\Support\EtiquetaProducto::codigos($this->producto, $this->relationLoaded('variante') ? $this->variante : null) ?: (string) $this->codigo;
+    }
+
     public function cotizacion(): BelongsTo
     {
         return $this->belongsTo(Cotizacion::class);

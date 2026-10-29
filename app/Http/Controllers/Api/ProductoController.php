@@ -55,7 +55,7 @@ class ProductoController extends Controller
             'success' => true,
             'producto' => [
                 'id' => $producto->id,
-                'nombre' => $producto->nombre,
+                'nombre' => \App\Support\EtiquetaProducto::nombre($producto),
                 'variante_id' => $variante->id,
                 'codigo_interno' => $variante->codigo_kyrios ?? $variante->sku,
                 'precio_venta' => $precioInfo['precio'],

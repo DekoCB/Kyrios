@@ -90,7 +90,7 @@
                                 </span>
                                 <div class="mt-1 flex flex-wrap gap-1">
                                     @foreach($movimientos as $mov)
-                                        <span class="text-[11px] text-gray-500 font-medium">{{ $mov->producto->nombre }}@if(!$loop->last),@endif</span>
+                                        <span class="text-[11px] text-gray-500 font-medium">{{ \App\Support\EtiquetaProducto::nombre($mov->producto) }}@if(!$loop->last),@endif</span>
                                     @endforeach
                                 </div>
                             </td>

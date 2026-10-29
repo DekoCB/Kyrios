@@ -109,7 +109,8 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($todosMovimientos as $mov)
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 py-3 font-medium text-gray-900">{{ $mov->producto?->nombre }}</td>
+                            <td class="px-4 py-3 font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($mov->producto) }}
+                                <span class="block text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($mov->producto, $mov->variante) }}</span></td>
                             <td class="px-4 py-3 text-center">{{ $mov->cantidad }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $mov->documento_referencia }}</td>
                         </tr>

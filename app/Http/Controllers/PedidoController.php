@@ -53,7 +53,7 @@ class PedidoController extends Controller
     public function create()
     {
         $proveedores = Proveedor::activos()->orderBy('razon_social')->get();
-        $productos   = app(VarianteService::class)->getProductosParaSelectorCompra();
+        $productos   = \App\Support\EtiquetaProducto::enriquecerSelector(app(VarianteService::class)->getProductosParaSelectorCompra());
 
         $almacenesCentral = Almacen::where('estado', 'activo')
             ->whereIn('tipo', ['principal', 'deposito', 'temporal'])

@@ -89,7 +89,7 @@ class CompraController extends Controller
 
         $marcas = Marca::where('estado', 'activo')->orderBy('nombre')->get();
 
-        $productos = app(VarianteService::class)->getProductosParaSelectorCompra();
+        $productos = \App\Support\EtiquetaProducto::enriquecerSelector(app(VarianteService::class)->getProductosParaSelectorCompra());
 
         $colores    = Color::where('estado', 'activo')->orderBy('nombre')->get();
         $categorias = Categoria::activas()->orderBy('nombre')->get();
@@ -520,16 +520,21 @@ class CompraController extends Controller
             ->where('estado', 'activo')
             ->where(function($q) use ($termino) {
                 $q->where('nombre', 'like', "%{$termino}%")
+                  ->orWhere('nombre_fabrica', 'like', "%{$termino}%")
+                  ->orWhere('nombre_kyrios', 'like', "%{$termino}%")
                   ->orWhere('codigo', 'like', "%{$termino}%")
                   ->orWhereHas('marca',  fn($m) => $m->where('nombre', 'like', "%{$termino}%"))
                   ->orWhereHas('modelo', fn($m) => $m->where('nombre', 'like', "%{$termino}%"))
-                  ->orWhereHas('variantesActivas', fn($v) => $v->where('sku', 'like', "%{$termino}%"));
+                  ->orWhereHas('variantesActivas', fn($v) => $v->where('sku', 'like', "%{$termino}%")
+                      ->orWhere('codigo_kyrios', 'like', "%{$termino}%")
+                      ->orWhere('codigo_fabricante', 'like', "%{$termino}%")
+                      ->orWhere('codigo_excel', 'like', "%{$termino}%"));
             })
             ->limit(20)
             ->get();
 
         $result = $productos->map(function($producto) {
-            $variantes = $producto->variantesActivas->map(function($v) {
+            $variantes = $producto->variantesActivas->map(function($v) use ($producto) {
                 $stock = (int)$v->stock_actual;
 
                 return [
@@ -542,14 +547,16 @@ class CompraController extends Controller
                     'sobreprecio'     => (float)$v->sobreprecio,
                     'stock_actual'    => $stock,
                     'nombre_completo' => $v->nombre_completo,
-                    'etiqueta'        => $v->codigo_kyrios ? ($v->codigo_kyrios . ' · ' . $v->nombre_completo) : null,
+                    'codigos'         => \App\Support\EtiquetaProducto::codigos($producto, $v),
+                    'etiqueta'        => $v->codigo_kyrios ? (\App\Support\EtiquetaProducto::codigos($producto, $v) . ' · ' . $v->nombre_completo) : null,
                 ];
             });
 
             return [
                 'id'              => $producto->id,
-                'nombre'          => $producto->nombre,
+                'nombre'          => \App\Support\EtiquetaProducto::nombre($producto),
                 'codigo'          => $producto->codigo,
+                'codigos'         => \App\Support\EtiquetaProducto::codigos(['codigo' => $producto->codigo, 'variantes' => $producto->variantesActivas]),
                 'marca'           => $producto->marca?->nombre,
                 'modelo'          => $producto->modelo?->nombre,
                 'categoria'       => $producto->categoria?->nombre,

@@ -171,6 +171,7 @@
                                                     <div @click="seleccionarProducto(detalle, p)"
                                                          class="px-3 py-2.5 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0">
                                                         <div class="font-medium text-gray-900 text-sm" x-text="p.nombre"></div>
+                                                        <div class="text-[11px] font-mono text-gray-400" x-text="p.codigos"></div>
                                                         <div class="text-xs text-gray-500" x-text="p.categoria + (p.tiene_variantes ? ' · tiene variantes' : '')"></div>
                                                     </div>
                                                 </template>
@@ -284,7 +285,7 @@
                 const t = (detalle.busqueda || '').trim().toLowerCase();
                 if (t.length < 2) { detalle.resultados = []; return; }
                 detalle.resultados = this.catalogoProductos
-                    .filter(p => p.nombre.toLowerCase().includes(t))
+                    .filter(p => (p.texto_busqueda || p.nombre.toLowerCase()).includes(t))
                     .slice(0, 8);
             },
             seleccionarProducto(detalle, p) {

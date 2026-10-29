@@ -25,7 +25,34 @@ class ClienteController extends Controller
             ->when($request->tipo_documento === 'SIN', fn ($q) => $q->whereNull('numero_documento'))
             ->when($request->filled('tipo_documento') && $request->tipo_documento !== 'SIN', fn ($q) => $q->where('tipo_documento', $request->tipo_documento))
             ->when($request->filled('segmento'), fn ($q) => $q->where('segmento', $request->segmento))
+            ->when($this->listasPedidas($request), fn ($q, $listas) => $q->enListas($listas))
             ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->estado));
+    }
+
+    /** Claves de lista de difusión pedidas en la URL (?lista=mama o ?listas[]=mama&listas[]=mujer), solo las válidas. */
+    private function listasPedidas(Request $request): array
+    {
+        $pedidas = array_merge((array) $request->input('lista', []), (array) $request->input('listas', []));
+
+        return array_values(array_unique(array_intersect(
+            array_filter($pedidas, 'is_string'),
+            array_keys(Cliente::LISTAS_DIFUSION)
+        )));
+    }
+
+    /** Cuántos clientes hay en cada lista de difusión. */
+    private function conteoListas(): array
+    {
+        $conteo = array_fill_keys(array_keys(Cliente::LISTAS_DIFUSION), 0);
+        Cliente::whereNotNull('listas_difusion')->pluck('listas_difusion')->each(function ($listas) use (&$conteo) {
+            foreach ((array) $listas as $clave) {
+                if (isset($conteo[$clave])) {
+                    $conteo[$clave]++;
+                }
+            }
+        });
+
+        return $conteo;
     }
 
     public function index(Request $request)
@@ -49,7 +76,9 @@ class ClienteController extends Controller
         $canEdit   = $canCreate;
         $canDelete = $this->rol() === 'Administrador';
 
-        return view('clientes.index', compact('clientes', 'stats', 'canCreate', 'canEdit', 'canDelete'));
+        $conteoListas = $this->conteoListas();
+
+        return view('clientes.index', compact('clientes', 'stats', 'canCreate', 'canEdit', 'canDelete', 'conteoListas'));
     }
 
     public function create()
@@ -89,6 +118,8 @@ class ClienteController extends Controller
             'notas'        => 'nullable|string|max:2000',
             'estado'       => 'required|in:activo,inactivo',
             'segmento'         => 'nullable|string|max:20',
+            'listas_difusion'   => 'nullable|array',
+            'listas_difusion.*' => ['nullable', Rule::in(array_keys(Cliente::LISTAS_DIFUSION))],
             'especialidad'     => 'nullable|string|max:150',
             'cargo'            => 'nullable|string|max:120',
             'empresa'          => 'nullable|string|max:190',
@@ -114,9 +145,19 @@ class ClienteController extends Controller
         ];
     }
 
+    /** Deja las listas como arreglo sin vacíos ni repetidos (o null si no queda ninguna). */
+    private function limpiarListas(array $validated): array
+    {
+        if (array_key_exists('listas_difusion', $validated)) {
+            $validated['listas_difusion'] = array_values(array_unique(array_filter((array) $validated['listas_difusion']))) ?: null;
+        }
+
+        return $validated;
+    }
+
     public function store(Request $request)
     {
-        $validated = $request->validate($this->reglas(), $this->mensajes());
+        $validated = $this->limpiarListas($request->validate($this->reglas(), $this->mensajes()));
 
         $cliente = Cliente::create($validated);
 
@@ -161,7 +202,7 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente)
     {
-        $validated = $request->validate($this->reglas($cliente), $this->mensajes());
+        $validated = $this->limpiarListas($request->validate($this->reglas($cliente), $this->mensajes()));
 
         $cliente->update($validated);
 
@@ -199,11 +240,11 @@ class ClienteController extends Controller
         return response()->streamDownload(function () use ($clientes) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM: Excel respeta las tildes
-            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
+            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Listas de difusión', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
             $clientes->chunk(500, function ($lote) use ($out) {
                 foreach ($lote as $c) {
                     fputcsv($out, [
-                        $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, $c->contacto, $c->cargo, $c->empresa,
+                        $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, implode(', ', $c->etiquetas_difusion), $c->contacto, $c->cargo, $c->empresa,
                         $c->telefono, $c->telefono_fijo, $c->email, $c->email_empresa,
                         $c->direccion, $c->distrito, $c->provincia, $c->departamento, $c->fecha_cumpleanos?->format('d/m'), $c->asesor, $c->estado, $c->verificacion,
                         $c->ventas_count, number_format((float) $c->total_comprado, 2, '.', ''), $c->notas,
@@ -212,6 +253,72 @@ class ClienteController extends Controller
             });
             fclose($out);
         }, 'clientes-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Contactos de las listas elegidas que pueden entrar a una lista de difusión de WhatsApp:
+     * con celular válido (9 dígitos que empieza con 9) y sin número repetido.
+     */
+    private function contactosDifusion(Request $request): array
+    {
+        $listas = $this->listasPedidas($request);
+        $clientes = $listas
+            ? Cliente::query()->enListas($listas)
+                ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->estado))
+                ->orderBy('nombre')->get(['id', 'nombre', 'telefono', 'listas_difusion'])
+            : collect();
+
+        $incluidos = [];
+        $sinCelular = 0;
+        $repetidos = 0;
+        foreach ($clientes as $c) {
+            $celular = $c->celularWhatsapp();
+            if ($celular === null) {
+                $sinCelular++;
+            } elseif (isset($incluidos[$celular])) {
+                $repetidos++;
+            } else {
+                $incluidos[$celular] = ['nombre' => $c->nombre, 'celular' => '+51' . $celular, 'listas' => implode(', ', $c->etiquetas_difusion)];
+            }
+        }
+
+        return ['listas' => $listas, 'incluidos' => array_values($incluidos), 'sin_celular' => $sinCelular, 'repetidos' => $repetidos];
+    }
+
+    /** Cuántos contactos entrarían y cuántos se omiten, para mostrarlo antes de descargar. */
+    public function resumenDifusion(Request $request)
+    {
+        $r = $this->contactosDifusion($request);
+
+        return response()->json([
+            'listas'      => $r['listas'],
+            'incluidos'   => count($r['incluidos']),
+            'sin_celular' => $r['sin_celular'],
+            'repetidos'   => $r['repetidos'],
+        ]);
+    }
+
+    /** CSV para cargar en WhatsApp: nombre, celular en formato +51 y listas; omite a quien no tiene celular válido. */
+    public function exportarDifusion(Request $request)
+    {
+        $r = $this->contactosDifusion($request);
+        if (!$r['listas']) {
+            return redirect()->route('clientes.index')->with('error', 'Elija al menos una lista de difusión para exportar.');
+        }
+
+        return response()->streamDownload(function () use ($r) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Nombre', 'Celular', 'Listas'], ';');
+            foreach ($r['incluidos'] as $fila) {
+                fputcsv($out, [$fila['nombre'], $fila['celular'], $fila['listas']], ';');
+            }
+            fclose($out);
+        }, 'difusion-' . implode('-', $r['listas']) . '-' . now()->format('Y-m-d') . '.csv', [
+            'Content-Type'            => 'text/csv; charset=UTF-8',
+            'X-Contactos-Incluidos'   => count($r['incluidos']),
+            'X-Contactos-Sin-Celular' => $r['sin_celular'],
+        ]);
     }
 
     public function consultarDocumento(Request $request)

@@ -99,8 +99,8 @@
                                     @php $hay = $stock[$d->id] ?? 0; @endphp
                                     <tr>
                                         <td class="px-4 py-3">
-                                            <p class="font-medium text-gray-900">{{ $d->descripcion }}</p>
-                                            <p class="text-xs font-mono text-gray-400">{{ $d->codigo }}</p>
+                                            <p class="font-medium text-gray-900">{{ $d->nombre_mostrar }}</p>
+                                            <p class="text-xs font-mono text-gray-400">{{ $d->codigos_mostrar }}</p>
                                         </td>
                                         <td class="px-4 py-3 text-center">{{ $d->cantidad }}</td>
                                         <td class="px-4 py-3 text-center">

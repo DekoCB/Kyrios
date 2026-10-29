@@ -129,6 +129,8 @@ class ImportarProductosKyrios extends Command
 
     private function importar(array $filas, array $proy, array $inst, array $esti, array $obs, array $danos, UnidadMedida $unidad, CodigoKyriosService $codigos, array $imagenes, array $pack): void
     {
+        // «Sin tipo» (ST) existe siempre: es el tipo de las filas que no traen tipo de producto
+        TipoProducto::firstOrCreate(['codigo' => 'ST'], ['nombre' => 'Sin tipo', 'caso_codigo' => 'sin_luminaria']);
         $tipos = TipoProducto::all()->keyBy(fn ($t) => $this->clave($t->nombre));
         $luminarias = TipoLuminaria::all()->keyBy(fn ($t) => $this->clave($t->nombre));
         $categorias = [];
@@ -148,12 +150,12 @@ class ImportarProductosKyrios extends Command
             $codFab = $this->texto($f[0] ?? null);
             $codExcel = $this->texto($f[1] ?? null);
 
-            // Tipo de producto (sin dato → Luminaria, aparece en el reporte)
+            // Tipo de producto (sin dato → «Sin tipo», aparece en el reporte)
             $nombreTipo = $this->texto($f[5] ?? null);
             $tipo = $nombreTipo ? ($tipos[$this->clave(self::MAPA_TIPO_PRODUCTO[$this->clave($nombreTipo)] ?? $nombreTipo)] ?? null) : null;
             if (!$tipo) {
                 $this->reporte['sin_tipo_producto']++;
-                $tipo = $tipos[$this->clave('Luminaria')];
+                $tipo = $tipos[$this->clave('Sin tipo')];
             }
 
             // Tipo de luminaria (Aplicación 1)
@@ -277,6 +279,12 @@ class ImportarProductosKyrios extends Command
                 'lumenes'           => $this->decimal($f[30] ?? null) ?? $this->decimal($f[29] ?? null),
                 'temperatura_color' => ($t = $this->decimal($f[31] ?? null)) !== null ? (int) $t : null,
                 'tonalidad_luz'     => $this->texto($f[32] ?? null),
+                // Atributos que diferencian la variante (cada fila del Excel es una variante)
+                'tipo_lampara'         => $this->texto($f[6] ?? null),
+                'angulo_haz'           => $this->texto($f[37] ?? null),
+                'protocolo_regulacion' => $this->texto($f[40] ?? null),
+                'ip'                   => ($ip = $this->entero($f[34] ?? null)) !== null ? (string) $ip : null,
+                'cri'                  => ($cri = $this->entero($f[36] ?? null)) !== null ? (string) $cri : null,
                 'estado_dano'       => $estadoDano,
                 'observacion_dano'  => $obsDano,
                 'precio_fabrica'    => $this->decimal($pk[8] ?? null),

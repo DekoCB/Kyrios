@@ -1702,6 +1702,7 @@
                         </div>
                         <div class="flex-1">
                             <h4 class="font-semibold text-gray-900">${p.nombre}</h4>
+                            <p class="text-[11px] font-mono text-gray-400 truncate">${p.codigos || ''}</p>
                             <p class="text-sm text-gray-600">${p.marca || ''} ${p.modelo || ''}</p>
                             <div class="flex items-center gap-2 mt-1">
                                 <span class="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">
@@ -1778,7 +1779,7 @@
                                 <i class="fas fa-lightbulb text-indigo-600 text-sm"></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-semibold text-gray-900 text-sm truncate">${p.nombre}</h4>
+                                <h4 class="font-semibold text-gray-900 text-sm truncate" title="${p.nombre}">${p.nombre}</h4>
                                 <p class="text-xs text-gray-500">${p.marca || ''} ${p.modelo ? '· ' + p.modelo : ''}</p>
                             </div>
                             <div class="flex items-center gap-1 shrink-0">
@@ -1809,7 +1810,7 @@
                                 <i class="fas fa-box text-blue-900"></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-semibold text-gray-900 text-sm truncate">${p.nombre}</h4>
+                                <h4 class="font-semibold text-gray-900 text-sm truncate" title="${p.nombre}">${p.nombre}</h4>
                                 <p class="text-xs text-gray-500">${p.marca || ''} ${p.modelo ? '· ' + p.modelo : ''}</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-600">${p.categoria || '—'}</span>

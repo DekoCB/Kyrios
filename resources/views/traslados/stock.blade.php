@@ -109,9 +109,9 @@
                             {{-- Producto --}}
                             <td class="px-5 py-3 sticky left-0 bg-white hover:bg-gray-50 z-10">
                                 <div class="font-medium text-gray-900 flex items-center gap-2">
-                                    {{ $producto->nombre }}
+                                    {{ \App\Support\EtiquetaProducto::nombre($producto) }}
                                 </div>
-                                <div class="text-xs text-gray-400 font-mono">{{ $producto->codigo }}</div>
+                                <div class="text-xs text-gray-400 font-mono">{{ \App\Support\EtiquetaProducto::codigos(['codigo' => $producto->codigo, 'variantes' => $producto->variantesActivas ?? $producto->variantes ?? []]) }}</div>
                             </td>
 
                             {{-- Categoría --}}

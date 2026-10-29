@@ -45,7 +45,7 @@
                             @forelse($categoria->productos as $producto)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-4 py-2 font-mono">{{ $producto->codigo }}</td>
-                                    <td class="px-4 py-2"><a href="{{ route('inventario.productos.show', $producto) }}" class="font-medium text-blue-700 hover:underline">{{ $producto->nombre }}</a></td>
+                                    <td class="px-4 py-2"><a href="{{ route('inventario.productos.show', $producto) }}" class="font-medium text-blue-700 hover:underline">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</a></td>
                                     <td class="px-4 py-2 text-right">{{ (int) $producto->stock_actual }}</td>
                                 </tr>
                             @empty

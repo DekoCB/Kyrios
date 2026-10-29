@@ -72,7 +72,12 @@
 
                     <!-- Información básica -->
                     <div class="p-6">
-                        <h2 class="text-xl font-bold text-gray-900 mb-4">{{ $producto->nombre }}</h2>
+                        <h2 class="text-xl font-bold text-gray-900">{{ \App\Support\EtiquetaProducto::nombrePrincipal($producto) }}</h2>
+                        @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
+                            <p class="text-sm text-gray-500 mb-4">Nombre de fábrica: <span class="font-medium text-gray-700">{{ $producto->nombre_fabrica }}</span></p>
+                        @else
+                            <div class="mb-4"></div>
+                        @endif
                         
                         <div class="space-y-3">
                             <div class="flex justify-between">
@@ -238,6 +243,7 @@
                                             @if($variante->alto) · Alto {{ rtrim(rtrim($variante->alto, '0'), '.') }} mm @endif
                                         </p>
                                     @endif
+                                    @include('inventario.productos.partials.atributos-variante-resumen', ['variante' => $variante])
                                 </div>
                             </div>
                             @php

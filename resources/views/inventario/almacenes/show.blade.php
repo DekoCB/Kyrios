@@ -305,7 +305,8 @@
                             </span>
                         </td>
                         <td class="px-5 py-3">
-                            <p class="text-sm font-medium text-gray-900">{{ $mov->producto->nombre }}</p>
+                            <p class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($mov->producto) }}</p>
+                            <p class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($mov->producto, $mov->variante) }}</p>
                             <p class="text-xs text-gray-400 font-mono">{{ $mov->producto->codigo }}</p>
                         </td>
                         <td class="px-5 py-3 text-center whitespace-nowrap">

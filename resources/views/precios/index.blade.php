@@ -209,7 +209,7 @@
                                 </div>
                                 @endif
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-gray-900 truncate max-w-xs">{{ $producto->nombre }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 truncate max-w-xs">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</p>
                                     <div class="flex items-center gap-2 mt-0.5">
                                         <span class="text-xs text-gray-400 font-mono">{{ $producto->codigo }}</span>
                                         @if($producto->categoria)

@@ -46,7 +46,7 @@
                     <!-- SECCIÓN KYRIOS: CODIFICACIÓN -->
                     <div class="mb-8" x-data="{
                             tipos: {{ \Illuminate\Support\Js::from($tiposProducto->mapWithKeys(fn ($t) => [$t->id => ['codigo' => $t->codigo, 'caso' => $t->caso_codigo]])) }},
-                            tipo: '{{ old('tipo_producto_id') }}',
+                            tipo: '{{ old('tipo_producto_id', $tiposProducto->firstWhere('codigo', 'ST')?->id) }}',
                             get usaLuminaria() { return this.tipo && this.tipos[this.tipo]?.caso === 'con_luminaria'; }
                          }">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
@@ -60,9 +60,8 @@
                                 </label>
                                 <select name="tipo_producto_id" id="tipo_producto_id" x-model="tipo" required
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Seleccione…</option>
                                     @foreach($tiposProducto as $t)
-                                        <option value="{{ $t->id }}">{{ $t->codigo }} — {{ $t->nombre }}</option>
+                                        <option value="{{ $t->id }}" @selected((string) old('tipo_producto_id', $tiposProducto->firstWhere('codigo', 'ST')?->id) === (string) $t->id)>{{ $t->codigo }} — {{ $t->nombre }}</option>
                                     @endforeach
                                 </select>
                                 @error('tipo_producto_id')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror

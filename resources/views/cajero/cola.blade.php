@@ -324,7 +324,7 @@ $ventasJson = $ventas->map(fn($v) => [
     'detalles'      => $v->detalles->map(fn($d) => [
         'id'       => $d->id,
         'cantidad' => $d->cantidad,
-        'producto' => trim(($d->producto?->nombre ?? '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
+        'producto' => trim(($d->producto ? \App\Support\EtiquetaProducto::nombre($d->producto) : '—') . ($d->variante ? ' · ' . $d->variante->nombre_completo : '')),
         'subtotal' => round((float) $d->subtotal_con_igv, 2),
     ])->values()->all(),
 ])->values()->all();

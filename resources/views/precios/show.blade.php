@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Precios · {{ $producto->nombre }}</title>
+    <title>Precios · {{ \App\Support\EtiquetaProducto::nombre($producto) }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
@@ -21,13 +21,13 @@
     <nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <a href="{{ route('precios.index') }}" class="hover:text-blue-700 transition-colors">Gestión de Precios</a>
         <i class="fas fa-chevron-right text-xs text-gray-400"></i>
-        <span class="text-gray-800 font-medium truncate">{{ $producto->nombre }}</span>
+        <span class="text-gray-800 font-medium truncate">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</span>
     </nav>
 
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ $producto->nombre }}</h1>
+            <h1 class="text-2xl font-bold text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</h1>
             <p class="text-sm text-gray-500 mt-0.5">Gestión de precios y márgenes</p>
         </div>
         <div class="flex gap-2">

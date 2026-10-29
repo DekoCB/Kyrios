@@ -189,7 +189,7 @@
                 @foreach($ventas as $venta)
                 @php $detallesDisponibles = $venta->detalles->filter(fn($d) => $d->cantidad_disponible > 0); @endphp
                 <div class="mb-4 border border-gray-200 rounded-xl overflow-hidden"
-                     x-show="!filtro || '{{ strtolower($venta->codigo) }}'.includes(filtro.toLowerCase()) || {{ $venta->detalles->map(fn($d) => "'" . strtolower(str_replace("'", "\\'", $d->producto?->nombre ?? '')) . "'") ->implode(' + ') ?: "''" }}.includes(filtro.toLowerCase())"
+                     x-show="!filtro || '{{ strtolower($venta->codigo) }}'.includes(filtro.toLowerCase()) || {{ $venta->detalles->map(fn($d) => "'" . str_replace("'", "\\'", \App\Support\EtiquetaProducto::textoBusqueda($d->producto, $d->variante)) . "'") ->implode(' + ') ?: "''" }}.includes(filtro.toLowerCase())"
                      x-cloak>
 
                     {{-- Cabecera --}}
@@ -231,11 +231,11 @@
                                 $oldVal      = old("cantidades.{$detalle->id}", 0);
                             @endphp
                             <tr class="{{ $disponible === 0 ? 'opacity-40 bg-gray-50' : 'hover:bg-orange-50' }} transition-colors"
-                                data-nombre="{{ strtolower(($detalle->producto?->nombre ?? '') . ' ' . ($detalle->variante?->nombre_completo ?? '')) }}"
+                                data-nombre="{{ \App\Support\EtiquetaProducto::textoBusqueda($detalle->producto, $detalle->variante) . ' ' . strtolower($detalle->variante?->nombre_completo ?? '') }}"
                                 x-show="!filtro || $el.dataset.nombre.includes(filtro.toLowerCase())">
 
                                 <td class="px-4 py-3">
-                                    <span class="font-medium text-gray-900">{{ $detalle->producto?->nombre }}</span>
+                                    <span class="font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($detalle->producto) }}</span>
                                     @if($detalle->variante)
                                         <span class="text-xs text-indigo-600 ml-1 font-medium">{{ $detalle->variante->nombre_completo }}</span>
                                     @endif

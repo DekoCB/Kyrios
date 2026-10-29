@@ -71,9 +71,9 @@
         <tbody>
             @foreach($detalles as $d)
                 <tr>
-                    <td>{{ $d->producto->codigo }}</td>
+                    <td>{{ \App\Support\EtiquetaProducto::codigos($d->producto, $d->variante) ?: $d->producto->codigo }}</td>
                     <td>
-                        {{ $d->producto->nombre }}
+                        {{ \App\Support\EtiquetaProducto::nombre($d->producto) }}
                         @if($d->variante) <small>({{ $d->variante->nombre_completo }})</small> @endif
                     </td>
                     <td>{{ $d->producto->categoria?->nombre ?? '—' }}</td>

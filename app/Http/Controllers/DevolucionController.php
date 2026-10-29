@@ -302,7 +302,7 @@ class DevolucionController extends Controller
     {
         $devolucion->load('producto', 'almacen', 'usuario');
 
-        $todosMovimientos = MovimientoInventario::with(['producto'])
+        $todosMovimientos = MovimientoInventario::with(['producto', 'variante'])
             ->where('numero_guia', $devolucion->numero_guia)
             ->where('tipo_movimiento', 'devolucion')
             ->get();

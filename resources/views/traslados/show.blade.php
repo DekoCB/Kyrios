@@ -209,8 +209,8 @@
                         <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
                             <i class="fas fa-box mr-1"></i>Producto
                         </span>
-                        <span class="font-semibold text-gray-800">{{ $mov->producto->nombre }}</span>
-                        <span class="font-mono text-xs text-gray-400">{{ $mov->producto->codigo }}</span>
+                        <span class="font-semibold text-gray-800">{{ \App\Support\EtiquetaProducto::nombre($mov->producto) }}</span>
+                        <span class="block text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($mov->producto, $mov->variante) }}</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-sm font-bold text-gray-700">

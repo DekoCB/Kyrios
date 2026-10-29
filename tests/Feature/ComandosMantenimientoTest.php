@@ -178,7 +178,7 @@ class ComandosMantenimientoTest extends TestCase
         $this->artisan('kyrios:purgar-datos', ['--force' => true])->assertSuccessful();
 
         $this->assertSame(30, DB::table('marcas')->count(), 'las 30 marcas del PDF');
-        $this->assertSame(15, DB::table('tipos_producto')->count());
+        $this->assertSame(16, DB::table('tipos_producto')->count(), '15 del PDF + «Sin tipo»');
         $this->assertSame(17, DB::table('tipos_luminaria')->count());
         $this->assertGreaterThan(0, DB::table('motivos_movimiento')->count());
         $this->assertSame('01', DB::table('marcas')->where('nombre', 'LEDS-C4')->value('codigo'));

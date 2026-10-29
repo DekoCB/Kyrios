@@ -384,7 +384,8 @@
                                 @foreach($compra->detalles as $detalle)
                                 <tr class="hover:bg-gray-50 transition">
                                     <td class="px-5 py-4">
-                                        <p class="font-semibold text-gray-900">{{ $detalle->producto->nombre }}</p>
+                                        <p class="font-semibold text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($detalle->producto) }}</p>
+                                        <p class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($detalle->producto, $detalle->variante) }}</p>
                                         @if($detalle->codigo_barras)
                                             <p class="text-xs text-gray-400 font-mono mt-0.5">{{ $detalle->codigo_barras }}</p>
                                         @endif
@@ -595,7 +596,8 @@
                                 @endphp
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-5 py-3">
-                                        <p class="font-medium text-gray-900">{{ $detalle->producto->nombre ?? '-' }}</p>
+                                        <p class="font-medium text-gray-900">{{ $detalle->producto ? \App\Support\EtiquetaProducto::nombre($detalle->producto) : '-' }}</p>
+                                        <p class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($detalle->producto, $detalle->variante) }}</p>
                                         @php
                                             $varLabel = trim(
                                                 ($detalle->variante?->color?->nombre ?? $detalle->color?->nombre ?? '')

@@ -33,6 +33,11 @@ class CatalogoSeeder extends Seeder
             ['nombre' => 'Traslado entre almacenes', 'tipo' => 'transferencia', 'codigo' => 'TRAS01'],
             ['nombre' => 'Muestra gratis',           'tipo' => 'salida',        'codigo' => 'MUES01'],
             ['nombre' => 'Producto dañado',          'tipo' => 'salida',        'codigo' => 'DANI01'],
+            ['nombre' => 'Auspicios',                'tipo' => 'salida',        'codigo' => 'AUSP01'],
+            ['nombre' => 'Consignación',             'tipo' => 'salida',        'codigo' => 'CONS01'],
+            ['nombre' => 'Cambio por garantía',      'tipo' => 'salida',        'codigo' => 'GARA01'],
+            ['nombre' => 'Cambio de producto',       'tipo' => 'salida',        'codigo' => 'CAMP01'],
+            ['nombre' => 'Cambio de almacén',        'tipo' => 'salida',        'codigo' => 'CAMA01'],
         ];
 
         foreach ($motivos as $motivo) {

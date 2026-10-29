@@ -175,9 +175,9 @@ class ImportarProductosKyriosTest extends TestCase
         $this->importar()->assertSuccessful();
 
         $v = ProductoVariante::where('codigo_fabricante', 'CCC-444')->first();
-        $this->assertSame('KY-LU2000-0001', $v->codigo_kyrios, 'Luminaria + colgante (20) + SIN MARCA (00)');
+        $this->assertSame('KY-ST0000-0001', $v->codigo_kyrios, 'Sin tipo (luminaria 00) + SIN MARCA (00)');
         $this->assertSame('00', Marca::where('nombre', 'SIN MARCA')->value('codigo'));
-        $this->assertSame('Luminaria', $v->producto->tipoProducto->nombre);
+        $this->assertSame('Sin tipo', $v->producto->tipoProducto->nombre);
     }
 
     public function test_normaliza_los_atributos_de_la_variante(): void
@@ -192,6 +192,9 @@ class ImportarProductosKyriosTest extends TestCase
         $this->assertSame('G9', $v->socket);
         $this->assertSame('x3', $v->num_lamparas);
         $this->assertEquals(75.0, (float) $v->potencia_w);
+        // Atributos que diferencian la variante, tomados de su propia fila
+        $this->assertSame('LED', $v->tipo_lampara);
+        $this->assertSame('20', $v->ip);
 
         $this->assertSame('blanco(a)', ProductoVariante::where('codigo_fabricante', 'AAA-222')->value('acabado_1'), 'acabados en minúsculas');
 

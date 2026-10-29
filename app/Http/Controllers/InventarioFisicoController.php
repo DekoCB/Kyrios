@@ -76,10 +76,14 @@ class InventarioFisicoController extends Controller
         }
 
         if ($request->filled('buscar')) {
-            $buscar = '%' . $request->buscar . '%';
+            $buscar = '%' . addcslashes((string) $request->buscar, '%_\\') . '%';
             $query->where(function ($q) use ($buscar) {
                 $q->where('productos.nombre', 'like', $buscar)
-                  ->orWhere('productos.codigo', 'like', $buscar);
+                  ->orWhere('productos.nombre_fabrica', 'like', $buscar)
+                  ->orWhere('productos.nombre_kyrios', 'like', $buscar)
+                  ->orWhere('productos.codigo', 'like', $buscar)
+                  ->orWhereHas('variante', fn ($v) => $v->where('codigo_kyrios', 'like', $buscar)
+                      ->orWhere('codigo_fabricante', 'like', $buscar)->orWhere('codigo_excel', 'like', $buscar));
             });
         }
 
@@ -249,8 +253,8 @@ class InventarioFisicoController extends Controller
                 : 0;
 
             $sheet->setCellValue("A{$row}", $i + 1);
-            $sheet->setCellValue("B{$row}", $d->producto->codigo ?? '');
-            $sheet->setCellValue("C{$row}", $d->producto->nombre ?? '');
+            $sheet->setCellValue("B{$row}", \App\Support\EtiquetaProducto::codigos($d->producto, $d->variante) ?: ($d->producto->codigo ?? ''));
+            $sheet->setCellValue("C{$row}", $d->producto ? \App\Support\EtiquetaProducto::nombre($d->producto) : '');
             $sheet->setCellValue("D{$row}", $d->variante?->nombre_completo ?? '—');
             $sheet->setCellValue("E{$row}", $d->producto->categoria?->nombre ?? '—');
             $sheet->setCellValue("F{$row}", $d->producto->stock_minimo ?? 0);

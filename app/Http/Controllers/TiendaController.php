@@ -46,10 +46,7 @@ class TiendaController extends Controller
         }
 
         if ($request->filled('buscar')) {
-            $query->where(function($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->buscar . '%')
-                  ->orWhere('codigo', 'like', '%' . $request->buscar . '%');
-            });
+            \App\Support\EtiquetaProducto::buscar($query, (string) $request->buscar);
         }
 
         $productos = $query->paginate(20);

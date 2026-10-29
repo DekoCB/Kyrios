@@ -29,6 +29,8 @@ class KyriosCatalogoSeeder extends Seeder
         ['VE', 'Ventilador',                   'sin_luminaria'],
         ['CA', 'Cabezal',                      'sin_luminaria'],
         ['PO', 'Poste',                        'sin_luminaria'],
+        // Productos cuyo tipo no se conoce (el código de 2 letras no choca con ningún otro)
+        ['ST', 'Sin tipo',                     'sin_luminaria'],
         // PROVISIONAL: aparece en el Excel pero no en el PDF. Confirmar código.
         ['SP', 'Spot',                         'con_luminaria'],
     ];

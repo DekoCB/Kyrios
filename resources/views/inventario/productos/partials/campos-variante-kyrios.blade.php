@@ -27,6 +27,16 @@
             ['potencia_w', 'Potencia (W)', 'number'], ['lumenes', 'Lúmenes', 'number'],
             ['temperatura_color', 'T° color (K)', 'number'], ['tonalidad_luz', 'Tonalidad de luz', 'text'],
         ],
+        'Atributos que diferencian la variante' => [
+            ['tipo_lampara', 'Tipo de lámpara', 'text', 'tipos-lampara-kyrios'],
+            ['angulo_haz', 'Ángulo de haz de luz', 'text'],
+            ['protocolo_regulacion', 'Protocolo de regulación', 'text'],
+            ['eficiencia_luminica', 'Eficiencia lumínica (lm/W)', 'number'],
+            ['garantia_meses', 'Garantía (meses)', 'integer'],
+            ['vida_util_horas', 'Vida útil (horas)', 'integer'],
+            ['ip', 'IP', 'text'], ['cri', 'CRI', 'text'],
+            ['otros', 'Otros', 'textarea'],
+        ],
         'Códigos' => [
             ['codigo_fabricante', 'Código del fabricante', 'text'],
             ['codigo_excel', '2° código (Excel anterior)', 'text'],
@@ -35,6 +45,9 @@
     $clase = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500';
 @endphp
 
+<datalist id="tipos-lampara-kyrios">
+    @foreach(['LED', 'Halógena', 'Fluorescente', 'Incandescente', 'Halogenuro metálico', 'Integrado (sin lámpara)'] as $t)<option value="{{ $t }}">@endforeach
+</datalist>
 <datalist id="acabados-kyrios">
     @foreach($acabados as $a)<option value="{{ $a }}">@endforeach
 </datalist>
@@ -54,8 +67,12 @@
                                 <option value="{{ $op }}" @selected($modo === 'nuevo' && old($oldKey($c)) === $op)>{{ ucfirst($op) }}</option>
                             @endforeach
                         </select>
+                    @elseif($tipo === 'textarea')
+                        <textarea rows="2" maxlength="2000" name="{{ $nombre($c) }}"
+                                  @if($modo === 'editar') x-model="form.{{ $c }}" @endif
+                                  class="{{ $clase }}">@if($modo !== 'editar'){{ old($oldKey($c)) }}@endif</textarea>
                     @else
-                        <input type="{{ $tipo }}" @if($tipo === 'number') step="0.01" min="0" @endif
+                        <input type="{{ $tipo === 'integer' ? 'number' : $tipo }}" @if($tipo === 'number') step="0.01" min="0" @elseif($tipo === 'integer') step="1" min="0" @endif
                                name="{{ $nombre($c) }}"
                                @if($extra && !is_array($extra)) list="{{ $extra }}" @endif
                                @if($modo === 'editar') x-model="form.{{ $c }}" @else value="{{ old($oldKey($c)) }}" @endif

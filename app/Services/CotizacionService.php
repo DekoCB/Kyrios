@@ -135,7 +135,7 @@ class CotizacionService
                 'producto_id'      => $producto->id,
                 'variante_id'      => $variante?->id,
                 'codigo'           => $variante?->codigo_kyrios ?? $producto->codigo,
-                'descripcion'      => $producto->nombre . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''),
+                'descripcion'      => mb_substr(\App\Support\EtiquetaProducto::nombre($producto) . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''), 0, 255),
                 'cantidad'         => $cantidad,
                 'precio_unitario'  => $sinIgv,
                 'precio_con_igv'   => $conIgv,

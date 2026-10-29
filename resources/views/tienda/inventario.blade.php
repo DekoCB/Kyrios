@@ -116,8 +116,8 @@
                     <tr class="hover:bg-gray-50">
                         @if($i === 0)
                         <td class="px-6 py-4 align-top" rowspan="{{ $numFilas }}">
-                            <div class="text-sm font-medium text-gray-900">{{ $producto->nombre }}</div>
-                            <div class="text-xs text-gray-500">{{ $producto->codigo }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</div>
+                            <div class="text-xs text-gray-500 font-mono">{{ \App\Support\EtiquetaProducto::codigos(['codigo' => $producto->codigo, 'variantes' => $producto->variantesActivas ?? $producto->variantes ?? []]) }}</div>
                         </td>
                         @endif
 

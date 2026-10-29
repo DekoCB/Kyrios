@@ -22,7 +22,7 @@ class TrasladoController extends Controller
     public function index()
     {
         // Agrupar por numero_guia para mostrar un traslado por grupo
-        $todos = MovimientoInventario::with('producto', 'almacen', 'almacenDestino', 'usuario')
+        $todos = MovimientoInventario::with('producto', 'variante', 'almacen', 'almacenDestino', 'usuario')
             ->where('tipo_movimiento', 'transferencia')
             ->noEliminados()
             ->orderBy('created_at', 'desc')
@@ -98,7 +98,7 @@ class TrasladoController extends Controller
             abort(404, 'Este traslado no tiene guía de remisión.');
         }
 
-        $todosProductos = MovimientoInventario::with(['producto.unidadMedida', 'almacen', 'almacenDestino'])
+        $todosProductos = MovimientoInventario::with(['producto.unidadMedida', 'variante', 'almacen', 'almacenDestino'])
             ->where('numero_guia', $traslado->numero_guia)
             ->where('tipo_movimiento', 'transferencia')
             ->orderBy('id')
@@ -120,11 +120,11 @@ class TrasladoController extends Controller
 
     public function show(MovimientoInventario $traslado)
     {
-        $traslado->load('producto', 'almacen', 'almacenDestino', 'usuario', 'usuarioConfirma');
+        $traslado->load('producto', 'variante', 'almacen', 'almacenDestino', 'usuario', 'usuarioConfirma');
 
         // Cargar todos los productos del mismo traslado (mismo numero_guia)
         $todosProductos = $traslado->numero_guia
-            ? MovimientoInventario::with('producto')
+            ? MovimientoInventario::with('producto', 'variante')
                 ->where('numero_guia', $traslado->numero_guia)
                 ->where('tipo_movimiento', 'transferencia')
                 ->orderBy('id')
@@ -142,6 +142,7 @@ class TrasladoController extends Controller
     {
         $movimientos = MovimientoInventario::with([
                 'producto',
+                'variante',
                 'almacen',
                 'almacenDestino',
                 'usuario',
@@ -160,16 +161,13 @@ class TrasladoController extends Controller
 
     public function stock(Request $request)
     {
-        $query = Producto::with(['categoria'])->where('estado', 'activo');
+        $query = Producto::with(['categoria', 'variantesActivas'])->where('estado', 'activo');
 
         if ($request->filled('categoria_id')) {
             $query->where('categoria_id', $request->categoria_id);
         }
         if ($request->filled('buscar')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->buscar . '%')
-                  ->orWhere('codigo', 'like', '%' . $request->buscar . '%');
-            });
+            \App\Support\EtiquetaProducto::buscar($query, (string) $request->buscar);
         }
 
         $productos    = $query->orderBy('nombre')->paginate(25)->withQueryString();
@@ -255,14 +253,11 @@ class TrasladoController extends Controller
         $q        = trim($request->get('q', ''));
         $almacenId = (int) $request->get('almacen_id', 0);
 
-        $productos = Producto::with(['variantesActivas.color'])
-            ->where('estado', 'activo')
-            ->where(function ($query) use ($q) {
-                $query->where('nombre', 'like', "%{$q}%")
-                      ->orWhere('codigo', 'like', "%{$q}%");
-            })
+        $productos = \App\Support\EtiquetaProducto::buscar(
+                Producto::with(['variantesActivas.color'])->where('estado', 'activo'), $q
+            )
             ->limit(15)
-            ->get(['id', 'nombre', 'codigo']);
+            ->get(['id', 'nombre', 'nombre_fabrica', 'nombre_kyrios', 'codigo']);
 
         $productoIds = $productos->pluck('id');
 
@@ -284,14 +279,14 @@ class TrasladoController extends Controller
 
             return [
                 'id'              => $p->id,
-                'nombre'          => $p->nombre,
-                'codigo'          => $p->codigo,
+                'nombre'          => \App\Support\EtiquetaProducto::nombre($p),
+                'codigo'          => \App\Support\EtiquetaProducto::codigos(['codigo' => $p->codigo, 'variantes' => $p->variantesActivas]),
                 'stock_origen'    => $stock,
                 'tiene_variantes' => $p->variantesActivas->isNotEmpty(),
                 'variantes'       => $p->variantesActivas->map(fn($v) => [
                     'id'           => $v->id,
                     'nombre'       => $v->nombre_completo,
-                    'sku'          => $v->sku ?? '',
+                    'sku'          => \App\Support\EtiquetaProducto::codigos($p, $v) ?: ($v->sku ?? ''),
                     'color_nombre' => $v->color?->nombre ?? null,
                     'color_hex'    => $v->color?->codigo_hex ?? null,
                     'capacidad'    => $v->capacidad ?? null,

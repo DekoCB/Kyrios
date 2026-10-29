@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historial de Precios · {{ $producto->nombre }}</title>
+    <title>Historial de Precios · {{ \App\Support\EtiquetaProducto::nombre($producto) }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
@@ -18,7 +18,7 @@
     <nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <a href="{{ route('precios.index') }}" class="hover:text-blue-700 transition-colors">Gestión de Precios</a>
         <i class="fas fa-chevron-right text-xs text-gray-400"></i>
-        <a href="{{ route('precios.show', $producto) }}" class="hover:text-blue-700 transition-colors truncate max-w-xs">{{ $producto->nombre }}</a>
+        <a href="{{ route('precios.show', $producto) }}" class="hover:text-blue-700 transition-colors truncate max-w-xs">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</a>
         <i class="fas fa-chevron-right text-xs text-gray-400"></i>
         <span class="text-gray-800 font-medium">Historial</span>
     </nav>
@@ -26,7 +26,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Historial de Precios</h1>
-            <p class="text-sm text-gray-500 mt-0.5">{{ $producto->nombre }}</p>
+            <p class="text-sm text-gray-500 mt-0.5">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</p>
         </div>
         <a href="{{ route('precios.show', $producto) }}"
            class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">

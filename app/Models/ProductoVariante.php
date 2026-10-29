@@ -29,6 +29,7 @@ class ProductoVariante extends Model
         'acabado_1', 'acabado_2', 'tamano', 'diametro', 'alto', 'ancho', 'profundidad',
         'alto_suspendido', 'diametro_agujero', 'socket', 'num_lamparas', 'potencia_w', 'lumenes',
         'temperatura_color', 'tonalidad_luz', 'estado_dano', 'observacion_dano',
+        'tipo_lampara', 'angulo_haz', 'protocolo_regulacion', 'eficiencia_luminica', 'garantia_meses', 'vida_util_horas', 'ip', 'cri', 'otros',
         'precio_fabrica', 'peso', 'volumen', 'embalado', 'medida_embalaje', 'cantidad_por_caja', 'codigos_relacionados',
     ];
 

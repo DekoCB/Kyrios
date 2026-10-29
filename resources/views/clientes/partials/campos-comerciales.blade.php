@@ -17,6 +17,22 @@
         @endforeach
     </select>
 </div>
+<div class="md:col-span-2">
+    @php $marcadas = (array) old('listas_difusion', $cliente?->listas_difusion ?? []); @endphp
+    <span class="block text-sm font-medium text-gray-700 mb-1">Listas de difusión (WhatsApp)</span>
+    {{-- Campo vacío para que al desmarcar todas se guarde «ninguna» --}}
+    <input type="hidden" name="listas_difusion[]" value="">
+    <div class="flex flex-wrap gap-x-5 gap-y-2" role="group" aria-label="Listas de difusión de WhatsApp">
+        @foreach(\App\Models\Cliente::LISTAS_DIFUSION as $clave => $etiqueta)
+            <label for="lista_{{ $clave }}" class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" id="lista_{{ $clave }}" name="listas_difusion[]" value="{{ $clave }}" @checked(in_array($clave, $marcadas, true))
+                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-300">
+                {{ $etiqueta }}
+            </label>
+        @endforeach
+    </div>
+    <p class="text-[11px] text-gray-400 mt-1">Un contacto puede estar en varias listas a la vez (por ejemplo arquitecta, mamá y mujer).</p>
+</div>
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Especialidad / rubro</label>
     <input type="text" name="especialidad" maxlength="150" value="{{ $v('especialidad') }}" class="{{ $clase }}" placeholder="Residencial, oficinas, hoteles…">

@@ -511,7 +511,7 @@
                                     {{ $mov->created_at->format('d/m/Y H:i') }}
                                 </td>
                                 <td class="py-3 text-sm font-medium text-gray-900">
-                                    {{ $mov->producto->nombre ?? 'N/A' }}
+                                    {{ $mov->producto ? \App\Support\EtiquetaProducto::nombre($mov->producto) : 'N/A' }}
                                 </td>
                                 <td class="py-3">
                                     <span class="px-2 py-1 text-xs rounded-full {{ $colorClass }}">

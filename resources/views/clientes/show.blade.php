@@ -76,6 +76,14 @@
                             @elseif($cliente->verificacion === 'no_encontrado')<span class="ml-1 text-xs text-red-600 font-sans" title="No figura en {{ $fuente }}"><i class="fas fa-times-circle"></i> no encontrado</span>@endif
                         </dd></div>
                     @endif
+                    @if($cliente->etiquetas_difusion)
+                        <div><dt class="text-xs text-gray-400 uppercase">Listas de difusión</dt>
+                            <dd class="flex flex-wrap gap-1 mt-0.5">
+                                @foreach($cliente->etiquetas_difusion as $etiqueta)
+                                    <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800"><i class="fab fa-whatsapp mr-1"></i>{{ $etiqueta }}</span>
+                                @endforeach
+                            </dd></div>
+                    @endif
                     @if($cliente->segmento)<div><dt class="text-xs text-gray-400 uppercase">Segmento</dt><dd>{{ \App\Models\Cliente::SEGMENTOS[$cliente->segmento] ?? $cliente->segmento }}@if($cliente->especialidad) · {{ $cliente->especialidad }}@endif</dd></div>@endif
                     @if($cliente->empresa)<div><dt class="text-xs text-gray-400 uppercase">Empresa</dt><dd>{{ $cliente->empresa }}@if($cliente->cargo) <span class="text-gray-500">— {{ $cliente->cargo }}</span>@endif</dd></div>@elseif($cliente->cargo)<div><dt class="text-xs text-gray-400 uppercase">Cargo</dt><dd>{{ $cliente->cargo }}</dd></div>@endif
                     @if($cliente->contacto)<div><dt class="text-xs text-gray-400 uppercase">Contacto</dt><dd>{{ $cliente->contacto }}</dd></div>@endif

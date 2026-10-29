@@ -183,7 +183,7 @@
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $i + 1 }}</td>
                                 <td class="px-6 py-4 text-sm">
-                                    <span class="font-medium text-gray-900">{{ $detalle->producto->nombre ?? '-' }}</span>
+                                    <span class="font-medium text-gray-900">{{ $detalle->producto ? \App\Support\EtiquetaProducto::nombre($detalle->producto) : '-' }}</span>
                                     <span class="text-gray-400 text-xs ml-1">({{ $detalle->producto->codigo ?? '' }})</span>
                                     @if($detalle->variante)
                                         <span class="block text-xs text-indigo-600 mt-0.5">

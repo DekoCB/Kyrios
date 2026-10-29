@@ -152,7 +152,7 @@ class InventarioReportesController extends Controller
 
                     return [
                         'id'                    => $p->id,
-                        'nombre'                => $p->nombre,
+                        'nombre'                => \App\Support\EtiquetaProducto::nombre($p),
                         'categoria'             => $p->categoria?->nombre ?? '—',
                         'marca'                 => $p->marca?->nombre     ?? '—',
                         'tipo'                  => $p->tipo_inventario,
@@ -183,7 +183,7 @@ class InventarioReportesController extends Controller
 
                 return [
                     'id'                    => $p->id,
-                    'nombre'                => $p->nombre,
+                    'nombre'                => \App\Support\EtiquetaProducto::nombre($p),
                     'categoria'             => $p->categoria?->nombre ?? '—',
                     'marca'                 => $p->marca?->nombre     ?? '—',
                     'tipo'                  => $p->tipo_inventario,
@@ -317,7 +317,7 @@ class InventarioReportesController extends Controller
             ->get()
             ->keyBy('producto_id');
 
-        $productos = Producto::with('categoria')
+        $productos = Producto::with(['categoria', 'variantesActivas'])
             ->where('estado', 'activo')
             ->where('stock_actual', '>', 0)
             ->when($categoriaId, fn($q) => $q->where('categoria_id', $categoriaId))
@@ -331,8 +331,8 @@ class InventarioReportesController extends Controller
 
                 return [
                     'id'                    => $p->id,
-                    'nombre'                => $p->nombre,
-                    'codigo'                => $p->codigo,
+                    'nombre'                => \App\Support\EtiquetaProducto::nombre($p),
+                    'codigo'                => \App\Support\EtiquetaProducto::codigos(['codigo' => $p->codigo, 'variantes' => $p->variantesActivas]),
                     'categoria'             => $p->categoria?->nombre ?? '—',
                     'stock'                 => $p->stock_actual,
                     'costo_cpp'             => $costoPromedio,
@@ -399,7 +399,7 @@ class InventarioReportesController extends Controller
 
     public function kardex(Request $request)
     {
-        $productosList  = Producto::where('estado', 'activo')->orderBy('nombre')->get(['id', 'nombre']);
+        $productosList  = Producto::where('estado', 'activo')->orderBy('nombre')->get(['id', 'nombre', 'nombre_fabrica', 'nombre_kyrios', 'codigo']);
         $tiposMovimiento = ['ingreso','salida','ajuste','transferencia','devolucion','merma'];
 
         $productoId  = $request->producto_id;
@@ -492,7 +492,7 @@ class InventarioReportesController extends Controller
             $h = fopen('php://output', 'w');
             fprintf($h, chr(0xEF).chr(0xBB).chr(0xBF));
 
-            fputcsv($h, ['Producto:', $producto->nombre]);
+            fputcsv($h, ['Producto:', \App\Support\EtiquetaProducto::nombre($producto)]);
             fputcsv($h, ['Período:', $desde.' a '.$hasta]);
             fputcsv($h, ['Costo unitario:', number_format($resumen['costo_unit'], 2)]);
             fputcsv($h, []);
@@ -550,7 +550,7 @@ class InventarioReportesController extends Controller
 
                 return [
                     'id'               => $p->id,
-                    'nombre'           => $p->nombre,
+                    'nombre'           => \App\Support\EtiquetaProducto::nombre($p),
                     'categoria'        => $p->categoria?->nombre ?? '—',
                     'marca'            => $p->marca?->nombre     ?? '—',
                     'stock'            => $stock,

@@ -78,19 +78,19 @@
                         @forelse($productos as $producto)
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm font-medium text-gray-900">{{ $producto->codigo }}</span>
+                                <span class="text-sm font-medium text-gray-900 font-mono">{{ \App\Support\EtiquetaProducto::codigos(['codigo' => $producto->codigo, 'variantes' => $producto->variantesActivas ?? $producto->variantes ?? []]) }}</span>
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
                                     @if($producto->imagen)
-                                        <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}" class="h-12 w-12 rounded object-cover mr-3">
+                                        <img src="{{ $producto->imagen_url }}" alt="{{ \App\Support\EtiquetaProducto::nombre($producto) }}" class="h-12 w-12 rounded object-cover mr-3">
                                     @else
                                         <div class="h-12 w-12 rounded bg-gray-200 flex items-center justify-center mr-3">
                                             <i class="fas fa-box text-gray-400"></i>
                                         </div>
                                     @endif
                                     <div>
-                                        <p class="text-sm font-medium text-gray-900">{{ $producto->nombre }}</p>
+                                        <p class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</p>
                                         @if($producto->marca)
                                             <p class="text-xs text-gray-500">{{ $producto->marca }} {{ $producto->modelo }}</p>
                                         @endif

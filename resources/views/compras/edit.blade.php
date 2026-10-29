@@ -232,7 +232,7 @@
                                     <tr data-index="{{ $i }}" data-detalle-id="{{ $detalle->id }}" id="row-detalle-{{ $detalle->id }}">
                                         <td class="px-4 py-3">
                                             <input type="hidden" name="detalles[{{ $i }}][id]" value="{{ $detalle->id }}">
-                                            <p class="font-medium text-gray-900 text-sm">{{ $detalle->producto->nombre }}</p>
+                                            <p class="font-medium text-gray-900 text-sm">{{ \App\Support\EtiquetaProducto::nombre($detalle->producto) }}</p>
                                             <p class="text-xs text-gray-500">{{ $detalle->producto->marca->nombre ?? '' }}</p>
                                         </td>
                                         <td class="px-4 py-3 text-sm text-gray-600">

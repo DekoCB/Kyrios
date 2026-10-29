@@ -158,11 +158,12 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     <p class="font-medium text-gray-800">
-                                        {{ $det->producto->nombre }}
+                                        {{ \App\Support\EtiquetaProducto::nombre($det->producto) }}
                                         @if($det->variante)
                                             <span class="text-xs text-gray-500">({{ $det->variante->nombre_completo }})</span>
                                         @endif
                                     </p>
+                                    <p class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($det->producto, $det->variante) }}</p>
                                     @if($det->contado_at)
                                         <p class="text-xs text-green-600 mt-0.5 flex items-center gap-1">
                                             <i class="fas fa-check-circle"></i>

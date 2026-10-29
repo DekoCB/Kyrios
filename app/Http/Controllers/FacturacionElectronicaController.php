@@ -321,7 +321,7 @@ class FacturacionElectronicaController extends Controller
         // Líneas de detalle
         foreach ($venta->detalles as $i => $det) {
             $linea   = $i + 1;
-            $nombre  = $det->producto?->nombre ?? 'Producto';
+            $nombre  = $det->producto ? \App\Support\EtiquetaProducto::nombrePrincipal($det->producto) : 'Producto';
             if ($det->variante?->nombre_completo) {
                 $nombre .= ' - ' . $det->variante->nombre_completo;
             }

@@ -65,7 +65,8 @@ class VarianteService
      */
     public function crearVarianteKyrios(Producto $producto, array $atributos): ProductoVariante
     {
-        $claves = ['acabado_1', 'acabado_2', 'tamano', 'socket', 'num_lamparas', 'potencia_w', 'diametro', 'alto'];
+        $claves = ['acabado_1', 'acabado_2', 'tamano', 'socket', 'num_lamparas', 'potencia_w', 'diametro', 'alto',
+            'tonalidad_luz', 'tipo_lampara', 'angulo_haz', 'protocolo_regulacion', 'eficiencia_luminica', 'garantia_meses', 'vida_util_horas', 'ip', 'cri'];
         $existe = ProductoVariante::where('producto_id', $producto->id)->get()->contains(function ($v) use ($claves, $atributos) {
             foreach ($claves as $c) {
                 if ((string) ($v->{$c} ?? '') !== (string) ($atributos[$c] ?? '')

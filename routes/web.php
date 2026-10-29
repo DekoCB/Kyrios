@@ -280,6 +280,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ClienteController::class, 'index'])->name('index');
         Route::get('/create', [ClienteController::class, 'create'])->name('create');
         Route::get('/exportar', [ClienteController::class, 'exportar'])->name('exportar');
+        Route::get('/difusion/resumen', [ClienteController::class, 'resumenDifusion'])->name('difusion.resumen');
+        Route::get('/difusion/exportar', [ClienteController::class, 'exportarDifusion'])->name('difusion.exportar');
         Route::post('/', [ClienteController::class, 'store'])->name('store');
         Route::get('/{cliente}', [ClienteController::class, 'show'])->whereNumber('cliente')->name('show');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');

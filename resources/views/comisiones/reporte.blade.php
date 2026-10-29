@@ -226,7 +226,7 @@
                                 </td>
                                 <td class="px-4 py-3">
                                     <p class="text-xs font-mono text-gray-600">{{ $com->detalleVenta?->venta?->codigo ?? '—' }}</p>
-                                    <p class="text-[10px] text-gray-400">{{ $com->detalleVenta?->producto?->nombre ?? '—' }}</p>
+                                    <p class="text-[10px] text-gray-400">{{ $com->detalleVenta?->producto ? \App\Support\EtiquetaProducto::nombre($com->detalleVenta?->producto) : '—' }}</p>
                                     <p class="text-[10px] text-gray-400">{{ $com->detalleVenta?->venta?->fecha ? \Carbon\Carbon::parse($com->detalleVenta->venta->fecha)->format('d/m/Y') : '' }}</p>
                                 </td>
                                 <td class="px-4 py-3 text-xs">
@@ -345,7 +345,7 @@
                                 <td class="px-4 py-3 text-xs text-gray-500">
                                     @if($bonus->tipo_origen === 'fijo')
                                         <p class="font-mono text-gray-600">{{ $bonus->detalleVenta?->venta?->codigo ?? '—' }}</p>
-                                        <p class="text-gray-400">{{ $bonus->detalleVenta?->producto?->nombre ?? '—' }}</p>
+                                        <p class="text-gray-400">{{ $bonus->detalleVenta?->producto ? \App\Support\EtiquetaProducto::nombre($bonus->detalleVenta?->producto) : '—' }}</p>
                                     @else
                                         <p class="text-purple-700 font-medium">{{ $bonus->unidades_periodo }} unidades</p>
                                         @if($bonus->periodo_inicio)

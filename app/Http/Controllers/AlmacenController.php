@@ -87,7 +87,7 @@ class AlmacenController extends Controller
      */
     public function show(Almacen $almacen)
     {
-        $almacen->load(['encargado', 'sucursal', 'movimientos' => fn($q) => $q->with('producto')->latest()->limit(20)]);
+        $almacen->load(['encargado', 'sucursal', 'movimientos' => fn($q) => $q->with('producto', 'variante')->latest()->limit(20)]);
 
         $almacenId = $almacen->id;
 

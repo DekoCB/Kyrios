@@ -111,7 +111,7 @@
                                         @foreach($pedido->detalles as $detalle)
                                             <tr>
                                                 <td class="py-1.5 text-sm text-gray-700">
-                                                    {{ $detalle->producto->nombre ?? '-' }}
+                                                    {{ $detalle->producto ? \App\Support\EtiquetaProducto::nombre($detalle->producto) : '-' }}
                                                     <span class="text-xs text-gray-400">({{ $detalle->producto->codigo ?? '' }})</span>
                                                 </td>
                                                 <td class="py-1.5 text-sm text-center font-semibold">{{ $detalle->cantidad }}</td>

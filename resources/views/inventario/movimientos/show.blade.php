@@ -95,7 +95,8 @@
                         <i class="fas fa-box text-blue-600"></i>
                     </div>
                     <div class="flex-1">
-                        <p class="font-semibold text-gray-900">{{ $movimiento->producto->nombre }}</p>
+                        <p class="font-semibold text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($movimiento->producto) }}</p>
+                        <p class="text-[11px] font-mono text-gray-400">{{ \App\Support\EtiquetaProducto::codigos($movimiento->producto, $movimiento->variante) }}</p>
                         <p class="text-xs text-gray-500 mt-0.5">Código: {{ $movimiento->producto->codigo }}</p>
                     </div>
                 </div>
