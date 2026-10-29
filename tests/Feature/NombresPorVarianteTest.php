@@ -84,4 +84,33 @@ class NombresPorVarianteTest extends TestCase
         $this->assertSame('Cálido', $p->variantes->get(1)->fresh()->nombre_kyrios, 'no pisa nombres ya escritos');
         unlink($ruta);
     }
+
+    public function test_los_codigos_de_danados_que_no_estan_en_la_base_pasan_a_sin_tipo_sin_cambiar_codigos(): void
+    {
+        $this->seed(\Database\Seeders\KyriosCatalogoSeeder::class);
+        $lum = \App\Models\Catalogo\TipoProducto::where('codigo', 'LU')->firstOrFail();
+        $cat = Categoria::firstOrCreate(['codigo' => 'CAT-NV'], ['nombre' => 'Luminaria', 'estado' => 'activo']);
+        $p = Producto::create(['codigo' => 'KY-LU0000-0099', 'nombre' => 'D-1', 'categoria_id' => $cat->id, 'tipo_producto_id' => $lum->id,
+            'tipo_inventario' => 'cantidad', 'stock_minimo' => 0, 'stock_maximo' => 5, 'estado' => 'activo']);
+        ProductoVariante::create(['producto_id' => $p->id, 'sku' => 'KY-LU0000-0099', 'codigo_kyrios' => 'KY-LU0000-0099', 'codigo_fabricante' => 'D-1', 'estado' => 'activo']);
+
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $base = $libro->getActiveSheet();
+        $base->setTitle('Base de Productos');
+        $base->fromArray(['Código', 'Código KYRIOS', '', '', '', 'Tipo de producto'], null, 'A4');
+        $base->fromArray(['OTRO-1', 'KLU01-00001', '', '', '', 'Luminaria'], null, 'A5');
+        $danados = $libro->createSheet();
+        $danados->setTitle('Dañados');
+        $danados->fromArray(['Codigo'], null, 'A1');
+        $danados->fromArray([['D-1'], ['OTRO-1']], null, 'A2');
+        $ruta = tempnam(sys_get_temp_dir(), 'dn') . '.xlsx';
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save($ruta);
+
+        $this->artisan('productos:marcar-sin-tipo', ['archivo' => $ruta])->assertSuccessful();
+
+        $p->refresh();
+        $this->assertSame('Sin tipo', $p->tipoProducto->nombre);
+        $this->assertSame('KY-LU0000-0099', $p->codigo, 'el código no cambia');
+        unlink($ruta);
+    }
 }

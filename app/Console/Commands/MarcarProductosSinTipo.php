@@ -56,6 +56,22 @@ class MarcarProductosSinTipo extends Command
         $ambiguos = array_intersect_key($sinTipo, $conTipo);
         $sinTipo = array_diff_key($sinTipo, $conTipo);
 
+        // Los códigos de la hoja «Dañados» que no existen en «Base de Productos» se crearon como Luminaria
+        // por defecto, pero el Excel no dice qué tipo son: también quedan «Sin tipo».
+        $codigosBase = [];
+        foreach ($filas as $f) {
+            if ($c = LectorBaseProductos::texto($f[LectorBaseProductos::COL_CODIGO] ?? null)) {
+                $codigosBase[$c] = true;
+            }
+        }
+        $soloDanados = 0;
+        foreach ($this->codigosDeDanados($archivo) as $c) {
+            if (!isset($codigosBase[$c])) {
+                $sinTipo[$c] = true;
+                $soloDanados++;
+            }
+        }
+
         $st = TipoProducto::firstOrCreate(['codigo' => 'ST'], ['nombre' => 'Sin tipo', 'caso_codigo' => 'sin_luminaria']);
         $categoria = Categoria::firstOrCreate(['codigo' => 'CAT-ST'], ['nombre' => 'Sin tipo', 'estado' => 'activo']);
 
@@ -81,6 +97,7 @@ class MarcarProductosSinTipo extends Command
                 }
             });
 
+        $this->line("Códigos de «Dañados» que no están en la base del Excel: {$soloDanados}");
         $this->line('Códigos del Excel sin tipo: ' . count($sinTipo) . ' (ambiguos, no se tocan: ' . count($ambiguos) . ')');
         $this->line('Productos a pasar a «Sin tipo»: ' . count($cambiar) . ' | productos mezclados que se dejan: ' . $mixtos);
 
@@ -98,5 +115,28 @@ class MarcarProductosSinTipo extends Command
         $this->info('Listo: ' . count($cambiar) . ' productos marcados como «Sin tipo».');
 
         return self::SUCCESS;
+    }
+
+    /** @return string[] códigos de fabricante de la hoja «Dañados» (columna A, desde la fila 2) */
+    private function codigosDeDanados(string $archivo): array
+    {
+        try {
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
+            $reader->setReadDataOnly(true);
+            $reader->setLoadSheetsOnly('Dañados');
+            $hoja = $reader->load($archivo)->getActiveSheet();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $codigos = [];
+        foreach ($hoja->getRowIterator(2) as $fila) {
+            $v = LectorBaseProductos::texto($hoja->getCell('A' . $fila->getRowIndex())->getValue());
+            if ($v) {
+                $codigos[] = $v;
+            }
+        }
+
+        return array_values(array_unique($codigos));
     }
 }
