@@ -62,7 +62,7 @@ class ProductoController extends Controller
     {
         $almacenFiltroId = $request->filled('almacen_id') ? (int) $request->almacen_id : null;
 
-        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantes:id,producto_id,codigo_fabricante,codigo_kyrios', 'variantesActivas.color', 'variantesActivas.imagenPrincipal']);
+        $query = Producto::with(['categoria', 'tipoProducto', 'tipoLuminaria', 'marca', 'variantes:id,producto_id,codigo_fabricante,codigo_kyrios,nombre_fabrica,nombre_kyrios', 'variantesActivas.color', 'variantesActivas.imagenPrincipal']);
 
         if ($almacenFiltroId) {
             $query->with(['stockAlmacenes' => fn($q) => $q->where('almacen_id', $almacenFiltroId)]);

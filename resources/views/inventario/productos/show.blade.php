@@ -223,6 +223,7 @@
                                     <span class="w-4 h-4 rounded-full bg-gray-200 border border-gray-300 shrink-0"></span>
                                 @endif
                                 <div>
+                                    @if(\App\Support\EtiquetaProducto::nombreVariante($variante) !== '')<span class="text-sm font-semibold text-gray-900 mr-1">{{ \App\Support\EtiquetaProducto::nombreVariante($variante) }}</span>@endif
                                     <span class="text-sm font-medium text-gray-800">{{ $variante->nombre_completo }}</span>
                                     <span class="ml-2 text-xs {{ $variante->codigo_kyrios ? 'text-gray-700 font-semibold' : 'text-gray-400' }} font-mono">{{ $variante->codigo_kyrios ?? $variante->sku }}</span>
                                     @if($variante->codigo_excel)

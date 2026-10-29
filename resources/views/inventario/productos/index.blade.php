@@ -305,6 +305,10 @@
                                         @if(filled($producto->nombre_fabrica) && mb_strtolower(trim($producto->nombre_fabrica)) !== mb_strtolower(\App\Support\EtiquetaProducto::nombrePrincipal($producto)))
                                             <p class="text-xs text-gray-500">Fábrica: {{ $producto->nombre_fabrica }}</p>
                                         @endif
+                                        @php $otrosK = \App\Support\EtiquetaProducto::otrosNombresK($producto); @endphp
+                                        @if($otrosK)
+                                            <p class="text-xs text-gray-600" title="Otros nombres K de sus variantes">También: {{ implode(' · ', array_slice($otrosK, 0, 4)) }}@if(count($otrosK) > 4) <span class="text-gray-400">y {{ count($otrosK) - 4 }} más</span>@endif</p>
+                                        @endif
                                         <p class="text-xs text-gray-500">{{ $producto->tipoProducto->nombre ?? 'Sin tipo' }}@if($producto->tipoLuminaria) · {{ $producto->tipoLuminaria->nombre }}@endif</p>
                                         @if($producto->codigo_barras)
                                             <p class="text-xs text-gray-500">CB: {{ $producto->codigo_barras }}</p>

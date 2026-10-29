@@ -180,7 +180,9 @@ class Producto extends Model
                 ->orWhereHas('variantes', function ($v) use ($termino) {
                     $v->where('codigo_kyrios', 'like', "%{$termino}%")
                         ->orWhere('codigo_fabricante', 'like', "%{$termino}%")
-                        ->orWhere('codigo_excel', 'like', "%{$termino}%");
+                        ->orWhere('codigo_excel', 'like', "%{$termino}%")
+                        ->orWhere('nombre_kyrios', 'like', "%{$termino}%")
+                        ->orWhere('nombre_fabrica', 'like', "%{$termino}%");
                 });
         });
     }

@@ -300,6 +300,7 @@
 
                                         <div class="min-w-0">
                                             <div class="flex items-center gap-2 flex-wrap">
+                                                @if(\App\Support\EtiquetaProducto::nombreVariante($variante) !== '')<span class="font-semibold text-gray-900 text-sm">{{ \App\Support\EtiquetaProducto::nombreVariante($variante) }}</span>@endif
                                                 <span class="font-semibold text-gray-900 text-sm">{{ $variante->nombre_completo }}</span>
                                                 <span class="font-mono text-xs {{ $variante->codigo_kyrios ? 'text-gray-800 font-semibold' : 'text-gray-400' }} bg-gray-100 px-2 py-0.5 rounded">{{ $variante->codigo_kyrios ?? $variante->sku }}</span>
                                                 @if($variante->codigo_excel)

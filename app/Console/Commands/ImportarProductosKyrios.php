@@ -262,6 +262,8 @@ class ImportarProductosKyrios extends Command
                 'sku'               => $codigoKyrios,
                 'codigo_kyrios'     => $codigoKyrios,
                 'correlativo'       => $correlativo,
+                'nombre_fabrica'    => $nombreFab,
+                'nombre_kyrios'     => $nombreK,
                 'codigo_fabricante' => $codFab,
                 'codigo_excel'      => $codExcel,
                 'acabado_1'         => $this->minusculas($this->texto($f[12] ?? null)),

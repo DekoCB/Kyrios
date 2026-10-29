@@ -17,6 +17,8 @@ class ProductoVariante extends Model
         'color_id',
         'capacidad',
         'sku',
+        'nombre_fabrica',
+        'nombre_kyrios',
         'sobreprecio',
         'costo_promedio',
         'ultimo_costo_compra',

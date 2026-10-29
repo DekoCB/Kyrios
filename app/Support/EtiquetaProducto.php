@@ -33,6 +33,47 @@ class EtiquetaProducto
         return $n !== '' && !self::esCodigo($producto, $n) ? $n : self::SIN_NOMBRE;
     }
 
+    /**
+     * Nombre propio de una variante: «Branch (fábrica: Bubo)». Vacío si la variante no trae nombres propios.
+     */
+    public static function nombreVariante($variante): string
+    {
+        $k = self::texto($variante, 'nombre_kyrios');
+        $f = self::texto($variante, 'nombre_fabrica');
+
+        if ($k === '' && $f === '') {
+            return '';
+        }
+        if ($k === '' || ($f !== '' && self::normalizar($f) === self::normalizar($k))) {
+            return $k !== '' ? $k : $f;
+        }
+
+        return $f !== '' ? "{$k} (fábrica: {$f})" : $k;
+    }
+
+    /**
+     * Nombres K de las variantes cargadas que no son el del producto ("Calma" -> Cálido, Centro, Cherry), sin repetir.
+     *
+     * @return string[]
+     */
+    public static function otrosNombresK($producto): array
+    {
+        $variantes = self::variantesCargadas($producto);
+        if (!is_iterable($variantes)) {
+            return [];
+        }
+        $principal = self::normalizar(self::nombrePrincipal($producto));
+        $vistos = [];
+        foreach ($variantes as $v) {
+            $k = self::texto($v, 'nombre_kyrios');
+            if ($k !== '' && self::normalizar($k) !== $principal && !isset($vistos[self::normalizar($k)])) {
+                $vistos[self::normalizar($k)] = $k;
+            }
+        }
+
+        return array_values($vistos);
+    }
+
     /** ¿El producto tiene algún nombre real (K, de fábrica o escrito a mano que no sea un código)? */
     public static function tieneNombre($producto): bool
     {
@@ -141,7 +182,7 @@ class EtiquetaProducto
             return $items;
         }
         $productos = \App\Models\Producto::whereIn('id', $ids)->get(['id', 'codigo', 'nombre', 'nombre_fabrica', 'nombre_kyrios'])->keyBy('id');
-        $variantes = \App\Models\ProductoVariante::whereIn('producto_id', $ids)->get(['id', 'producto_id', 'sku', 'codigo_kyrios', 'codigo_fabricante'])->keyBy('id');
+        $variantes = \App\Models\ProductoVariante::whereIn('producto_id', $ids)->get(['id', 'producto_id', 'sku', 'codigo_kyrios', 'codigo_fabricante', 'nombre_fabrica', 'nombre_kyrios'])->keyBy('id');
 
         return $items->map(function ($item) use ($productos, $variantes) {
             $producto = $productos[$item['id']] ?? null;
@@ -152,7 +193,7 @@ class EtiquetaProducto
             $item['codigos'] = self::codigos($producto, $variantes->firstWhere('producto_id', $producto->id));
             $item['texto_busqueda'] = mb_strtolower(implode(' ', array_filter(array_merge(
                 [$producto->nombre, $producto->nombre_kyrios, $producto->nombre_fabrica, $producto->codigo],
-                $variantes->where('producto_id', $producto->id)->flatMap(fn ($v) => [$v->codigo_kyrios, $v->codigo_fabricante, $v->sku])->all()
+                $variantes->where('producto_id', $producto->id)->flatMap(fn ($v) => [$v->codigo_kyrios, $v->codigo_fabricante, $v->sku, $v->nombre_kyrios, $v->nombre_fabrica])->all()
             ))));
             $item['variantes'] = collect($item['variantes'] ?? [])->map(function ($v) use ($variantes, $producto) {
                 $fila = $variantes[$v['id']] ?? null;
@@ -162,7 +203,8 @@ class EtiquetaProducto
                     $posicion = strpos($etiqueta, ' · ');
                     $detalle = $posicion === false ? '' : trim(substr($etiqueta, $posicion + strlen(' · ')));
                     $v['codigos'] = $codigos;
-                    $v['etiqueta'] = $codigos . ($detalle !== '' ? ' · ' . $detalle : '');
+                    $propio = self::nombreVariante($fila);
+                    $v['etiqueta'] = ($propio !== '' ? $propio . ' · ' : '') . $codigos . ($detalle !== '' ? ' · ' . $detalle : '');
                 }
 
                 return $v;
@@ -177,7 +219,7 @@ class EtiquetaProducto
     {
         $partes = [
             self::texto($producto, 'nombre'), self::texto($producto, 'nombre_kyrios'), self::texto($producto, 'nombre_fabrica'), self::texto($producto, 'codigo'),
-            self::texto($variante, 'codigo_kyrios'), self::texto($variante, 'codigo_fabricante'), self::texto($variante, 'codigo_excel'), self::texto($variante, 'sku'),
+            self::texto($variante, 'codigo_kyrios'), self::texto($variante, 'codigo_fabricante'), self::texto($variante, 'codigo_excel'), self::texto($variante, 'sku'), self::texto($variante, 'nombre_kyrios'), self::texto($variante, 'nombre_fabrica'),
         ];
 
         return mb_strtolower(implode(' ', array_filter($partes)));
@@ -199,6 +241,8 @@ class EtiquetaProducto
                 ->orWhere('codigo', 'like', $like)
                 ->orWhereHas('variantes', function ($v) use ($like) {
                     $v->where('codigo_kyrios', 'like', $like)
+                        ->orWhere('nombre_kyrios', 'like', $like)
+                        ->orWhere('nombre_fabrica', 'like', $like)
                         ->orWhere('codigo_fabricante', 'like', $like)
                         ->orWhere('codigo_excel', 'like', $like)
                         ->orWhere('sku', 'like', $like);
