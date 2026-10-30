@@ -116,7 +116,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento <span x-show="tipoDocumento" class="text-red-500">*</span></label>
                                 <input type="text" name="numero_documento" x-model="numeroDocumento" maxlength="11" :required="!!tipoDocumento" :disabled="!tipoDocumento"
-                                       placeholder="Se completa cuando lo entregue">
+                                       placeholder="Se completa cuando lo entregue"
                                        class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200 @error('numero_documento') border-red-500 @enderror">
                                 @error('numero_documento') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
