@@ -97,6 +97,30 @@ class Pedido extends Model
         return $this->hasOne(Compra::class);
     }
 
+    public function etapas()
+    {
+        return $this->hasMany(PedidoEtapa::class)->orderBy('orden')->orderBy('id');
+    }
+
+    /** Copia las etapas del catálogo a la orden la primera vez; si ya las tiene, no toca nada. */
+    public function asegurarSeguimiento(): void
+    {
+        if ($this->etapas()->exists()) {
+            return;
+        }
+
+        foreach (EtapaSeguimiento::paraTipo($this->tipo_compra ?? 'nacional')->get() as $etapa) {
+            PedidoEtapa::create(['pedido_id' => $this->id, 'etapa_id' => $etapa->id, 'nombre' => $etapa->nombre, 'orden' => $etapa->orden]);
+        }
+        $this->unsetRelation('etapas');
+    }
+
+    /** Primera etapa que todavía no se cumplió: dónde va la orden. */
+    public function getEtapaActualAttribute(): ?PedidoEtapa
+    {
+        return $this->etapas->first(fn ($e) => !$e->completada);
+    }
+
     public function scopePendientes($query)
     {
         return $query->where('estado', 'pendiente');

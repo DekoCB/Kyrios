@@ -14,7 +14,7 @@ class PedidoController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Pedido::with('proveedor', 'usuario', 'almacen', 'compra')
+        $query = Pedido::with('proveedor', 'usuario', 'almacen', 'compra', 'etapas')
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('buscar')) {
@@ -137,6 +137,8 @@ class PedidoController extends Controller
             ]);
         }
 
+        $pedido->asegurarSeguimiento();
+
         return redirect()
             ->route('pedidos.show', $pedido)
             ->with('success', "Orden de compra {$pedido->codigo} creada exitosamente");
@@ -144,7 +146,11 @@ class PedidoController extends Controller
 
     public function show(Pedido $pedido)
     {
-        $pedido->load('proveedor', 'almacen', 'usuario', 'compra', 'detalles.producto', 'detalles.variante');
+        // Las órdenes anteriores al seguimiento reciben sus etapas la primera vez que se abren
+        if ($pedido->estado !== 'cancelado') {
+            $pedido->asegurarSeguimiento();
+        }
+        $pedido->load('proveedor', 'almacen', 'usuario', 'compra', 'detalles.producto', 'detalles.variante', 'etapas');
 
         return view('pedidos.show', compact('pedido'));
     }

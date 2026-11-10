@@ -231,6 +231,98 @@
                 </table>
             </div>
 
+            {{-- Seguimiento por etapas --}}
+            @if($pedido->etapas->isNotEmpty())
+                @php $actual = $pedido->etapa_actual; @endphp
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6" id="seguimiento">
+                    <div class="bg-blue-900 px-6 py-4 flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="text-lg font-bold text-white"><i class="fas fa-route mr-2"></i>Seguimiento de la orden</h2>
+                        <span class="text-sm text-blue-100">
+                            @if($actual)
+                                Va en: <strong>{{ $actual->nombre }}</strong>
+                                @if($actual->dias_restantes !== null)
+                                    · {{ $actual->dias_restantes < 0 ? 'atrasada ' . abs($actual->dias_restantes) . ' día(s)' : ($actual->dias_restantes === 0 ? 'es hoy' : 'faltan ' . $actual->dias_restantes . ' día(s)') }}
+                                @endif
+                            @else
+                                Todas las etapas cumplidas
+                            @endif
+                        </span>
+                    </div>
+
+                    <form method="POST" action="{{ route('pedidos.seguimiento.guardar', $pedido) }}">
+                        @csrf @method('PUT')
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Etapa</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha prevista</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Situación</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notas</th>
+                                        <th class="px-4 py-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach($pedido->etapas as $e)
+                                        <tr class="{{ $e->completada ? 'bg-green-50/50' : '' }}">
+                                            <td class="px-4 py-3 font-medium text-gray-800">
+                                                @if($e->completada)<i class="fas fa-check-circle text-green-500 mr-1"></i>@else<i class="far fa-circle text-gray-300 mr-1"></i>@endif
+                                                {{ $e->nombre }}
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <input type="date" name="etapas[{{ $e->id }}][fecha_prevista]" value="{{ $e->fecha_prevista?->format('Y-m-d') }}"
+                                                       aria-label="Fecha prevista de {{ $e->nombre }}"
+                                                       class="py-1.5 px-2 text-sm border border-gray-300 rounded-lg bg-white">
+                                            </td>
+                                            <td class="px-4 py-3 whitespace-nowrap">
+                                                @if($e->completada)
+                                                    <span class="text-green-700">Cumplida el {{ $e->fecha_real->format('d/m/Y') }}</span>
+                                                @elseif($e->dias_restantes === null)
+                                                    <span class="text-gray-400">Sin fecha</span>
+                                                @elseif($e->dias_restantes < 0)
+                                                    <span class="text-red-600 font-semibold">Atrasada {{ abs($e->dias_restantes) }} día(s)</span>
+                                                @elseif($e->dias_restantes === 0)
+                                                    <span class="text-amber-600 font-semibold">Es hoy</span>
+                                                @else
+                                                    <span class="text-gray-600">Faltan {{ $e->dias_restantes }} día(s)</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <input type="text" name="etapas[{{ $e->id }}][notas]" value="{{ $e->notas }}" maxlength="255" aria-label="Notas de {{ $e->nombre }}"
+                                                       class="w-full min-w-[10rem] py-1.5 px-2 text-sm border border-gray-300 rounded-lg bg-white">
+                                            </td>
+                                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                                @if($e->completada)
+                                                    <button type="submit" form="reabrir-{{ $e->id }}" class="text-xs text-gray-500 hover:text-gray-800 underline">Reabrir</button>
+                                                @else
+                                                    <button type="submit" form="completar-{{ $e->id }}" class="text-xs font-semibold text-green-700 border border-green-300 hover:bg-green-50 rounded-lg px-2.5 py-1">
+                                                        <i class="fas fa-check mr-1"></i>Cumplida hoy
+                                                    </button>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
+                            <button type="submit" class="bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+                                <i class="fas fa-save mr-1"></i>Guardar fechas y notas
+                            </button>
+                        </div>
+                    </form>
+
+                    @foreach($pedido->etapas as $e)
+                        @if($e->completada)
+                            <form id="reabrir-{{ $e->id }}" method="POST" action="{{ route('pedidos.seguimiento.reabrir', [$pedido, $e]) }}">@csrf</form>
+                        @else
+                            <form id="completar-{{ $e->id }}" method="POST" action="{{ route('pedidos.seguimiento.completar', [$pedido, $e]) }}">@csrf</form>
+                        @endif
+                    @endforeach
+                    <p class="px-6 pb-4 text-xs text-gray-400">El sistema avisa cuando una etapa está a 3 días de su fecha prevista y cuando se atrasa.</p>
+                </div>
+            @endif
+
             @if($pedido->observaciones)
                 <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border-l-4 border-yellow-400">
                     <h3 class="text-sm font-semibold text-gray-700 mb-1">

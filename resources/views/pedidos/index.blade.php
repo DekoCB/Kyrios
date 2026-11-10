@@ -164,6 +164,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Esperada</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seguimiento</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
@@ -183,6 +184,19 @@
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $pedido->fecha_esperada ? $pedido->fecha_esperada->format('d/m/Y') : '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $pedido->usuario->name ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-right whitespace-nowrap">{{ $pedido->simbolo_moneda }} {{ number_format((float) $pedido->total, 2) }}</td>
+                                <td class="px-6 py-4 text-xs">
+                                    @php $etapa = in_array($pedido->estado, ['pendiente', 'aprobado'], true) ? $pedido->etapa_actual : null; @endphp
+                                    @if($etapa)
+                                        <span class="font-semibold text-gray-700">{{ $etapa->nombre }}</span>
+                                        @if($etapa->dias_restantes !== null)
+                                            <span class="block {{ $etapa->dias_restantes < 0 ? 'text-red-600' : 'text-gray-500' }}">
+                                                {{ $etapa->dias_restantes < 0 ? 'atrasada ' . abs($etapa->dias_restantes) . ' d' : ($etapa->dias_restantes === 0 ? 'es hoy' : 'faltan ' . $etapa->dias_restantes . ' d') }}
+                                            </span>
+                                        @endif
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4">
                                     @php
                                         $ep = match($pedido->estado) {
@@ -210,7 +224,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="11" class="px-6 py-12 text-center text-gray-500">
                                     <i class="fas fa-clipboard-list text-4xl mb-3 text-gray-300 block"></i>
                                     <p>No hay órdenes de compra registradas</p>
                                     <a href="{{ route('pedidos.create') }}" class="text-blue-600 hover:underline mt-2 inline-block text-sm">Crear la primera orden de compra</a>

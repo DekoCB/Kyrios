@@ -35,3 +35,9 @@ Schedule::command('alertas:stock-minimo')
     ->dailyAt('07:00')
     ->timezone('America/Lima')
     ->withoutOverlapping();
+
+// Fechas: etapas de órdenes de compra, instalaciones, entregas y pedidos internos; cada mañana a las 07:05 hora Lima
+Schedule::command('alertas:fechas')
+    ->dailyAt('07:05')
+    ->timezone('America/Lima')
+    ->withoutOverlapping();

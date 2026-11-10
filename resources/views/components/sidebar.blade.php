@@ -106,6 +106,21 @@
                             <i class="fas fa-dolly mr-3"></i>Pedidos internos
                         </a>
                     </li>
+                    {{-- Cronograma de instalaciones y entregas --}}
+                    <li>
+                        <a href="{{ route('cronograma.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cronograma.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-calendar-days mr-3"></i>Cronograma
+                        </a>
+                    </li>
+
+                    {{-- Etapas de seguimiento de las órdenes de compra --}}
+                    <li>
+                        <a href="{{ route('seguimiento.etapas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('seguimiento.etapas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-route mr-3"></i>Etapas de seguimiento
+                        </a>
+                    </li>
 
                     {{-- Reportes --}}
                     <li>
@@ -724,6 +739,13 @@
                             <i class="fas fa-dolly mr-3"></i>Pedidos internos
                         </a>
                     </li>
+                    {{-- Cronograma de instalaciones y entregas --}}
+                    <li>
+                        <a href="{{ route('cronograma.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cronograma.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-calendar-days mr-3"></i>Cronograma
+                        </a>
+                    </li>
 
                     {{-- Inventario --}}
                     <li>
@@ -910,6 +932,13 @@
                         <a href="{{ route('pedidos-internos.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-dolly mr-3"></i>Pedidos internos
+                        </a>
+                    </li>
+                    {{-- Cronograma de instalaciones y entregas --}}
+                    <li>
+                        <a href="{{ route('cronograma.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cronograma.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-calendar-days mr-3"></i>Cronograma
                         </a>
                     </li>
                     <li>

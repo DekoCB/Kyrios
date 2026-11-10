@@ -318,6 +318,33 @@ Route::middleware('auth')->group(function () {
         Route::get('/{pedido}', [PedidoController::class, 'show'])->name('show');
         Route::patch('/{pedido}/estado', [PedidoController::class, 'cambiarEstado'])->name('cambiar-estado');
         Route::get('/{pedido}/pdf', [PedidoController::class, 'pdf'])->name('pdf');
+        // Seguimiento por etapas de la orden
+        Route::put('/{pedido}/seguimiento', [\App\Http\Controllers\PedidoSeguimientoController::class, 'guardar'])->name('seguimiento.guardar');
+        Route::post('/{pedido}/seguimiento/{etapa}/completar', [\App\Http\Controllers\PedidoSeguimientoController::class, 'completar'])->name('seguimiento.completar');
+        Route::post('/{pedido}/seguimiento/{etapa}/reabrir', [\App\Http\Controllers\PedidoSeguimientoController::class, 'reabrir'])->name('seguimiento.reabrir');
+    });
+
+    // Etapas de seguimiento de las órdenes de compra (las edita Administración)
+    Route::middleware('role:Administración')->prefix('seguimiento/etapas')->name('seguimiento.etapas.')->group(function () {
+        $c = \App\Http\Controllers\EtapaSeguimientoController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::put('/{etapa}', [$c, 'update'])->name('update');
+        Route::delete('/{etapa}', [$c, 'destroy'])->name('destroy');
+    });
+
+    // Cronograma de instalaciones y entregas
+    Route::prefix('cronograma')->name('cronograma.')->middleware('role:Administración,Logística,Operaciones')->group(function () {
+        $c = \App\Http\Controllers\CronogramaController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::post('/{evento}/realizar', [$c, 'realizar'])->whereNumber('evento')->name('realizar');
+        Route::middleware('role:Administración,Logística')->group(function () use ($c) {
+            Route::get('/create', [$c, 'create'])->name('create');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::get('/{evento}/edit', [$c, 'edit'])->whereNumber('evento')->name('edit');
+            Route::put('/{evento}', [$c, 'update'])->whereNumber('evento')->name('update');
+            Route::post('/{evento}/cancelar', [$c, 'cancelar'])->whereNumber('evento')->name('cancelar');
+        });
     });
 
     // ========================================
