@@ -339,7 +339,10 @@
             body: JSON.stringify(Object.assign({ almacen_id: almacen }, SALIDA ? { motivo_id: $('rxMotivo').value, observaciones: $('rxRef').value || null } : { documento_referencia: $('rxRef').value || null }, {
                 lineas: lines.map(function (l) { return { variante_id: l.id, cantidad: l.cantidad }; }) }))
         }).then(function (r) {
-            if (r.ok) {
+            if (r.ok && r.pendiente) {
+                lines = []; $('rxRef').value = ''; update(); beep(true); btn.disabled = false;
+                msg(r.mensaje, 'ok');
+            } else if (r.ok) {
                 var n = lines.reduce(function (s, l) { return s + l.cantidad; }, 0);
                 lines = []; $('rxRef').value = ''; update(); beep(true);
                 msg((SALIDA ? 'Salida registrada: ' : 'Ingreso registrado: ') + n + ' unidades en ' + r.movimientos + ' variante(s).', 'ok');

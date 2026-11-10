@@ -58,6 +58,12 @@ class Producto extends Model
     /**
      * Relación: Un producto pertenece a una categoría
      */
+    /** Usuario que registró el producto. */
+    public function creador()
+    {
+        return $this->belongsTo(User::class, 'creado_por');
+    }
+
     public function categoria()
     {
         return $this->belongsTo(Categoria::class);

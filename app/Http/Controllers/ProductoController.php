@@ -350,6 +350,8 @@ public function create()
         $validated['imagen'] = $request->file('imagen')->store('productos', 'public');
     }
 
+    $validated['creado_por'] = auth()->id();
+
     \DB::transaction(function () use ($validated, $request, $varianteInicial, $codigoPrimeraVariante, $correlativoPrimera) {
         // Crear producto
         $producto = Producto::create($validated);
@@ -542,6 +544,7 @@ public function create()
     }
 
     // Actualizar producto
+    $validated['modificado_por'] = auth()->id();
     $producto->update($validated);
 
     // Actualizar código de barras principal si cambió

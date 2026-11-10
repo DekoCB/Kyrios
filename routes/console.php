@@ -29,3 +29,9 @@ Schedule::call(function () {
     ->timezone('America/Lima')
     ->name('cuentas:marcar-vencidas')
     ->withoutOverlapping();
+
+// Avisos de stock mínimo: cada mañana a las 07:00 hora Lima
+Schedule::command('alertas:stock-minimo')
+    ->dailyAt('07:00')
+    ->timezone('America/Lima')
+    ->withoutOverlapping();

@@ -84,6 +84,12 @@
                                 <span class="text-sm font-medium text-gray-500">Código:</span>
                                 <span class="text-sm text-gray-900 font-mono">{{ $producto->codigo }}</span>
                             </div>
+                            @if($producto->creador)
+                            <div class="flex justify-between">
+                                <span class="text-sm font-medium text-gray-500">Registrado por:</span>
+                                <span class="text-sm text-gray-900">{{ $producto->creador->name }} · {{ $producto->created_at?->format('d/m/Y') }}</span>
+                            </div>
+                            @endif
                             
                             @if($producto->codigo_barras)
                             <div class="flex justify-between">

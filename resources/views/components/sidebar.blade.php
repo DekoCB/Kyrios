@@ -55,6 +55,16 @@
                     <p class="text-sm font-semibold">{{ auth()->user()->name }}</p>
                     <p class="text-xs text-blue-300">{{ $role }}</p>
                 </a>
+                @if($role !== 'Cliente')
+                @php $avisosSinLeer = auth()->user()->unreadNotifications()->count(); @endphp
+                <a href="{{ route('notificaciones.index') }}" title="Avisos" aria-label="Avisos{{ $avisosSinLeer ? ' (' . $avisosSinLeer . ' sin leer)' : '' }}"
+                   class="relative w-9 h-9 flex items-center justify-center rounded-lg text-blue-300 hover:text-white hover:bg-blue-700 transition-colors shrink-0">
+                    <i class="fas fa-bell"></i>
+                    @if($avisosSinLeer > 0)
+                        <span class="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">{{ $avisosSinLeer > 99 ? '99+' : $avisosSinLeer }}</span>
+                    @endif
+                </a>
+                @endif
                 <form method="POST" action="{{ route('logout') }}" class="shrink-0">
                     @csrf
                     <button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión"
@@ -77,6 +87,18 @@
                         </a>
                     </li>
                     
+                    {{-- Aprobaciones pendientes --}}
+                    @php $aprobPendientes = \App\Models\Aprobacion::pendientes()->count(); @endphp
+                    <li>
+                        <a href="{{ route('aprobaciones.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('aprobaciones.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-clipboard-check mr-3"></i>Aprobaciones
+                            @if($aprobPendientes > 0)
+                                <span class="ml-auto bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $aprobPendientes }}</span>
+                            @endif
+                        </a>
+                    </li>
+
                     {{-- Reportes --}}
                     <li>
                         <button @click="reportesOpen = !reportesOpen"
@@ -676,6 +698,14 @@
                         <a href="{{ route('logistica.dashboard') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('logistica.dashboard') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-tachometer-alt mr-3"></i>Dashboard
+                        </a>
+                    </li>
+
+                    {{-- Solicitudes que esperan al administrador --}}
+                    <li>
+                        <a href="{{ route('aprobaciones.mias') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('aprobaciones.mias') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-clipboard-check mr-3"></i>Mis solicitudes
                         </a>
                     </li>
 

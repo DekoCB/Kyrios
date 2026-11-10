@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckRole::class,
             'master' => VerifyMasterPassword::class,
+            'aprobacion' => \App\Http\Middleware\ExigirAprobacion::class,
         ]);
         //
     })

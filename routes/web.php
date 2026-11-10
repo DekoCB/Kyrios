@@ -121,6 +121,21 @@ Route::middleware(['auth', 'role:Administración'])->prefix('users')->name('user
 */
 Route::middleware('auth')->group(function () {
 
+    // Avisos internos (campanita del menú)
+    // Aprobaciones del administrador: la bandeja es solo de Administración; cada rol ve sus propias solicitudes
+    Route::middleware('role:Administración')->prefix('aprobaciones')->name('aprobaciones.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\AprobacionController::class, 'index'])->name('index');
+        Route::post('/{aprobacion}/aprobar', [\App\Http\Controllers\AprobacionController::class, 'aprobar'])->name('aprobar');
+        Route::post('/{aprobacion}/rechazar', [\App\Http\Controllers\AprobacionController::class, 'rechazar'])->name('rechazar');
+    });
+
+    Route::middleware('role:Administración,Contador,Logística,Operaciones')->group(function () {
+        Route::get('/aprobaciones/mias', [\App\Http\Controllers\AprobacionController::class, 'mias'])->name('aprobaciones.mias');
+        Route::get('/notificaciones', [\App\Http\Controllers\NotificacionController::class, 'index'])->name('notificaciones.index');
+        Route::post('/notificaciones/leer-todas', [\App\Http\Controllers\NotificacionController::class, 'leerTodas'])->name('notificaciones.leer-todas');
+        Route::get('/notificaciones/{id}', [\App\Http\Controllers\NotificacionController::class, 'abrir'])->name('notificaciones.abrir');
+    });
+
     /*
     |--------------------------------------------------------------------------
     | DASHBOARDS POR ROL
@@ -171,7 +186,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/buscar', [\App\Http\Controllers\RecepcionEscanerController::class, 'buscar'])->name('buscar');
             Route::get('/variantes', [\App\Http\Controllers\RecepcionEscanerController::class, 'variantes'])->name('variantes');
             Route::post('/asociar', [\App\Http\Controllers\RecepcionEscanerController::class, 'asociar'])->name('asociar');
-            Route::post('/confirmar', [\App\Http\Controllers\RecepcionEscanerController::class, 'confirmar'])->name('confirmar');
+            Route::post('/confirmar', [\App\Http\Controllers\RecepcionEscanerController::class, 'confirmar'])->middleware('aprobacion:ingreso_escaner')->name('confirmar');
         });
 
         // SALIDA RÁPIDA CON ESCÁNER (PDA): reutiliza la búsqueda y asociación de códigos de la recepción
@@ -194,10 +209,10 @@ Route::middleware('auth')->group(function () {
         // PRODUCTOS
             Route::middleware('role:Administración,Logística')->group(function () {
                 Route::get('/productos/create', [ProductoController::class, 'create'])->name('productos.create');
-                Route::post('/productos', [ProductoController::class, 'store'])->name('productos.store');
+                Route::post('/productos', [ProductoController::class, 'store'])->middleware('aprobacion:producto_nuevo')->name('productos.store');
                 Route::get('/productos/{producto}/edit', [ProductoController::class, 'edit'])->name('productos.edit');
-                Route::put('/productos/{producto}', [ProductoController::class, 'update'])->name('productos.update');
-                Route::delete('/productos/{producto}', [ProductoController::class, 'destroy'])->middleware('role:Administración')->name('productos.destroy');
+                Route::put('/productos/{producto}', [ProductoController::class, 'update'])->middleware('aprobacion:producto_edicion')->name('productos.update');
+                Route::delete('/productos/{producto}', [ProductoController::class, 'destroy'])->middleware('aprobacion:producto_eliminacion')->name('productos.destroy');
                 Route::patch('/productos/{producto}/reactivar', [ProductoController::class, 'reactivar'])->middleware('role:Administración')->name('productos.reactivar');
                 
                 // Gestión de códigos de barras múltiples
@@ -222,7 +237,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:Administración,Logística')->group(function () {
             Route::get('/movimientos', [MovimientoInventarioController::class, 'index'])->name('movimientos.index');
             Route::get('/movimientos/create', [MovimientoInventarioController::class, 'create'])->name('movimientos.create');
-            Route::post('/movimientos', [MovimientoInventarioController::class, 'store'])->name('movimientos.store');
+            Route::post('/movimientos', [MovimientoInventarioController::class, 'store'])->middleware('aprobacion:ingreso_movimiento,tipo_movimiento,ingreso,transferencia')->name('movimientos.store');
             Route::get('/movimientos/{movimiento}', [MovimientoInventarioController::class, 'show'])->name('movimientos.show');
             Route::get('/api/stock-actual', [MovimientoInventarioController::class, 'getStockActual'])->name('movimientos.stock-actual');
         });
@@ -241,9 +256,9 @@ Route::middleware('auth')->group(function () {
         // VARIANTES DE PRODUCTOS
         Route::middleware('role:Administración,Logística')->group(function () {
             Route::get('/productos/{producto}/variantes', [ProductoController::class, 'variantes'])->name('productos.variantes');
-            Route::post('/productos/{producto}/variantes', [ProductoController::class, 'storeVariante'])->name('productos.variantes.store');
-            Route::put('/productos/variantes/{variante}', [ProductoController::class, 'updateVariante'])->name('productos.variantes.update');
-            Route::delete('/productos/variantes/{variante}', [ProductoController::class, 'destroyVariante'])->name('productos.variantes.destroy');
+            Route::post('/productos/{producto}/variantes', [ProductoController::class, 'storeVariante'])->middleware('aprobacion:variante_nueva')->name('productos.variantes.store');
+            Route::put('/productos/variantes/{variante}', [ProductoController::class, 'updateVariante'])->middleware('aprobacion:variante_edicion')->name('productos.variantes.update');
+            Route::delete('/productos/variantes/{variante}', [ProductoController::class, 'destroyVariante'])->middleware('aprobacion:variante_eliminacion')->name('productos.variantes.destroy');
             Route::post('/productos/variantes/{variante}/imagenes', [ProductoController::class, 'storeImagenes'])->name('productos.variantes.imagenes.store');
             Route::delete('/productos/imagenes/{imagen}', [ProductoController::class, 'destroyImagen'])->name('productos.imagenes.destroy');
             Route::post('/productos/imagenes/{imagen}/principal', [ProductoController::class, 'principalImagen'])->name('productos.imagenes.principal');
@@ -309,10 +324,10 @@ Route::middleware('auth')->group(function () {
     // ========================================
     Route::prefix('compras')->name('compras.')->middleware('role:Administración,Logística')->group(function () {
         Route::get('/create', [CompraController::class, 'create'])->name('create');
-        Route::post('/', [CompraController::class, 'store'])->name('store');
+        Route::post('/', [CompraController::class, 'store'])->middleware('aprobacion:compra')->name('store');
         Route::get('buscar-productos', [CompraController::class, 'buscarProductos'])->name('buscar-productos');
         Route::get('producto/{id}', [CompraController::class, 'getProductoDetalle'])->name('producto-detalle');
-        Route::post('crear-producto-rapido', [CompraController::class, 'crearProductoRapido'])->name('crear-producto-rapido');
+        Route::post('crear-producto-rapido', [CompraController::class, 'crearProductoRapido'])->middleware('aprobacion:producto_nuevo')->name('crear-producto-rapido');
         Route::get('tipo-cambio', [CompraController::class, 'tipoCambio'])->name('tipo-cambio');
         Route::get('/{compra}/edit', [CompraController::class, 'edit'])->name('edit');
         Route::put('/{compra}', [CompraController::class, 'update'])->name('update');
@@ -482,7 +497,7 @@ Route::middleware('auth')->group(function () {
         // Crear, recibir y anular: Administración y Logística
         Route::middleware('role:Administración,Logística')->group(function () {
             Route::get('/create', [TrasladoController::class, 'create'])->name('create');
-            Route::post('/', [TrasladoController::class, 'store'])->name('store');
+            Route::post('/', [TrasladoController::class, 'store'])->middleware('aprobacion:traslado')->name('store');
             Route::get('/buscar-productos', [TrasladoController::class, 'buscarProductos'])->name('buscar-productos');
             Route::get('/buscar-destinatario', [TrasladoController::class, 'buscarDestinatario'])->name('buscar-destinatario');
             Route::get('/api/ruc/{ruc}', [TrasladoController::class, 'buscarRuc'])->name('api.ruc');
