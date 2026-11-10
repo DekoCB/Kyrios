@@ -108,6 +108,9 @@ class CompraController extends Controller
                     'codigo'       => $pedido->codigo,
                     'proveedor_id' => $pedido->proveedor_id,
                     'almacen_id'   => $pedido->almacen_id,
+                    'tipo_compra'  => $pedido->es_internacional ? 'importacion' : 'local',
+                    'moneda'       => $pedido->moneda,
+                    'tipo_cambio'  => $pedido->tipo_cambio,
                     'detalles'     => $pedido->detalles->map(fn($d) => [
                         'producto_id'         => $d->producto_id,
                         'variante_id'         => $d->variante_id,

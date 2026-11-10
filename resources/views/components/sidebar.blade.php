@@ -99,6 +99,14 @@
                         </a>
                     </li>
 
+                    {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('pedidos-internos.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-dolly mr-3"></i>Pedidos internos
+                        </a>
+                    </li>
+
                     {{-- Reportes --}}
                     <li>
                         <button @click="reportesOpen = !reportesOpen"
@@ -258,7 +266,7 @@
                             <li>
                                 <a href="{{ route('pedidos.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos.*') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-clipboard-list mr-3 text-sm"></i>Pedidos a Proveedor
+                                    <i class="fas fa-clipboard-list mr-3 text-sm"></i>Órdenes de compra
                                 </a>
                             </li>
                         </ul>
@@ -709,6 +717,14 @@
                         </a>
                     </li>
 
+                    {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('pedidos-internos.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-dolly mr-3"></i>Pedidos internos
+                        </a>
+                    </li>
+
                     {{-- Inventario --}}
                     <li>
                         <button @click="inventarioOpen = !inventarioOpen"
@@ -802,7 +818,7 @@
                             <li>
                                 <a href="{{ route('pedidos.index') }}"
                                     class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos.*') ? 'bg-blue-600' : '' }}">
-                                    <i class="fas fa-clipboard-list mr-3 text-sm"></i>Pedidos a Proveedor
+                                    <i class="fas fa-clipboard-list mr-3 text-sm"></i>Órdenes de compra
                                 </a>
                             </li>
                         </ul>
@@ -886,6 +902,14 @@
                         <a href="{{ route('operaciones.dashboard') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('operaciones.dashboard') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-tachometer-alt mr-3"></i>Dashboard
+                        </a>
+                    </li>
+
+                    {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('pedidos-internos.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-dolly mr-3"></i>Pedidos internos
                         </a>
                     </li>
                     <li>

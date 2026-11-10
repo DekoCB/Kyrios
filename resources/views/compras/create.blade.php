@@ -2600,6 +2600,15 @@ function guardarNuevoProducto() {
 (function precargarDesdePedido() {
     const detalles = @json($pedidoOrigen['detalles']);
 
+    // Tipo de compra, moneda y tipo de cambio vienen de la orden de compra
+    const origen = {!! json_encode(\Illuminate\Support\Arr::only($pedidoOrigen, ['tipo_compra', 'moneda', 'tipo_cambio'])) !!};
+    const radioTipo = document.querySelector('input[name="tipo_compra"][value="' + origen.tipo_compra + '"]');
+    if (radioTipo && !radioTipo.checked) { radioTipo.checked = true; cambiarTipoCompra(origen.tipo_compra); }
+    const selMoneda = document.getElementById('tipo_moneda');
+    if (selMoneda && origen.moneda) { selMoneda.value = origen.moneda; toggleTipoCambio(origen.moneda); }
+    const inputTc = document.getElementById('tipo_cambio');
+    if (inputTc && origen.tipo_cambio) { inputTc.value = origen.tipo_cambio; }
+
     detalles.forEach(function (d) {
         const cantidad = parseInt(d.cantidad) || 1;
         const inicio = contadorProductos;

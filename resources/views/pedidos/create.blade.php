@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuevo Pedido - {{ config('app.name') }}</title>
+    <title>Nueva orden de compra - {{ config('app.name') }}</title>
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -15,8 +15,8 @@
 
     <div class="md:ml-64 p-4 md:p-8">
         <x-header
-            title="Crear Pedido"
-            subtitle="Solicitud de mercadería a proveedor"
+            title="Nueva orden de compra"
+            subtitle="Orden de compra a proveedor nacional o del exterior"
         />
 
         @if($errors->any())
@@ -36,7 +36,7 @@
                 <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div class="bg-blue-900 px-6 py-4">
                         <h2 class="text-xl font-bold text-white">
-                            <i class="fas fa-info-circle mr-2"></i>Datos del Pedido
+                            <i class="fas fa-info-circle mr-2"></i>Datos de la orden
                         </h2>
                     </div>
                     <div class="p-6">
@@ -116,6 +116,47 @@
                                 <input type="date" x-model="fecha_esperada"
                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de orden <span class="text-red-500">*</span></label>
+                                <select x-model="tipo_compra" @change="onTipoChange()"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                                    <option value="nacional">Nacional (proveedor en el Perú, con IGV)</option>
+                                    <option value="internacional">Internacional (importación)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Moneda <span class="text-red-500">*</span></label>
+                                <select x-model="moneda"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                                    <option value="PEN">Soles (S/)</option>
+                                    <option value="USD">Dólares (US$)</option>
+                                </select>
+                            </div>
+                            <div x-show="moneda === 'USD'">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de cambio <span x-show="tipo_compra === 'nacional'" class="text-red-500">*</span></label>
+                                <input type="number" x-model="tipo_cambio" min="0.001" step="0.001" placeholder="Ej. 3.750"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div x-show="tipo_compra === 'internacional'">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Incoterm</label>
+                                <select x-model="incoterm"
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                                    <option value="">Sin definir</option>
+                                    @foreach(\App\Models\Pedido::INCOTERMS as $inco)
+                                        <option value="{{ $inco }}">{{ $inco }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Condición de pago</label>
+                                <input type="text" x-model="condicion_pago" maxlength="120" placeholder="Ej. 30% adelanto, saldo contra embarque"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Lugar de entrega</label>
+                                <input type="text" x-model="lugar_entrega" maxlength="255" placeholder="Ej. Almacén Lima, Callao"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
                                 <textarea x-model="observaciones" rows="2" placeholder="Notas para el proveedor..."
@@ -129,7 +170,7 @@
                 <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div class="bg-blue-900 px-6 py-4 flex justify-between items-center">
                         <h2 class="text-xl font-bold text-white">
-                            <i class="fas fa-boxes mr-2"></i>Productos del Pedido
+                            <i class="fas fa-boxes mr-2"></i>Productos de la orden
                         </h2>
                         <button type="button" @click="agregarDetalle()"
                                 class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors">
@@ -141,7 +182,7 @@
                             <div class="text-center py-12">
                                 <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
                                 <p class="text-lg font-medium text-gray-500">No hay productos agregados</p>
-                                <p class="text-sm text-gray-400 mt-2">Haga clic en "Agregar Producto" para comenzar a crear el pedido</p>
+                                <p class="text-sm text-gray-400 mt-2">Haga clic en "Agregar Producto" para comenzar a crear la orden</p>
                             </div>
                         </template>
 
@@ -209,14 +250,24 @@
                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white">
                                     </div>
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-2">Precio Referencial</label>
-                                        <input type="number" x-model.number="detalle.precio_referencial" min="0" step="0.01" placeholder="Opcional"
+                                        <label class="block text-xs font-medium text-gray-700 mb-2">Precio unitario (<span x-text="moneda === 'USD' ? 'US$' : 'S/'"></span><span x-show="tipo_compra === 'nacional'"> sin IGV</span>)</label>
+                                        <input type="number" x-model.number="detalle.precio_referencial" min="0" step="0.01" placeholder="0.00"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white">
                                     </div>
                                 </div>
                             </div>
                         </template>
                     </div>
+                </div>
+
+                {{-- Totales --}}
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <dl class="max-w-xs ml-auto space-y-1 text-sm">
+                        <div class="flex justify-between"><dt class="text-gray-500">Subtotal</dt><dd x-text="simbolo + ' ' + subtotal.toFixed(2)"></dd></div>
+                        <div class="flex justify-between" x-show="tipo_compra === 'nacional'"><dt class="text-gray-500">IGV (18%)</dt><dd x-text="simbolo + ' ' + igv.toFixed(2)"></dd></div>
+                        <div class="flex justify-between border-t border-gray-200 pt-2 text-base font-bold"><dt>Total</dt><dd x-text="simbolo + ' ' + total.toFixed(2)"></dd></div>
+                    </dl>
+                    <p class="text-xs text-gray-400 text-right mt-2" x-show="tipo_compra === 'internacional'">Los impuestos de importación se registran al recibir la mercadería.</p>
                 </div>
 
                 {{-- Botones --}}
@@ -227,7 +278,7 @@
                     </a>
                     <button type="submit" :disabled="guardando || detalles.length === 0"
                             class="px-6 py-3 bg-blue-900 text-white rounded-lg font-semibold hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                        <span x-show="!guardando"><i class="fas fa-save mr-2"></i>Crear Pedido</span>
+                        <span x-show="!guardando"><i class="fas fa-save mr-2"></i>Crear orden de compra</span>
                         <span x-show="guardando"><i class="fas fa-spinner fa-spin mr-2"></i>Guardando...</span>
                     </button>
                 </div>
@@ -250,6 +301,12 @@
             fecha: '{{ old("fecha", date("Y-m-d")) }}',
             fecha_esperada: '{{ old("fecha_esperada") }}',
             observaciones: '{{ old("observaciones") }}',
+            tipo_compra: '{{ old("tipo_compra", "nacional") }}',
+            moneda: '{{ old("moneda", "PEN") }}',
+            tipo_cambio: '{{ old("tipo_cambio") }}',
+            incoterm: '{{ old("incoterm") }}',
+            condicion_pago: '{{ old("condicion_pago") }}',
+            lugar_entrega: '{{ old("lugar_entrega") }}',
             detalles: [],
             guardando: false,
             _uid: 0,
@@ -273,6 +330,17 @@
                 this.proveedor_id = '';
                 this.proveedorSeleccionado = null;
             },
+
+            // Una orden internacional se cotiza normalmente en dólares y no lleva IGV
+            onTipoChange() {
+                if (this.tipo_compra === 'internacional') { this.moneda = 'USD'; } else { this.incoterm = ''; }
+            },
+            get simbolo() { return this.moneda === 'USD' ? 'US$' : 'S/'; },
+            get subtotal() {
+                return this.detalles.reduce((s, d) => s + (Number(d.cantidad) || 0) * (Number(d.precio_referencial) || 0), 0);
+            },
+            get igv() { return this.tipo_compra === 'nacional' ? Math.round(this.subtotal * 18) / 100 : 0; },
+            get total() { return this.subtotal + this.igv; },
 
             agregarDetalle() {
                 this.detalles.push({
@@ -314,6 +382,7 @@
                 if (!this.proveedor_id) { alert('Seleccione un proveedor'); return; }
                 if (!this.almacen_id) { alert('Seleccione el almacén de destino'); return; }
                 if (!this.fecha) { alert('Ingrese la fecha'); return; }
+                if (this.moneda === 'USD' && this.tipo_compra === 'nacional' && !this.tipo_cambio) { alert('Indique el tipo de cambio: la orden está en dólares'); return; }
                 if (this.detalles.length === 0) { alert('Agregue al menos un producto'); return; }
                 for (let i = 0; i < this.detalles.length; i++) {
                     const d = this.detalles[i];
@@ -332,6 +401,12 @@
                 add('fecha', this.fecha);
                 add('fecha_esperada', this.fecha_esperada);
                 add('observaciones', this.observaciones);
+                add('tipo_compra', this.tipo_compra);
+                add('moneda', this.moneda);
+                add('tipo_cambio', this.moneda === 'USD' ? this.tipo_cambio : '');
+                add('incoterm', this.tipo_compra === 'internacional' ? this.incoterm : '');
+                add('condicion_pago', this.condicion_pago);
+                add('lugar_entrega', this.lugar_entrega);
                 this.detalles.forEach((d, i) => {
                     add(`detalles[${i}][producto_id]`, d.producto_id);
                     add(`detalles[${i}][variante_id]`, d.variante_id);

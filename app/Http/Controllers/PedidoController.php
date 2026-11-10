@@ -29,6 +29,10 @@ class PedidoController extends Controller
             $query->where('estado', $request->estado);
         }
 
+        if (in_array($request->tipo_compra, ['nacional', 'internacional'], true)) {
+            $query->where('tipo_compra', $request->tipo_compra);
+        }
+
         if ($request->filled('fecha_desde')) {
             $query->whereDate('fecha', '>=', $request->fecha_desde);
         }
@@ -76,6 +80,12 @@ class PedidoController extends Controller
             'fecha' => 'required|date',
             'fecha_esperada' => 'nullable|date|after_or_equal:fecha',
             'observaciones' => 'nullable|string',
+            'tipo_compra' => 'nullable|in:nacional,internacional',
+            'moneda' => 'nullable|in:PEN,USD',
+            'tipo_cambio' => 'nullable|numeric|min:0.001|max:99',
+            'incoterm' => 'nullable|in:' . implode(',', Pedido::INCOTERMS),
+            'condicion_pago' => 'nullable|string|max:120',
+            'lugar_entrega' => 'nullable|string|max:255',
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'required|exists:productos,id',
             'detalles.*.variante_id' => 'nullable|exists:producto_variantes,id',
@@ -91,13 +101,29 @@ class PedidoController extends Controller
             }
         }
 
-        $pedido = Pedido::create([
+        $tipo = $validated['tipo_compra'] ?? 'nacional';
+        $moneda = $validated['moneda'] ?? ($tipo === 'internacional' ? 'USD' : 'PEN');
+
+        // En dólares sobre una orden nacional hace falta el tipo de cambio para convertir a soles
+        if ($moneda === 'USD' && $tipo === 'nacional' && empty($validated['tipo_cambio'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['tipo_cambio' => 'Indica el tipo de cambio: la orden está en dólares.']);
+        }
+
+        $totales = Pedido::calcularTotales($validated['detalles'], $tipo);
+
+        $pedido = Pedido::create($totales + [
+            'tipo_compra' => $tipo,
+            'moneda' => $moneda,
+            'tipo_cambio' => $validated['tipo_cambio'] ?? null,
+            'incoterm' => $tipo === 'internacional' ? ($validated['incoterm'] ?? null) : null,
+            'condicion_pago' => $validated['condicion_pago'] ?? null,
+            'lugar_entrega' => $validated['lugar_entrega'] ?? null,
             'proveedor_id' => $validated['proveedor_id'],
             'almacen_id' => $validated['almacen_id'],
             'user_id' => auth()->id(),
             'fecha' => $validated['fecha'],
-            'fecha_esperada' => $validated['fecha_esperada'],
-            'observaciones' => $validated['observaciones'],
+            'fecha_esperada' => $validated['fecha_esperada'] ?? null,
+            'observaciones' => $validated['observaciones'] ?? null,
             'estado' => 'pendiente',
         ]);
 
@@ -112,8 +138,8 @@ class PedidoController extends Controller
         }
 
         return redirect()
-            ->route('pedidos.index')
-            ->with('success', 'Pedido creado exitosamente');
+            ->route('pedidos.show', $pedido)
+            ->with('success', "Orden de compra {$pedido->codigo} creada exitosamente");
     }
 
     public function show(Pedido $pedido)
@@ -121,6 +147,17 @@ class PedidoController extends Controller
         $pedido->load('proveedor', 'almacen', 'usuario', 'compra', 'detalles.producto', 'detalles.variante');
 
         return view('pedidos.show', compact('pedido'));
+    }
+
+    /** Orden de compra lista para imprimir o enviar al proveedor. */
+    public function pdf(Pedido $pedido)
+    {
+        $pedido->load('proveedor', 'almacen', 'usuario', 'detalles.producto', 'detalles.variante');
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.orden-compra', [
+            'pedido' => $pedido,
+            'empresa' => \App\Models\Empresa::instancia(),
+        ])->setPaper('a4')->stream("{$pedido->codigo}.pdf");
     }
 
     /**

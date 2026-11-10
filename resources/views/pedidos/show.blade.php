@@ -14,8 +14,8 @@
 
     <div class="md:ml-64 p-4 md:p-8">
         <x-header 
-            title="Detalle de Pedido" 
-            subtitle="Información completa del pedido" 
+            title="Orden de compra {{ $pedido->codigo }}" 
+            :subtitle="$pedido->es_internacional ? 'Proveedor del exterior' : 'Proveedor nacional'" 
         />
 
         @if(session('success'))
@@ -32,7 +32,7 @@
         <div class="max-w-5xl">
             <div class="mb-6 flex justify-between items-center">
                 <a href="{{ route('pedidos.index') }}" class="text-blue-600 hover:text-blue-800 text-sm">
-                    <i class="fas fa-arrow-left mr-1"></i>Volver a pedidos
+                    <i class="fas fa-arrow-left mr-1"></i>Volver a órdenes de compra
                 </a>
                 @php
                     $ep = match($pedido->estado) {
@@ -43,16 +43,22 @@
                         default => 'bg-gray-100 text-gray-800',
                     };
                 @endphp
-                <span class="inline-flex px-3 py-1.5 text-sm font-semibold rounded-full {{ $ep }}">
-                    {{ ucfirst($pedido->estado) }}
-                </span>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('pedidos.pdf', $pedido) }}" target="_blank"
+                       class="text-sm font-semibold text-blue-700 border border-blue-300 hover:bg-blue-50 rounded-lg px-3 py-1.5">
+                        <i class="fas fa-file-pdf mr-1"></i>Imprimir PDF
+                    </a>
+                    <span class="inline-flex px-3 py-1.5 text-sm font-semibold rounded-full {{ $ep }}">
+                        {{ ucfirst($pedido->estado) }}
+                    </span>
+                </div>
             </div>
 
             {{-- Info y Cambio de Estado --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white rounded-xl shadow-sm border-l-4 border-blue-500 p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-info-circle mr-2 text-blue-600"></i>Información del Pedido
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i>Información de la orden
                     </h3>
                     <dl class="space-y-3 text-sm">
                         <div class="flex justify-between"><dt class="text-gray-500">Código:</dt><dd class="font-mono font-bold text-blue-900">{{ $pedido->codigo }}</dd></div>
@@ -64,6 +70,17 @@
                                 </a>
                             </dd>
                         </div>
+                        <div class="flex justify-between"><dt class="text-gray-500">Tipo:</dt><dd class="font-semibold">{{ $pedido->es_internacional ? 'Internacional' : 'Nacional' }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-gray-500">Moneda:</dt><dd>{{ $pedido->moneda === 'USD' ? 'Dólares (USD)' : 'Soles (PEN)' }}@if($pedido->tipo_cambio) · T.C. {{ number_format((float) $pedido->tipo_cambio, 3) }}@endif</dd></div>
+                        @if($pedido->incoterm)
+                            <div class="flex justify-between"><dt class="text-gray-500">Incoterm:</dt><dd>{{ $pedido->incoterm }}</dd></div>
+                        @endif
+                        @if($pedido->condicion_pago)
+                            <div class="flex justify-between"><dt class="text-gray-500">Condición de pago:</dt><dd>{{ $pedido->condicion_pago }}</dd></div>
+                        @endif
+                        @if($pedido->lugar_entrega)
+                            <div class="flex justify-between"><dt class="text-gray-500">Lugar de entrega:</dt><dd>{{ $pedido->lugar_entrega }}</dd></div>
+                        @endif
                         <div class="flex justify-between"><dt class="text-gray-500">Almacén destino:</dt><dd class="font-semibold">{{ $pedido->almacen->nombre ?? 'No especificado' }}</dd></div>
                         <div class="flex justify-between"><dt class="text-gray-500">Fecha:</dt><dd>{{ $pedido->fecha->format('d/m/Y') }}</dd></div>
                         <div class="flex justify-between"><dt class="text-gray-500">Fecha Esperada:</dt><dd>{{ $pedido->fecha_esperada ? $pedido->fecha_esperada->format('d/m/Y') : 'No especificada' }}</dd></div>
@@ -166,7 +183,7 @@
             <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
                 <div class="bg-blue-900 px-6 py-4">
                     <h2 class="text-lg font-bold text-white">
-                        <i class="fas fa-boxes mr-2"></i>Productos Solicitados
+                        <i class="fas fa-boxes mr-2"></i>Productos de la orden
                     </h2>
                 </div>
                 <table class="min-w-full divide-y divide-gray-200">
@@ -175,7 +192,8 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Cantidad</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio Ref.</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">P. unitario</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Importe</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
@@ -194,14 +212,22 @@
                                 <td class="px-6 py-4 text-sm text-center font-bold">{{ $detalle->cantidad }}</td>
                                 <td class="px-6 py-4 text-sm text-right">
                                     @if($detalle->precio_referencial)
-                                        S/ {{ number_format($detalle->precio_referencial, 2) }}
+                                        {{ $pedido->simbolo_moneda }} {{ number_format($detalle->precio_referencial, 2) }}
                                     @else
                                         <span class="text-gray-400">-</span>
                                     @endif
                                 </td>
+                                <td class="px-6 py-4 text-sm text-right">{{ $pedido->simbolo_moneda }} {{ number_format($detalle->cantidad * (float) $detalle->precio_referencial, 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
+                    <tfoot class="bg-gray-50 text-sm">
+                        <tr><td colspan="4" class="px-6 py-2 text-right text-gray-500">Subtotal</td><td class="px-6 py-2 text-right">{{ $pedido->simbolo_moneda }} {{ number_format((float) $pedido->subtotal, 2) }}</td></tr>
+                        @unless($pedido->es_internacional)
+                            <tr><td colspan="4" class="px-6 py-2 text-right text-gray-500">IGV (18%)</td><td class="px-6 py-2 text-right">{{ $pedido->simbolo_moneda }} {{ number_format((float) $pedido->igv, 2) }}</td></tr>
+                        @endunless
+                        <tr><td colspan="4" class="px-6 py-3 text-right font-bold text-gray-800">Total</td><td class="px-6 py-3 text-right font-bold text-gray-900">{{ $pedido->simbolo_moneda }} {{ number_format((float) $pedido->total, 2) }}</td></tr>
+                    </tfoot>
                 </table>
             </div>
 

@@ -103,6 +103,15 @@
                     </select>
                 </div>
 
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                    <select name="tipo_compra" class="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <option value="">Todas</option>
+                        <option value="nacional" {{ request('tipo_compra') === 'nacional' ? 'selected' : '' }}>Nacional</option>
+                        <option value="internacional" {{ request('tipo_compra') === 'internacional' ? 'selected' : '' }}>Internacional</option>
+                    </select>
+                </div>
+
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Desde</label>
@@ -121,7 +130,7 @@
                 <button type="submit" class="bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
                     <i class="fas fa-search mr-1"></i>Filtrar
                 </button>
-                @if(request()->hasAny(['buscar','estado','fecha_desde','fecha_hasta']))
+                @if(request()->hasAny(['buscar','estado','tipo_compra','fecha_desde','fecha_hasta']))
                     <a href="{{ route('pedidos.index') }}" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
                         <i class="fas fa-times mr-1"></i>Limpiar
                     </a>
@@ -136,11 +145,11 @@
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-gray-800">
-                    <i class="fas fa-list mr-2 text-blue-600"></i>Lista de Pedidos
+                    <i class="fas fa-list mr-2 text-blue-600"></i>Órdenes de compra
                     <span class="text-sm font-normal text-gray-500 ml-2">({{ $pedidos->total() }} en total)</span>
                 </h3>
                 <a href="{{ route('pedidos.create') }}" class="bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm">
-                    <i class="fas fa-plus mr-2"></i>Nuevo Pedido
+                    <i class="fas fa-plus mr-2"></i>Nueva orden de compra
                 </a>
             </div>
             <div class="overflow-x-auto">
@@ -148,11 +157,13 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Almacén destino</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Esperada</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                         </tr>
@@ -161,11 +172,17 @@
                         @forelse($pedidos as $pedido)
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-4 text-sm font-mono font-semibold text-blue-700">{{ $pedido->codigo }}</td>
+                                <td class="px-6 py-4 text-xs">
+                                    <span class="inline-flex px-2 py-0.5 font-semibold rounded-full {{ $pedido->es_internacional ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-700' }}">
+                                        {{ $pedido->es_internacional ? 'Internacional' : 'Nacional' }}
+                                    </span>
+                                </td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $pedido->proveedor->razon_social ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $pedido->almacen->nombre ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $pedido->fecha->format('d/m/Y') }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $pedido->fecha_esperada ? $pedido->fecha_esperada->format('d/m/Y') : '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $pedido->usuario->name ?? '-' }}</td>
+                                <td class="px-6 py-4 text-sm text-right whitespace-nowrap">{{ $pedido->simbolo_moneda }} {{ number_format((float) $pedido->total, 2) }}</td>
                                 <td class="px-6 py-4">
                                     @php
                                         $ep = match($pedido->estado) {
@@ -193,10 +210,10 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+                                <td colspan="10" class="px-6 py-12 text-center text-gray-500">
                                     <i class="fas fa-clipboard-list text-4xl mb-3 text-gray-300 block"></i>
-                                    <p>No hay pedidos registrados</p>
-                                    <a href="{{ route('pedidos.create') }}" class="text-blue-600 hover:underline mt-2 inline-block text-sm">Crear primer pedido</a>
+                                    <p>No hay órdenes de compra registradas</p>
+                                    <a href="{{ route('pedidos.create') }}" class="text-blue-600 hover:underline mt-2 inline-block text-sm">Crear la primera orden de compra</a>
                                 </td>
                             </tr>
                         @endforelse

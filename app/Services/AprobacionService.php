@@ -303,6 +303,14 @@ class AprobacionService
                     $lineas()
                 )];
 
+            case 'pedido_interno_atencion':
+                $pi = \App\Models\PedidoInterno::with(['origen', 'destino', 'detalles'])->find($params['pedidoInterno'] ?? null);
+
+                return ['Atender pedido interno ' . ($pi?->codigo ?? ''), $pi ? array_merge(
+                    ["De {$pi->origen?->nombre} a {$pi->destino?->nombre}"],
+                    $this->lineasDe(['lineas' => $pi->detalles->map(fn ($d) => ['producto_id' => $d->producto_id, 'variante_id' => $d->variante_id, 'cantidad' => $d->cantidad])->all()])
+                ) : ['El pedido ya no existe']];
+
             case 'traslado':
                 return ['Traslado ' . $this->referencia('almacen_id', $in['almacen_id'] ?? null) . ' → ' . $this->referencia('almacen_destino_id', $in['almacen_destino_id'] ?? null), array_merge(
                     array_filter([!empty($in['observaciones']) ? 'Observaciones: ' . $in['observaciones'] : null]),

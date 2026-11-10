@@ -317,6 +317,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [PedidoController::class, 'store'])->name('store');
         Route::get('/{pedido}', [PedidoController::class, 'show'])->name('show');
         Route::patch('/{pedido}/estado', [PedidoController::class, 'cambiarEstado'])->name('cambiar-estado');
+        Route::get('/{pedido}/pdf', [PedidoController::class, 'pdf'])->name('pdf');
+    });
+
+    // ========================================
+    // PEDIDOS INTERNOS: un almacén o área pide mercadería a otro; atenderlo genera el traslado
+    // ========================================
+    Route::prefix('pedidos-internos')->name('pedidos-internos.')->middleware('role:Administración,Logística,Operaciones')->group(function () {
+        $c = \App\Http\Controllers\PedidoInternoController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/create', [$c, 'create'])->name('create');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::get('/{pedidoInterno}', [$c, 'show'])->whereNumber('pedidoInterno')->name('show');
+        Route::get('/{pedidoInterno}/pdf', [$c, 'pdf'])->whereNumber('pedidoInterno')->name('pdf');
+        Route::post('/{pedidoInterno}/cancelar', [$c, 'cancelar'])->whereNumber('pedidoInterno')->name('cancelar');
+        // Atender mueve stock: lo que hace Logística pasa por aprobación del administrador
+        Route::post('/{pedidoInterno}/atender', [$c, 'atender'])->whereNumber('pedidoInterno')
+            ->middleware(['role:Administración,Logística', 'aprobacion:pedido_interno_atencion'])->name('atender');
     });
 
     // ========================================
