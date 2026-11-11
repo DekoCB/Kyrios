@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\CronogramaEvento;
 use App\Models\Pedido;
 use App\Models\Role;
+use App\Models\Venta;
 use App\Models\User;
 use App\Notifications\AvisoSistema;
 use App\Services\AlertaService;
@@ -45,6 +46,7 @@ class CronogramaController extends Controller
             'titulo'         => 'required|string|min:3|max:150',
             'cliente_id'     => 'nullable|exists:clientes,id',
             'pedido_id'      => 'nullable|exists:pedidos,id',
+            'venta_id'       => 'nullable|exists:ventas,id',
             'direccion'      => 'nullable|string|max:255',
             'fecha'          => 'required|date',
             'hora'           => 'nullable|date_format:H:i',
@@ -57,7 +59,7 @@ class CronogramaController extends Controller
     {
         $mes = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $request->query('mes')) ? Carbon::createFromFormat('Y-m-d', $request->query('mes') . '-01') : today()->startOfMonth();
 
-        $consulta = $this->visibles()->with(['cliente', 'responsable', 'pedido'])->whereBetween('fecha', [$mes->copy()->startOfMonth(), $mes->copy()->endOfMonth()]);
+        $consulta = $this->visibles()->with(['cliente', 'responsable', 'pedido', 'venta'])->whereBetween('fecha', [$mes->copy()->startOfMonth(), $mes->copy()->endOfMonth()]);
         if (in_array($request->tipo, array_keys(CronogramaEvento::TIPOS), true)) {
             $consulta->where('tipo', $request->tipo);
         }
@@ -73,22 +75,46 @@ class CronogramaController extends Controller
             'atrasados'    => (clone $base)->whereDate('fecha', '<', today())->count(),
             'estaSemana'   => (clone $base)->whereBetween('fecha', [today(), today()->addDays(7)])->count(),
             'programa'     => $this->programa(),
+            'vista'        => $request->query('vista') === 'calendario' ? 'calendario' : 'lista',
+            'ventasPorProgramar' => $this->programa() ? $this->ventasPorProgramar() : collect(),
         ]);
     }
 
-    private function formulario(?CronogramaEvento $evento = null)
+    /** Ventas vigentes que todavía no tienen una instalación programada (o realizada). */
+    private function ventasPorProgramar()
     {
+        return Venta::with('cliente:id,nombre')
+            ->where('estado_pago', '!=', 'anulado')
+            ->whereNotExists(fn ($q) => $q->from('cronograma_eventos')->whereColumn('cronograma_eventos.venta_id', 'ventas.id')
+                ->where('cronograma_eventos.tipo', 'instalacion')->where('cronograma_eventos.estado', '!=', 'cancelado'))
+            ->latest('id')->limit(50)->get(['id', 'codigo', 'cliente_id', 'fecha', 'total']);
+    }
+
+    private function formulario(?CronogramaEvento $evento = null, ?Venta $venta = null)
+    {
+        // Al programar desde una venta, el formulario ya llega con sus datos
+        $defectos = $venta ? [
+            'venta_id'   => $venta->id,
+            'cliente_id' => $venta->cliente_id,
+            'titulo'     => 'Instalación ' . $venta->codigo . ($venta->cliente ? ' — ' . $venta->cliente->nombre : ''),
+            'direccion'  => $venta->cliente?->direccion,
+        ] : [];
+
         return view('cronograma.form', [
             'evento'       => $evento,
+            'defectos'     => $defectos,
+            'ventas'       => Venta::with('cliente:id,nombre')->where('estado_pago', '!=', 'anulado')->latest('id')->limit(100)->get(['id', 'codigo', 'cliente_id']),
             'clientes'     => Cliente::orderBy('nombre')->limit(500)->get(['id', 'nombre']),
             'responsables' => User::where('estado', 'activo')->whereHas('role', fn ($q) => $q->whereIn('nombre', [Role::ADMINISTRACION, Role::LOGISTICA, Role::OPERACIONES]))->orderBy('name')->get(['id', 'name']),
             'ordenes'      => Pedido::whereIn('estado', ['pendiente', 'aprobado'])->latest('id')->limit(100)->get(['id', 'codigo']),
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return $this->formulario();
+        $venta = $request->filled('venta_id') ? Venta::with('cliente')->find($request->integer('venta_id')) : null;
+
+        return $this->formulario(null, $venta);
     }
 
     public function store(Request $request)

@@ -794,6 +794,14 @@ public function validarCodigoBarras(Request $request)
 /**
  * Mostrar variantes de un producto (vista web)
  */
+/** GET /inventario/productos/{producto}/fotos: edición e impresión de las fotos del producto. */
+public function fotos(Producto $producto)
+{
+    $producto->load(['variantes.imagenes', 'imagenes']);
+
+    return view('inventario.productos.fotos', compact('producto'));
+}
+
 public function variantes(Producto $producto)
 {
     $producto->load(['variantes.color', 'variantes.imagenes', 'marca', 'modelo', 'categoria', 'tipoProducto', 'tipoLuminaria']);

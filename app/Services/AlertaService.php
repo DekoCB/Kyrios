@@ -134,7 +134,25 @@ class AlertaService
             ), [$p->solicitante], unaVez: true);
         }
 
-        return ['avisos' => $avisos, 'retirados' => $this->retirarObsoletos(['seg:', 'cron:', 'pi:'], $vigentes)];
+        // Herramientas que siguen fuera y su devolución vence (o ya venció)
+        $salidas = \App\Models\HerramientaSalida::with(['herramienta', 'tecnico'])->where('estado', 'en_uso')->whereNotNull('fecha_devolucion_esperada')->get();
+        foreach ($salidas as $sa) {
+            $d = (int) today()->diffInDays($sa->fecha_devolucion_esperada, false);
+            if ($d > 1) {
+                continue;
+            }
+            $clave = "herr:{$sa->id}:" . ($d < 0 ? "a{$d}" : "d{$d}");
+            $vigentes[] = $clave;
+            $avisos += $this->avisar($internos, new AvisoSistema(
+                $clave,
+                'Herramienta por devolver',
+                "{$sa->herramienta->nombre} ×{$sa->cantidad} (" . ($sa->tecnico?->name ?? 'técnico') . '): ' . $cuando($d) . ' la devolución.',
+                route('herramientas.salidas', [], false),
+                'alerta'
+            ), [$sa->tecnico], unaVez: true);
+        }
+
+        return ['avisos' => $avisos, 'retirados' => $this->retirarObsoletos(['seg:', 'cron:', 'pi:', 'herr:'], $vigentes)];
     }
 
     /** Variantes activas cuyo stock total llegó al mínimo indicado (mínimo mayor que cero). */

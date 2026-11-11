@@ -167,6 +167,24 @@
                     </div>
                 </div>
 
+                <!-- Especificaciones técnicas del producto -->
+                @php $ficha = \App\Support\FichaProducto::producto($producto); @endphp
+                @if($ficha)
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-teal-700 px-6 py-3">
+                        <h3 class="text-white font-semibold"><i class="fas fa-microchip mr-2"></i>Especificaciones técnicas</h3>
+                    </div>
+                    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4" data-ficha-producto>
+                        @foreach($ficha as $etiqueta => $valor)
+                            <div>
+                                <p class="text-xs text-gray-500">{{ $etiqueta }}</p>
+                                <p class="font-medium text-sm break-words">{{ $valor }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 <!-- Tarjeta de stock -->
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
                     <div class="bg-green-600 px-6 py-3">
@@ -251,6 +269,17 @@
                                         </p>
                                     @endif
                                     @include('inventario.productos.partials.atributos-variante-resumen', ['variante' => $variante])
+                                    @php $fichaVar = \App\Support\FichaProducto::variante($variante); @endphp
+                                    @if($fichaVar)
+                                        <details class="mt-1.5 group" data-ficha-variante>
+                                            <summary class="text-xs text-indigo-700 cursor-pointer hover:underline select-none">Ver todas las características</summary>
+                                            <dl class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1.5 text-xs">
+                                                @foreach($fichaVar as $etiqueta => $valor)
+                                                    <div><dt class="text-gray-400">{{ $etiqueta }}</dt><dd class="text-gray-800 font-medium break-words">{{ $valor }}</dd></div>
+                                                @endforeach
+                                            </dl>
+                                        </details>
+                                    @endif
                                 </div>
                             </div>
                             @php
@@ -289,6 +318,14 @@
                                 <i class="fas fa-barcode mr-2"></i>
                                 Códigos de Barras
                             </a>
+
+                            @if(in_array(auth()->user()->role->nombre, ['Administración', 'Logística']))
+                                <a href="{{ route('inventario.productos.fotos', $producto) }}"
+                                   class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700">
+                                    <i class="fas fa-image mr-2"></i>
+                                    Editar / Imprimir Fotos
+                                </a>
+                            @endif
 
                             @if($producto->tipo_inventario === 'cantidad')
                                 <a href="{{ route('inventario.movimientos.create', ['producto_id' => $producto->id]) }}"

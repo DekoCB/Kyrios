@@ -32,6 +32,9 @@
             <a href="{{ route('cotizaciones.pdf', $c) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
                 <i class="fas fa-file-pdf text-red-500"></i> PDF
             </a>
+            <a href="{{ route('cotizaciones.ficha-tecnica', $c) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
+                <i class="fas fa-file-lines text-teal-600"></i> Ficha técnica
+            </a>
             @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
             @if($c->puede_editarse)
                 <a href="{{ route('cotizaciones.edit', $c) }}" class="inline-flex items-center gap-2 border border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">

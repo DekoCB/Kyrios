@@ -256,6 +256,7 @@ Route::middleware('auth')->group(function () {
         // VARIANTES DE PRODUCTOS
         Route::middleware('role:Administración,Logística')->group(function () {
             Route::get('/productos/{producto}/variantes', [ProductoController::class, 'variantes'])->name('productos.variantes');
+            Route::get('/productos/{producto}/fotos', [ProductoController::class, 'fotos'])->name('productos.fotos');
             Route::post('/productos/{producto}/variantes', [ProductoController::class, 'storeVariante'])->middleware('aprobacion:variante_nueva')->name('productos.variantes.store');
             Route::put('/productos/variantes/{variante}', [ProductoController::class, 'updateVariante'])->middleware('aprobacion:variante_edicion')->name('productos.variantes.update');
             Route::delete('/productos/variantes/{variante}', [ProductoController::class, 'destroyVariante'])->middleware('aprobacion:variante_eliminacion')->name('productos.variantes.destroy');
@@ -331,6 +332,23 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [$c, 'store'])->name('store');
         Route::put('/{etapa}', [$c, 'update'])->name('update');
         Route::delete('/{etapa}', [$c, 'destroy'])->name('destroy');
+    });
+
+    // Inventario de herramientas de instalación (salidas a técnicos y retornos)
+    Route::prefix('herramientas')->name('herramientas.')->middleware('role:Administración,Logística,Operaciones')->group(function () {
+        $c = \App\Http\Controllers\HerramientaController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/salidas', [$c, 'salidas'])->name('salidas');
+        Route::middleware('role:Administración,Logística')->group(function () use ($c) {
+            Route::get('/create', [$c, 'create'])->name('create');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::get('/salidas/create', [$c, 'crearSalida'])->name('salidas.create');
+            Route::post('/salidas', [$c, 'storeSalida'])->name('salidas.store');
+            Route::post('/salidas/{salida}/retorno', [$c, 'retorno'])->whereNumber('salida')->name('salidas.retorno');
+            Route::get('/{herramienta}/edit', [$c, 'edit'])->whereNumber('herramienta')->name('edit');
+            Route::put('/{herramienta}', [$c, 'update'])->whereNumber('herramienta')->name('update');
+            Route::post('/{herramienta}/reparar', [$c, 'reparar'])->whereNumber('herramienta')->name('reparar');
+        });
     });
 
     // Cronograma de instalaciones y entregas
@@ -436,6 +454,14 @@ Route::middleware('auth')->group(function () {
         $c = \App\Http\Controllers\CotizacionController::class;
         Route::get('/create', [$c, 'create'])->name('create');
         Route::post('/', [$c, 'store'])->name('store');
+        // Plantilla de homologación (antes del comodín /{cotizacion})
+        $h = \App\Http\Controllers\HomologacionController::class;
+        Route::get('/homologacion', [$h, 'index'])->name('homologacion');
+        Route::get('/homologacion/plantilla-pdf', [$h, 'plantillaPdf'])->name('homologacion.plantilla-pdf');
+        Route::get('/homologacion/plantilla-excel', [$h, 'plantillaExcel'])->name('homologacion.plantilla-excel');
+        Route::post('/homologacion/analizar', [$h, 'analizar'])->name('homologacion.analizar');
+        Route::get('/homologacion/resultado', [$h, 'resultado'])->name('homologacion.resultado');
+        Route::post('/homologacion/generar', [$h, 'generar'])->name('homologacion.generar');
         // Búsquedas JSON del formulario: antes del comodín /{cotizacion}
         Route::get('/api/productos', [$c, 'productos'])->name('productos');
         Route::get('/api/clientes', [$c, 'clientes'])->name('clientes');
@@ -452,6 +478,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [$c, 'index'])->name('index');
         Route::get('/{cotizacion}', [$c, 'show'])->name('show');
         Route::get('/{cotizacion}/pdf', [$c, 'pdf'])->name('pdf');
+        Route::get('/{cotizacion}/ficha-tecnica', [$c, 'fichaTecnica'])->name('ficha-tecnica');
     });
 
     // ========================================
@@ -479,6 +506,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/auditoria', [VentaController::class, 'bitacora'])->name('auditoria');
         Route::get('/{venta}', [VentaController::class, 'show'])->name('show');
         Route::get('/{venta}/pdf', [VentaController::class, 'pdf'])->name('pdf');
+        Route::get('/{venta}/resumen-pdf', [VentaController::class, 'resumenPdf'])->name('resumen-pdf');
         Route::get('/{venta}/guia-pdf', [VentaController::class, 'guiaPdf'])->name('guia-pdf');
         Route::get('/{venta}/credito', [VentaController::class, 'showCredito'])->name('credito.show');
         Route::post('/{venta}/credito/pago', [VentaController::class, 'registrarPagoCredito'])->name('credito.pago');

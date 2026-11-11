@@ -218,6 +218,21 @@ class CotizacionController extends Controller
             ->stream('cotizacion-' . $cotizacion->codigo . '.pdf');
     }
 
+    /** Ficha técnica en PDF: las características de cada producto cotizado. */
+    public function fichaTecnica(Cotizacion $cotizacion)
+    {
+        $this->autorizar($cotizacion);
+        $cotizacion->load(['cliente', 'detalles.producto.imagenes', 'detalles.producto.tipoProducto', 'detalles.producto.tipoLuminaria',
+            'detalles.variante.color', 'detalles.variante.imagenPrincipal']);
+
+        $empresa = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
+
+        return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
+            ->loadView('pdf.ficha-tecnica-cotizacion', compact('cotizacion', 'empresa'))
+            ->setPaper('A4', 'portrait')
+            ->stream('ficha-tecnica-' . $cotizacion->codigo . '.pdf');
+    }
+
     // ── Acciones ──────────────────────────────────────────────────────────
 
     public function estado(Request $request, Cotizacion $cotizacion)

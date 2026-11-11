@@ -8,7 +8,7 @@ class CronogramaEvento extends Model
 {
     protected $table = 'cronograma_eventos';
 
-    protected $fillable = ['tipo', 'titulo', 'cliente_id', 'pedido_id', 'direccion', 'fecha', 'hora', 'responsable_id', 'estado', 'notas', 'creado_por'];
+    protected $fillable = ['tipo', 'titulo', 'cliente_id', 'pedido_id', 'venta_id', 'direccion', 'fecha', 'hora', 'responsable_id', 'estado', 'notas', 'creado_por'];
 
     protected $casts = ['fecha' => 'date'];
 
@@ -22,6 +22,11 @@ class CronogramaEvento extends Model
     public function pedido()
     {
         return $this->belongsTo(Pedido::class);
+    }
+
+    public function venta()
+    {
+        return $this->belongsTo(Venta::class);
     }
 
     public function responsable()

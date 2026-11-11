@@ -70,6 +70,9 @@
                 <div class="flex gap-2">
                     <button class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-search mr-1"></i>Filtrar</button>
                     @if(auth()->user()->role->nombre === \App\Models\Role::ADMINISTRACION)
+                    <a href="{{ route('cotizaciones.homologacion') }}" class="border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg">
+                        <i class="fas fa-table-list mr-1"></i>Plantilla de homologación
+                    </a>
                     <a href="{{ route('cotizaciones.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">
                         <i class="fas fa-plus mr-1"></i>Nueva cotización
                     </a>

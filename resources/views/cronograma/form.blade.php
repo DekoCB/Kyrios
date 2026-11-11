@@ -13,7 +13,8 @@
     <x-sidebar :role="auth()->user()->role->nombre" />
 
     @php
-        $v = fn ($campo, $defecto = null) => old($campo, $evento?->{$campo} ?? $defecto);
+        $defectos = $defectos ?? [];
+        $v = fn ($campo, $defecto = null) => old($campo, $evento?->{$campo} ?? ($defectos[$campo] ?? $defecto));
         $clase = 'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white';
     @endphp
 
@@ -67,6 +68,13 @@
             <div class="md:col-span-2">
                 <label for="direccion" class="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
                 <input id="direccion" type="text" name="direccion" value="{{ $v('direccion') }}" maxlength="255" class="{{ $clase }}">
+            </div>
+            <div class="md:col-span-2">
+                <label for="venta_id" class="block text-sm font-medium text-gray-700 mb-2">Venta relacionada</label>
+                <select id="venta_id" name="venta_id" class="{{ $clase }}">
+                    <option value="">Ninguna</option>
+                    @foreach($ventas as $vt)<option value="{{ $vt->id }}" {{ (string) $v('venta_id') === (string) $vt->id ? 'selected' : '' }}>{{ $vt->codigo }}@if($vt->cliente) · {{ $vt->cliente->nombre }}@endif</option>@endforeach
+                </select>
             </div>
             <div class="md:col-span-2">
                 <label for="pedido_id" class="block text-sm font-medium text-gray-700 mb-2">Orden de compra relacionada</label>

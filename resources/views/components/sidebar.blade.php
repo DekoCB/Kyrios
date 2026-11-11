@@ -113,6 +113,13 @@
                             <i class="fas fa-calendar-days mr-3"></i>Cronograma
                         </a>
                     </li>
+                    {{-- Herramientas de instalación --}}
+                    <li>
+                        <a href="{{ route('herramientas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('herramientas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-screwdriver-wrench mr-3"></i>Herramientas
+                        </a>
+                    </li>
 
                     {{-- Etapas de seguimiento de las órdenes de compra --}}
                     <li>
@@ -746,6 +753,13 @@
                             <i class="fas fa-calendar-days mr-3"></i>Cronograma
                         </a>
                     </li>
+                    {{-- Herramientas de instalación --}}
+                    <li>
+                        <a href="{{ route('herramientas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('herramientas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-screwdriver-wrench mr-3"></i>Herramientas
+                        </a>
+                    </li>
 
                     {{-- Inventario --}}
                     <li>
@@ -939,6 +953,13 @@
                         <a href="{{ route('cronograma.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cronograma.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-calendar-days mr-3"></i>Cronograma
+                        </a>
+                    </li>
+                    {{-- Herramientas de instalación --}}
+                    <li>
+                        <a href="{{ route('herramientas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('herramientas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-screwdriver-wrench mr-3"></i>Herramientas
                         </a>
                     </li>
                     <li>
