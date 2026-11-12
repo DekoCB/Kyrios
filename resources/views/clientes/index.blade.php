@@ -42,7 +42,7 @@
         <form method="GET" class="bg-white rounded-xl shadow-sm p-4 mb-6 grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <div class="md:col-span-2">
                 <label class="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="Nombre, documento, teléfono, correo o contacto"
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="ID (KYR), nombre, documento, teléfono, correo o contacto"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
@@ -130,7 +130,13 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Documento</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            @php $antiguo = request('orden') === 'antiguo'; @endphp
+                            <a href="{{ route('clientes.index', array_merge(request()->query(), ['orden' => $antiguo ? 'reciente' : 'antiguo'])) }}" data-orden-id
+                               class="inline-flex items-center gap-1 hover:text-gray-800" title="{{ $antiguo ? 'Orden actual: del más antiguo al más reciente. Clic para invertir' : 'Orden actual: del más reciente al más antiguo. Clic para invertir' }}">
+                                ID / Documento <i class="fas {{ $antiguo ? 'fa-arrow-up-short-wide' : 'fa-arrow-down-wide-short' }}"></i>
+                            </a>
+                        </th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ventas</th>
@@ -143,11 +149,13 @@
                     @forelse($clientes as $cliente)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-sm whitespace-nowrap">
-                                @if($cliente->es_prospecto)
+                                <div class="font-mono font-semibold text-blue-700">{{ $cliente->codigo }}</div>
+                                @if($cliente->es_prospecto && !$cliente->dni && !$cliente->ruc)
                                     <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700" title="Aún sin documento">Prospecto</span>
                                 @else
-                                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 mr-1">{{ $cliente->tipo_documento }}</span>
-                                    <span class="font-mono">{{ $cliente->numero_documento }}</span>
+                                    @if($cliente->ruc)<div><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 mr-1">RUC</span><span class="font-mono">{{ $cliente->ruc }}</span></div>@endif
+                                    @if($cliente->dni)<div><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 mr-1">DNI</span><span class="font-mono">{{ $cliente->dni }}</span></div>@endif
+                                    @if($cliente->tipo_documento === 'CE')<div><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 mr-1">CE</span><span class="font-mono">{{ $cliente->numero_documento }}</span></div>@endif
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-sm">

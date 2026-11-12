@@ -70,6 +70,9 @@
                         <div><dt class="text-xs text-gray-400 uppercase">Documento</dt><dd><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700">Prospecto</span> <span class="text-xs text-gray-500">completar al editar</span></dd></div>
                     @else
                         @php $fuente = $cliente->tipo_documento === 'RUC' ? 'SUNAT' : 'RENIEC'; @endphp
+                        <div><dt class="text-xs text-gray-400 uppercase">ID de cliente</dt><dd class="font-mono font-semibold text-blue-700">{{ $cliente->codigo }}</dd></div>
+                        @if($cliente->ruc && $cliente->tipo_documento !== 'RUC')<div><dt class="text-xs text-gray-400 uppercase">RUC</dt><dd class="font-mono">{{ $cliente->ruc }}</dd></div>@endif
+                        @if($cliente->dni && $cliente->tipo_documento !== 'DNI')<div><dt class="text-xs text-gray-400 uppercase">DNI</dt><dd class="font-mono">{{ $cliente->dni }}</dd></div>@endif
                         <div><dt class="text-xs text-gray-400 uppercase">{{ $cliente->tipo_documento }}</dt><dd class="font-mono">{{ $cliente->numero_documento }}
                             @if($cliente->verificacion === 'ok')<span class="ml-1 text-xs text-green-600 font-sans" title="Verificado en {{ $fuente }} el {{ $cliente->verificado_at?->format('d/m/Y') }}"><i class="fas fa-check-circle"></i> verificado</span>
                             @elseif($cliente->verificacion === 'discrepancia')<span class="ml-1 text-xs text-amber-600 font-sans" title="El nombre difiere del registro oficial; revise las notas"><i class="fas fa-exclamation-triangle"></i> revisar nombre</span>

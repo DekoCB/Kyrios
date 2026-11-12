@@ -12,6 +12,8 @@ class Cliente extends Model
     protected $fillable = [
         'tipo_documento',
         'numero_documento',
+        'dni_complementario',
+        'ruc_complementario',
         'nombre',
         'contacto',
         'direccion',
@@ -75,6 +77,29 @@ class Cliente extends Model
     /** Notas de crédito/débito: ajustan una venta, no cuentan como compra. */
     public const TIPOS_NOTA = ['nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'];
 
+    /** Al crear, asigna el siguiente ID correlativo: KYR001, KYR002… */
+    protected static function booted(): void
+    {
+        static::creating(function (Cliente $cliente) {
+            if (blank($cliente->codigo)) {
+                $ultimo = (int) static::query()->max(\Illuminate\Support\Facades\DB::raw('CAST(SUBSTRING(codigo, 4) AS UNSIGNED)'));
+                $cliente->codigo = 'KYR' . str_pad((string) ($ultimo + 1), 3, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
+    /** DNI del cliente: el documento principal si es DNI, o el que se registró aparte (titular o representante). */
+    public function getDniAttribute(): ?string
+    {
+        return $this->tipo_documento === 'DNI' ? $this->numero_documento : ($this->dni_complementario ?: null);
+    }
+
+    /** RUC del cliente: el documento principal si es RUC, o el del negocio de una persona natural. */
+    public function getRucAttribute(): ?string
+    {
+        return $this->tipo_documento === 'RUC' ? $this->numero_documento : ($this->ruc_complementario ?: null);
+    }
+
     public function ventas()
     {
         return $this->hasMany(Venta::class);
@@ -109,6 +134,9 @@ class Cliente extends Model
         return $query->where(function ($q) use ($like) {
             $q->where('nombre', 'like', $like)
                 ->orWhere('numero_documento', 'like', $like)
+                ->orWhere('codigo', 'like', $like)
+                ->orWhere('dni_complementario', 'like', $like)
+                ->orWhere('ruc_complementario', 'like', $like)
                 ->orWhere('telefono', 'like', $like)
                 ->orWhere('email', 'like', $like)
                 ->orWhere('contacto', 'like', $like)

@@ -8,6 +8,24 @@
     <p class="text-sm font-semibold text-gray-700"><i class="fas fa-briefcase mr-1 text-gray-400"></i>Datos comerciales</p>
 </div>
 
+@if($cliente?->codigo)
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">ID de cliente</label>
+        <input type="text" value="{{ $cliente->codigo }}" readonly class="{{ $clase }} bg-gray-50 font-mono font-semibold text-blue-700">
+    </div>
+@else
+    <p class="text-xs text-gray-400 md:col-span-2">El ID de cliente (KYR001, KYR002…) se asigna solo al guardar.</p>
+@endif
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">DNI adicional</label>
+    <input type="text" name="dni_complementario" maxlength="8" inputmode="numeric" value="{{ $v('dni_complementario') }}" class="{{ $clase }}" placeholder="Si el documento principal es RUC">
+    @error('dni_complementario') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+</div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">RUC adicional</label>
+    <input type="text" name="ruc_complementario" maxlength="11" inputmode="numeric" value="{{ $v('ruc_complementario') }}" class="{{ $clase }}" placeholder="Si el documento principal es DNI">
+    @error('ruc_complementario') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+</div>
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Segmento</label>
     <select name="segmento" class="{{ $clase }} bg-white">

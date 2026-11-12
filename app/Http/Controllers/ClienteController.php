@@ -81,7 +81,9 @@ class ClienteController extends Controller
         $clientes = $this->consulta($request)
             ->withCount(['ventas' => fn ($q) => $q->whereNotIn('tipo_comprobante', Cliente::TIPOS_NOTA), 'cotizaciones'])
             ->conTotalComprado()
-            ->orderBy('nombre')
+            // Por ID de cliente (KYR001…): del más reciente al más antiguo, o al revés con ?orden=antiguo
+            ->orderByRaw('CAST(SUBSTRING(codigo, 4) AS UNSIGNED) ' . ($request->input('orden') === 'antiguo' ? 'asc' : 'desc'))
+            ->orderBy('id', $request->input('orden') === 'antiguo' ? 'asc' : 'desc')
             ->paginate(20)
             ->withQueryString();
 
@@ -127,6 +129,8 @@ class ClienteController extends Controller
                     }
                 },
             ],
+            'dni_complementario' => ['nullable', 'regex:/^\d{8}$/'],
+            'ruc_complementario' => ['nullable', 'regex:/^(10|15|16|17|20)\d{9}$/'],
             'nombre'       => 'required|string|max:255',
             'contacto'     => 'nullable|string|max:120',
             'direccion'    => 'nullable|string|max:255',
@@ -164,6 +168,8 @@ class ClienteController extends Controller
     {
         return [
             'numero_documento.unique' => 'Este documento ya está registrado',
+            'dni_complementario.regex' => 'El DNI debe tener 8 dígitos.',
+            'ruc_complementario.regex' => 'El RUC debe tener 11 dígitos y empezar con 10, 15, 16, 17 o 20.',
             'nombre.required'         => 'El nombre es obligatorio',
             'numero_documento.required_with' => 'Ingrese el número de documento o deje vacío el tipo para registrarlo como prospecto',
             'tipo_documento.required_with'   => 'Elija el tipo de documento',
@@ -173,6 +179,14 @@ class ClienteController extends Controller
     /** Deja las listas como arreglo sin vacíos ni repetidos (o null si no queda ninguna). */
     private function limpiarListas(array $validated): array
     {
+        // El documento principal ya es el DNI o el RUC: no se guarda otra vez como complementario
+        if (($validated['tipo_documento'] ?? null) === 'DNI') {
+            $validated['dni_complementario'] = null;
+        }
+        if (($validated['tipo_documento'] ?? null) === 'RUC') {
+            $validated['ruc_complementario'] = null;
+        }
+
         if (array_key_exists('listas_difusion', $validated)) {
             $validated['listas_difusion'] = array_values(array_unique(array_filter((array) $validated['listas_difusion']))) ?: null;
         }
@@ -265,11 +279,11 @@ class ClienteController extends Controller
         return response()->streamDownload(function () use ($clientes) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM: Excel respeta las tildes
-            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Clasificación', 'Cómo ingresó', 'Preferencia de contacto', 'Especialidad', 'Tipo de empresa', 'Listas de difusión', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
+            fputcsv($out, ['ID cliente', 'DNI', 'RUC', 'Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Clasificación', 'Cómo ingresó', 'Preferencia de contacto', 'Especialidad', 'Tipo de empresa', 'Listas de difusión', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
             $clientes->chunk(500, function ($lote) use ($out) {
                 foreach ($lote as $c) {
                     fputcsv($out, [
-                        $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, $c->clasificacion, $c->como_ingreso, $c->preferencia_contacto, $c->especialidad, $c->tipo_empresa, implode(', ', $c->etiquetas_difusion), $c->contacto, $c->cargo, $c->empresa,
+                        $c->codigo, $c->dni, $c->ruc, $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, $c->clasificacion, $c->como_ingreso, $c->preferencia_contacto, $c->especialidad, $c->tipo_empresa, implode(', ', $c->etiquetas_difusion), $c->contacto, $c->cargo, $c->empresa,
                         $c->telefono, $c->telefono_fijo, $c->email, $c->email_empresa,
                         $c->direccion, $c->distrito, $c->provincia, $c->departamento, $c->fecha_cumpleanos?->format('d/m'), $c->asesor, $c->estado, $c->verificacion,
                         $c->ventas_count, number_format((float) $c->total_comprado, 2, '.', ''), $c->notas,
