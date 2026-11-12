@@ -81,6 +81,18 @@
                     <option value="inactivo" @selected(request('estado') === 'inactivo')>Inactivo</option>
                 </select>
             </div>
+            @foreach(\App\Models\OpcionCliente::GRUPOS as $campo => $etiqueta)
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ $etiqueta }}</label>
+                    <select name="{{ $campo }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Todas</option>
+                        @foreach(\App\Models\OpcionCliente::paraSelect($campo, request($campo) !== '__sin' ? request($campo) : null) as $opcion)
+                            <option value="{{ $opcion }}" @selected(request($campo) === $opcion)>{{ $opcion }}</option>
+                        @endforeach
+                        <option value="__sin" @selected(request($campo) === '__sin')>— Sin dato —</option>
+                    </select>
+                </div>
+            @endforeach
             <div class="md:col-span-6 flex flex-wrap items-center justify-between gap-2">
                 <a href="{{ route('clientes.index') }}" class="text-sm text-gray-500 hover:text-gray-800"><i class="fas fa-redo mr-1"></i>Limpiar</a>
                 <div class="flex flex-wrap gap-2">
@@ -92,6 +104,9 @@
                         <i class="fab fa-whatsapp mr-1"></i>Exportar lista de difusión
                     </button>
                     @if($canCreate)
+                        <a href="{{ route('clientes.opciones.index') }}" class="border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-4 py-2 rounded-lg">
+                            <i class="fas fa-sliders-h mr-1"></i>Opciones de los filtros
+                        </a>
                         <a href="{{ route('clientes.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">
                             <i class="fas fa-plus mr-1"></i>Nuevo cliente
                         </a>

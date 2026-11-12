@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\OpcionCliente;
 use App\Services\SunatService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,7 +27,27 @@ class ClienteController extends Controller
             ->when($request->filled('tipo_documento') && $request->tipo_documento !== 'SIN', fn ($q) => $q->where('tipo_documento', $request->tipo_documento))
             ->when($request->filled('segmento'), fn ($q) => $q->where('segmento', $request->segmento))
             ->when($this->listasPedidas($request), fn ($q, $listas) => $q->enListas($listas))
-            ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->estado));
+            ->when($request->filled('estado'), fn ($q) => $q->where('estado', $request->estado))
+            ->tap(function ($q) use ($request) {
+                // Filtros de las listas editables; «__sin» trae a los clientes que no tienen ese dato
+                foreach (array_keys(OpcionCliente::GRUPOS) as $campo) {
+                    $valor = $request->input($campo);
+                    if (!is_string($valor) || $valor === '') {
+                        continue;
+                    }
+                    $valor === '__sin' ? $q->whereNull($campo) : $q->where($campo, $valor);
+                }
+            });
+    }
+
+    /** Regla de una lista editable: debe ser una opción activa (o el valor que el cliente ya tenía). */
+    private function reglaOpcion(string $grupo, ?Cliente $cliente): array
+    {
+        return ['nullable', 'string', 'max:80', function (string $atributo, $valor, \Closure $fallar) use ($grupo, $cliente) {
+            if ($valor !== null && $valor !== '' && !in_array($valor, OpcionCliente::paraSelect($grupo, $cliente?->{$grupo}), true)) {
+                $fallar('Elija una opción de la lista.');
+            }
+        }];
     }
 
     /** Claves de lista de difusión pedidas en la URL (?lista=mama o ?listas[]=mama&listas[]=mujer), solo las válidas. */
@@ -120,7 +141,11 @@ class ClienteController extends Controller
             'segmento'         => 'nullable|string|max:20',
             'listas_difusion'   => 'nullable|array',
             'listas_difusion.*' => ['nullable', Rule::in(array_keys(Cliente::LISTAS_DIFUSION))],
-            'especialidad'     => 'nullable|string|max:150',
+            'clasificacion'        => $this->reglaOpcion('clasificacion', $cliente),
+            'como_ingreso'         => $this->reglaOpcion('como_ingreso', $cliente),
+            'preferencia_contacto' => $this->reglaOpcion('preferencia_contacto', $cliente),
+            'tipo_empresa'         => $this->reglaOpcion('tipo_empresa', $cliente),
+            'especialidad'         => $this->reglaOpcion('especialidad', $cliente),
             'cargo'            => 'nullable|string|max:120',
             'empresa'          => 'nullable|string|max:190',
             'fecha_cumpleanos' => 'nullable|date|before:today',
@@ -240,11 +265,11 @@ class ClienteController extends Controller
         return response()->streamDownload(function () use ($clientes) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM: Excel respeta las tildes
-            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Listas de difusión', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
+            fputcsv($out, ['Tipo doc.', 'Documento', 'Nombre / Razón social', 'Segmento', 'Clasificación', 'Cómo ingresó', 'Preferencia de contacto', 'Especialidad', 'Tipo de empresa', 'Listas de difusión', 'Contacto', 'Cargo', 'Empresa', 'Teléfono', 'Teléfono fijo', 'Correo', 'Correo empresa', 'Dirección', 'Distrito', 'Provincia', 'Departamento', 'Cumpleaños', 'Asesor', 'Estado', 'Verificación', 'Ventas', 'Total comprado (S/)', 'Notas'], ';');
             $clientes->chunk(500, function ($lote) use ($out) {
                 foreach ($lote as $c) {
                     fputcsv($out, [
-                        $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, implode(', ', $c->etiquetas_difusion), $c->contacto, $c->cargo, $c->empresa,
+                        $c->tipo_documento ?? 'SIN DOC.', $c->numero_documento, $c->nombre, $c->segmento, $c->clasificacion, $c->como_ingreso, $c->preferencia_contacto, $c->especialidad, $c->tipo_empresa, implode(', ', $c->etiquetas_difusion), $c->contacto, $c->cargo, $c->empresa,
                         $c->telefono, $c->telefono_fijo, $c->email, $c->email_empresa,
                         $c->direccion, $c->distrito, $c->provincia, $c->departamento, $c->fecha_cumpleanos?->format('d/m'), $c->asesor, $c->estado, $c->verificacion,
                         $c->ventas_count, number_format((float) $c->total_comprado, 2, '.', ''), $c->notas,

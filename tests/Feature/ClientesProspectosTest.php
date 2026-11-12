@@ -69,7 +69,7 @@ class ClientesProspectosTest extends TestCase
     public function test_datos_comerciales_se_guardan_y_se_muestran(): void
     {
         $this->alta([
-            'segmento' => 'ARQ', 'especialidad' => 'Residencial', 'cargo' => 'Gerente', 'empresa' => 'Estudio Rocha',
+            'segmento' => 'ARQ', 'especialidad' => 'Vivienda', 'cargo' => 'Gerente', 'empresa' => 'Estudio Rocha',
             'fecha_cumpleanos' => '1988-08-21', 'comision' => '10', 'asesor' => 'Wendy', 'origen' => 'Showroom',
             'telefono_fijo' => '6830567', 'anexo' => '12', 'email_empresa' => 'info@rocha.pe', 'preferencias' => 'Negro mate',
         ])->assertSessionHasNoErrors();

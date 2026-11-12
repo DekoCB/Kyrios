@@ -294,6 +294,10 @@ Route::middleware('auth')->group(function () {
     // ========================================
     Route::prefix('clientes')->name('clientes.')->middleware('role:Administración')->group(function () {
         Route::get('/create', [ClienteController::class, 'create'])->name('create');
+        Route::get('/opciones', [App\Http\Controllers\OpcionClienteController::class, 'index'])->name('opciones.index');
+        Route::post('/opciones', [App\Http\Controllers\OpcionClienteController::class, 'store'])->name('opciones.store');
+        Route::put('/opciones/{opcion}', [App\Http\Controllers\OpcionClienteController::class, 'update'])->name('opciones.update');
+        Route::delete('/opciones/{opcion}', [App\Http\Controllers\OpcionClienteController::class, 'destroy'])->name('opciones.destroy');
         Route::get('/difusion/resumen', [ClienteController::class, 'resumenDifusion'])->name('difusion.resumen');
         Route::get('/difusion/exportar', [ClienteController::class, 'exportarDifusion'])->name('difusion.exportar');
         Route::post('/', [ClienteController::class, 'store'])->name('store');

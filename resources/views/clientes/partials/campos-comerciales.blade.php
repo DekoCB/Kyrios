@@ -33,10 +33,17 @@
     </div>
     <p class="text-[11px] text-gray-400 mt-1">Un contacto puede estar en varias listas a la vez (por ejemplo arquitecta, mamá y mujer).</p>
 </div>
-<div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Especialidad / rubro</label>
-    <input type="text" name="especialidad" maxlength="150" value="{{ $v('especialidad') }}" class="{{ $clase }}" placeholder="Residencial, oficinas, hoteles…">
-</div>
+@foreach(['clasificacion' => 'Clasificación', 'como_ingreso' => 'Cómo ingresó', 'preferencia_contacto' => 'Preferencia de contacto', 'especialidad' => 'Especialidad / rubro'] as $campo => $etiqueta)
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{{ $etiqueta }}</label>
+        <select name="{{ $campo }}" class="{{ $clase }} bg-white">
+            <option value="">— Sin dato —</option>
+            @foreach(\App\Models\OpcionCliente::paraSelect($campo, $cliente?->{$campo}) as $opcion)
+                <option value="{{ $opcion }}" @selected($v($campo) === $opcion)>{{ $opcion }}</option>
+            @endforeach
+        </select>
+    </div>
+@endforeach
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Cargo</label>
     <input type="text" name="cargo" maxlength="120" value="{{ $v('cargo') }}" class="{{ $clase }}">
@@ -44,6 +51,15 @@
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Empresa donde trabaja</label>
     <input type="text" name="empresa" maxlength="190" value="{{ $v('empresa') }}" class="{{ $clase }}">
+</div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de empresa</label>
+    <select name="tipo_empresa" class="{{ $clase }} bg-white">
+        <option value="">— Sin dato —</option>
+        @foreach(\App\Models\OpcionCliente::paraSelect('tipo_empresa', $cliente?->tipo_empresa) as $opcion)
+            <option value="{{ $opcion }}" @selected($v('tipo_empresa') === $opcion)>{{ $opcion }}</option>
+        @endforeach
+    </select>
 </div>
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Cumpleaños</label>
