@@ -17,11 +17,13 @@ cd app
 cp deploy/env.produccion.example .env
 nano .env                                      # completar DB_PASSWORD, ADMIN_EMAIL, ADMIN_PASSWORD (y MASTER_PASSWORD si se usa)
 
-composer install --no-dev --optimize-autoloader
+# Hostinger desactiva proc_open y exec: composer sin scripts y el enlace de storage con ln
+composer install --no-dev --optimize-autoloader --no-scripts
+php artisan package:discover
 php artisan key:generate --force
 php artisan migrate --force
 php artisan db:seed --force                    # roles, catálogo base y usuario administrador
-php artisan storage:link
+(cd public && ln -s ../storage/app/public storage)
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 ln -s ~/domains/kyrios.leongrup.com/app/public ~/domains/kyrios.leongrup.com/public_html
