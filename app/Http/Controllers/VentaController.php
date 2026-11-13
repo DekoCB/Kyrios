@@ -361,7 +361,11 @@ class VentaController extends Controller
     {
         $venta->load('vendedor', 'cliente', 'serieComprobante', 'detalles.producto', 'detalles.variante');
         $cotizaciones = \App\Models\Cotizacion::where('venta_id', $venta->id)->with(['detalles.producto', 'detalles.variante'])->orderBy('id')->get();
-        $empresa = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
+        // La proforma oficial lleva los datos de Kyrios; lo que falte en Empresa se completa con ellos.
+        $empresa = Empresa::first() ?? new Empresa();
+        foreach (['razon_social' => 'KYRIOS LUCES S.A.C', 'ruc' => '20606247746', 'email' => 'administracion@kyrios.com.pe', 'web' => 'www.kyrios.com.pe'] as $campo => $valor) {
+            $empresa->{$campo} = $empresa->{$campo} ?: $valor;
+        }
 
         return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
             ->loadView('pdf.resumen-venta', compact('venta', 'cotizaciones', 'empresa'))
