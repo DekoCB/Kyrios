@@ -16,12 +16,26 @@
 <div class="md:ml-64 min-h-screen">
     <div class="bg-white shadow-sm px-6 py-4">
         <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <i class="fas fa-clipboard-check text-blue-700"></i> Aprobaciones
+            <i class="fas fa-clipboard-check text-blue-700"></i> Aprobaciones de {{ $tipo === 'clientes' ? 'clientes' : 'productos' }}
             @if($pendientes > 0)
                 <span class="text-sm font-semibold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full">{{ $pendientes }} pendiente{{ $pendientes > 1 ? 's' : '' }}</span>
             @endif
         </h1>
-        <p class="text-sm text-gray-500 mt-0.5">Productos nuevos, ediciones, eliminaciones, ingresos, compras y traslados registrados por otros usuarios. Nada se aplica hasta que lo apruebes.</p>
+        <p class="text-sm text-gray-500 mt-0.5">
+            @if($tipo === 'clientes')
+                Eliminaciones de clientes solicitadas por otros usuarios. Nada se aplica hasta que lo apruebes.
+            @else
+                Productos nuevos, ediciones, eliminaciones, ingresos, compras y traslados registrados por otros usuarios. Nada se aplica hasta que lo apruebes.
+            @endif
+        </p>
+        <div class="flex gap-2 mt-3" aria-label="Tipo de aprobación">
+            <a href="{{ route('aprobaciones.index') }}" class="px-4 py-1.5 text-sm rounded-lg border {{ $tipo === 'productos' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                Productos @if($pendientesProductos > 0)<span class="ml-1 text-xs font-bold bg-red-600 text-white px-1.5 rounded-full">{{ $pendientesProductos }}</span>@endif
+            </a>
+            <a href="{{ route('aprobaciones.clientes') }}" class="px-4 py-1.5 text-sm rounded-lg border {{ $tipo === 'clientes' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                Clientes @if($pendientesClientes > 0)<span class="ml-1 text-xs font-bold bg-red-600 text-white px-1.5 rounded-full">{{ $pendientesClientes }}</span>@endif
+            </a>
+        </div>
     </div>
 
     <div class="p-6 max-w-5xl">
@@ -37,7 +51,7 @@
 
         <div class="flex flex-wrap gap-2 mb-4" role="group" aria-label="Filtrar por estado">
             @foreach(['pendiente' => 'Pendientes', 'aprobada' => 'Aprobadas', 'rechazada' => 'Rechazadas', 'todas' => 'Todas'] as $clave => $texto)
-                <a href="{{ route('aprobaciones.index', ['estado' => $clave]) }}"
+                <a href="{{ route($tipo === 'clientes' ? 'aprobaciones.clientes' : 'aprobaciones.index', ['estado' => $clave]) }}"
                    class="px-4 py-1.5 text-sm rounded-full border {{ $estado === $clave ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">{{ $texto }}</a>
             @endforeach
         </div>

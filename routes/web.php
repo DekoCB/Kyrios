@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
     // Aprobaciones del administrador: la bandeja es solo de Administración; cada rol ve sus propias solicitudes
     Route::middleware('role:Administración')->prefix('aprobaciones')->name('aprobaciones.')->group(function () {
         Route::get('/', [\App\Http\Controllers\AprobacionController::class, 'index'])->name('index');
+        Route::get('/clientes', [\App\Http\Controllers\AprobacionController::class, 'clientes'])->name('clientes');
         Route::post('/{aprobacion}/aprobar', [\App\Http\Controllers\AprobacionController::class, 'aprobar'])->name('aprobar');
         Route::post('/{aprobacion}/rechazar', [\App\Http\Controllers\AprobacionController::class, 'rechazar'])->name('rechazar');
     });
@@ -303,14 +304,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ClienteController::class, 'store'])->name('store');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update');
-        Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->name('destroy');
         Route::post('/consultar-documento', [ClienteController::class, 'consultarDocumento'])->name('consultar-documento');
+        Route::get('/duplicados', [ClienteController::class, 'duplicados'])->name('duplicados');
     });
     // Lectura: Administración y Contador (el listado, la exportación y la ficha)
     Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Contador')->group(function () {
         Route::get('/', [ClienteController::class, 'index'])->name('index');
         Route::get('/exportar', [ClienteController::class, 'exportar'])->name('exportar');
         Route::get('/{cliente}', [ClienteController::class, 'show'])->whereNumber('cliente')->name('show');
+        // Administración elimina directo; el Contador deja una solicitud que el administrador aprueba
+        Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->whereNumber('cliente')->middleware('aprobacion:cliente_eliminacion')->name('destroy');
     });
 
     // ========================================

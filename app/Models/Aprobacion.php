@@ -37,6 +37,29 @@ class Aprobacion extends Model
         return $q->where('estado', 'pendiente');
     }
 
+    /** Solicitudes sobre clientes (acciones «cliente_…»). */
+    public function scopeDeClientes($q)
+    {
+        return $q->where('accion', 'like', 'cliente\\_%');
+    }
+
+    /** Solicitudes sobre productos e inventario: todo lo que no es de clientes. */
+    public function scopeDeProductos($q)
+    {
+        return $q->where('accion', 'not like', 'cliente\\_%');
+    }
+
+    public function getEsDeClienteAttribute(): bool
+    {
+        return str_starts_with((string) $this->accion, 'cliente_');
+    }
+
+    /** Bandeja donde se resuelve esta solicitud. */
+    public function getRutaBandejaAttribute(): string
+    {
+        return $this->es_de_cliente ? 'aprobaciones.clientes' : 'aprobaciones.index';
+    }
+
     public function getEstaPendienteAttribute(): bool
     {
         return $this->estado === 'pendiente';

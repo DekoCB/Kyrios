@@ -29,9 +29,9 @@
                 <a href="{{ route('cotizaciones.create', ['cliente_id' => $cliente->id]) }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><i class="fas fa-file-contract"></i> Nueva cotización</a>
             @endif
             @if($canDelete)
-                <form method="POST" action="{{ route('clientes.destroy', $cliente) }}" class="inline ml-auto" data-confirm="¿Eliminar este cliente?">
+                <form method="POST" action="{{ route('clientes.destroy', $cliente) }}" class="inline ml-auto" data-confirm="{{ $soloSolicita ? '¿Solicitar la eliminación de este cliente? El administrador debe aprobarla.' : '¿Eliminar este cliente?' }}">
                     @csrf @method('DELETE')
-                    <button class="inline-flex items-center gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-trash"></i> Eliminar</button>
+                    <button class="inline-flex items-center gap-2 border border-red-200 bg-white text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-trash"></i> {{ $soloSolicita ? 'Solicitar eliminación' : 'Eliminar' }}</button>
                 </form>
             @endif
         </div>

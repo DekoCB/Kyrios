@@ -74,7 +74,7 @@ class AprobacionService
             "aprobacion:{$aprobacion->id}",
             'Aprobación pendiente',
             "{$request->user()->name} solicita: {$aprobacion->titulo}",
-            route('aprobaciones.index', [], false),
+            route($aprobacion->ruta_bandeja, [], false),
             'alerta'
         ));
 
@@ -274,6 +274,14 @@ class AprobacionService
                 $p = \App\Models\Producto::find($params['producto'] ?? null);
 
                 return ['Eliminar producto: ' . ($p?->nombre ?? 'sin nombre'), [$p ? "Código {$p->codigo}" : 'El producto ya no existe']];
+
+            case 'cliente_eliminacion':
+                $c = \App\Models\Cliente::find($params['cliente'] ?? null);
+
+                return ['Eliminar cliente: ' . ($c?->nombre ?? 'sin nombre'), $c ? array_values(array_filter([
+                    $c->codigo ? "Código {$c->codigo}" : null,
+                    $c->numero_documento ? "{$c->tipo_documento} {$c->numero_documento}" : 'Prospecto sin documento',
+                ])) : ['El cliente ya no existe']];
 
             case 'variante_nueva':
                 return ['Nueva variante de ' . $nombreProducto($params['producto'] ?? null), $this->camposLegibles($in)];

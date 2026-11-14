@@ -13,20 +13,35 @@ class AprobacionController extends Controller
     {
     }
 
-    /** Bandeja del administrador. */
+    /** Bandeja del administrador: productos e inventario. */
     public function index(Request $request)
     {
-        $estado = in_array($request->query('estado'), ['pendiente', 'aprobada', 'rechazada', 'todas'], true) ? $request->query('estado') : 'pendiente';
+        return $this->bandeja($request, 'productos');
+    }
 
-        $consulta = Aprobacion::with(['solicitante', 'resolutor'])->latest();
+    /** Bandeja del administrador: clientes. */
+    public function clientes(Request $request)
+    {
+        return $this->bandeja($request, 'clientes');
+    }
+
+    private function bandeja(Request $request, string $tipo)
+    {
+        $estado = in_array($request->query('estado'), ['pendiente', 'aprobada', 'rechazada', 'todas'], true) ? $request->query('estado') : 'pendiente';
+        $de = $tipo === 'clientes' ? 'deClientes' : 'deProductos';
+
+        $consulta = Aprobacion::with(['solicitante', 'resolutor'])->{$de}()->latest();
         if ($estado !== 'todas') {
             $consulta->where('estado', $estado);
         }
 
         return view('aprobaciones.index', [
-            'aprobaciones' => $consulta->paginate(20)->withQueryString(),
-            'estado'       => $estado,
-            'pendientes'   => Aprobacion::pendientes()->count(),
+            'aprobaciones'        => $consulta->paginate(20)->withQueryString(),
+            'estado'              => $estado,
+            'tipo'                => $tipo,
+            'pendientes'          => Aprobacion::pendientes()->{$de}()->count(),
+            'pendientesProductos' => Aprobacion::pendientes()->deProductos()->count(),
+            'pendientesClientes'  => Aprobacion::pendientes()->deClientes()->count(),
         ]);
     }
 
@@ -43,10 +58,10 @@ class AprobacionController extends Controller
         try {
             $this->servicio->aprobar($aprobacion, $request->user());
         } catch (RuntimeException $e) {
-            return redirect()->route('aprobaciones.index')->with('error', 'No se pudo aprobar: ' . $e->getMessage());
+            return redirect()->route($aprobacion->ruta_bandeja)->with('error', 'No se pudo aprobar: ' . $e->getMessage());
         }
 
-        return redirect()->route('aprobaciones.index')->with('success', "Aprobado y aplicado: {$aprobacion->titulo}");
+        return redirect()->route($aprobacion->ruta_bandeja)->with('success', "Aprobado y aplicado: {$aprobacion->titulo}");
     }
 
     public function rechazar(Request $request, Aprobacion $aprobacion)
@@ -56,9 +71,9 @@ class AprobacionController extends Controller
         try {
             $this->servicio->rechazar($aprobacion, $request->user(), $datos['motivo']);
         } catch (RuntimeException $e) {
-            return redirect()->route('aprobaciones.index')->with('error', $e->getMessage());
+            return redirect()->route($aprobacion->ruta_bandeja)->with('error', $e->getMessage());
         }
 
-        return redirect()->route('aprobaciones.index')->with('success', "Rechazado: {$aprobacion->titulo}");
+        return redirect()->route($aprobacion->ruta_bandeja)->with('success', "Rechazado: {$aprobacion->titulo}");
     }
 }

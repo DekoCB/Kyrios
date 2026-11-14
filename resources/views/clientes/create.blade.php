@@ -100,7 +100,27 @@
                         </span>
                     </div>
 
-                    <form action="{{ route('clientes.store') }}" method="POST">
+                    {{-- Aviso de cliente ya registrado (mismo nombre, DNI o RUC) --}}
+                    <template x-for="d in duplicados" :key="d.id">
+                        <div class="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm" data-duplicado>
+                            <p class="font-semibold text-amber-900">
+                                <i class="fas fa-triangle-exclamation mr-1"></i>
+                                Ya existe un cliente con el mismo <span x-text="d.motivos.join(' y ')"></span>:
+                                <span x-text="(d.codigo ? d.codigo + ' · ' : '') + d.nombre"></span>
+                            </p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button type="button" @click="autocompletar(d)"
+                                        class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium">
+                                    <i class="fas fa-wand-magic-sparkles mr-1"></i>Autocompletar con sus datos
+                                </button>
+                                <a :href="d.url" target="_blank" class="px-3 py-1.5 rounded-lg border border-amber-400 text-amber-900 text-xs font-medium hover:bg-amber-100">
+                                    <i class="fas fa-up-right-from-square mr-1"></i>Ver cliente
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+
+                    <form action="{{ route('clientes.store') }}" method="POST" x-ref="formCliente">
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -115,14 +135,14 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Número Documento <span x-show="tipoDocumento" class="text-red-500">*</span></label>
-                                <input type="text" name="numero_documento" x-model="numeroDocumento" maxlength="11" :required="!!tipoDocumento" :disabled="!tipoDocumento"
+                                <input type="text" name="numero_documento" x-model="numeroDocumento" @change="revisarDuplicados()" maxlength="11" :required="!!tipoDocumento" :disabled="!tipoDocumento"
                                        placeholder="Se completa cuando lo entregue"
                                        class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200 @error('numero_documento') border-red-500 @enderror">
                                 @error('numero_documento') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Nombre / Razón Social *</label>
-                                <input type="text" name="nombre" x-model="nombre" required
+                                <input type="text" name="nombre" x-model="nombre" @change="revisarDuplicados()" required
                                        class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200 @error('nombre') border-red-500 @enderror"
                                        placeholder="Nombre completo o razón social">
                                 @error('nombre') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
@@ -244,9 +264,35 @@
             exito:           false,
             encontrado:      false,
             formVisible:     {{ $hayErrores ? 'true' : 'false' }},
+            duplicados:      [],
 
             mostrarForm() {
                 this.formVisible = true;
+            },
+
+            /** Busca clientes ya registrados con el mismo nombre, DNI o RUC. */
+            async revisarDuplicados() {
+                const q = new URLSearchParams({ nombre: this.nombre || '', documento: this.numeroDocumento || '' });
+                try {
+                    const res = await fetch('{{ route("clientes.duplicados") }}?' + q, { headers: { 'Accept': 'application/json' } });
+                    this.duplicados = (await res.json()).coincidencias || [];
+                } catch (e) {
+                    this.duplicados = [];
+                }
+            },
+
+            /** Rellena el formulario con los datos del cliente que ya existe. */
+            autocompletar(d) {
+                const form = this.$refs.formCliente;
+                Object.entries(d.datos).forEach(([campo, valor]) => {
+                    const el = form.querySelector('[name="' + campo + '"]');
+                    if (!el || valor === null || valor === undefined) return;
+                    el.disabled = false;
+                    el.value = valor;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                this.duplicados = [];
             },
 
             async consultarDocumento() {
@@ -292,6 +338,7 @@
                     this.formVisible = false;
                 }
                 this.cargando = false;
+                this.revisarDuplicados();
             }
         }
     }

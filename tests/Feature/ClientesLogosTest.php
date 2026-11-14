@@ -108,12 +108,16 @@ class ClientesLogosTest extends TestCase
         $this->get(route('clientes.index'))->assertForbidden();
     }
 
-    public function test_solo_administracion_elimina(): void
+    public function test_el_contador_solo_solicita_la_eliminacion(): void
     {
         $c = Cliente::create($this->datos());
         $this->como('Contador');
-        $this->delete(route('clientes.destroy', $c))->assertForbidden();
+        $this->delete(route('clientes.destroy', $c))->assertRedirect(route('aprobaciones.mias'));
         $this->assertNotNull(Cliente::find($c->id));
+        $this->assertSame(1, \App\Models\Aprobacion::pendientes()->deClientes()->count());
+
+        $this->como('Logística');
+        $this->delete(route('clientes.destroy', $c))->assertForbidden();
     }
 
     public function test_el_menu_de_cada_rol_compila_y_muestra_cotizaciones_y_clientes(): void

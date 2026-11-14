@@ -194,6 +194,67 @@ class ClienteController extends Controller
         return $validated;
     }
 
+    /** Campos del cliente que el formulario de alta puede autocompletar desde un duplicado. */
+    private const CAMPOS_AUTOCOMPLETAR = [
+        'tipo_documento', 'numero_documento', 'dni_complementario', 'ruc_complementario', 'nombre', 'direccion', 'departamento',
+        'provincia', 'distrito', 'ubigeo', 'contacto', 'telefono', 'email', 'estado', 'notas', 'segmento', 'especialidad', 'cargo',
+        'empresa', 'fecha_cumpleanos', 'telefono_fijo', 'anexo', 'email_empresa', 'redes_sociales', 'comision', 'preferencias',
+        'asesor', 'origen', 'clasificacion', 'como_ingreso', 'preferencia_contacto', 'tipo_empresa',
+    ];
+
+    /**
+     * Clientes que ya existen con el mismo nombre, DNI o RUC que se está por registrar.
+     * Devuelve también sus datos para que el formulario pueda autocompletarse con ellos.
+     */
+    public function duplicados(Request $request)
+    {
+        $nombre = preg_replace('/\s+/u', ' ', trim((string) $request->query('nombre')));
+        $documento = preg_replace('/\D+/', '', (string) $request->query('documento'));
+        $ignorar = (int) $request->query('ignorar');
+
+        if (mb_strlen($nombre) < 3 && strlen($documento) < 8) {
+            return response()->json(['coincidencias' => []]);
+        }
+
+        $consulta = Cliente::query()->when($ignorar, fn ($q) => $q->whereKeyNot($ignorar))->where(function ($q) use ($nombre, $documento) {
+            if (mb_strlen($nombre) >= 3) {
+                $q->orWhereRaw("TRIM(REGEXP_REPLACE(nombre, '[[:space:]]+', ' ')) = ?", [$nombre]);
+            }
+            if (strlen($documento) >= 8) {
+                $q->orWhere('numero_documento', $documento)->orWhere('dni_complementario', $documento)->orWhere('ruc_complementario', $documento);
+            }
+        });
+
+        $coincidencias = $consulta->limit(5)->get()->map(function (Cliente $c) use ($nombre, $documento) {
+            $motivos = [];
+            if ($nombre !== '' && mb_strtolower(preg_replace('/\s+/u', ' ', trim($c->nombre))) === mb_strtolower($nombre)) {
+                $motivos[] = 'nombre';
+            }
+            if ($documento !== '') {
+                if ($c->dni === $documento || ($c->tipo_documento === 'DNI' && $c->numero_documento === $documento)) {
+                    $motivos[] = 'DNI';
+                }
+                if ($c->ruc === $documento || ($c->tipo_documento === 'RUC' && $c->numero_documento === $documento)) {
+                    $motivos[] = 'RUC';
+                }
+                if (!array_intersect(['DNI', 'RUC'], $motivos) && $c->numero_documento === $documento) {
+                    $motivos[] = 'documento';
+                }
+            }
+
+            return [
+                'id'      => $c->id,
+                'codigo'  => $c->codigo,
+                'nombre'  => $c->nombre,
+                'motivos' => $motivos,
+                'url'     => route('clientes.show', $c, false),
+                'datos'   => collect(self::CAMPOS_AUTOCOMPLETAR)->mapWithKeys(fn ($campo) => [$campo => $c->{$campo} instanceof \DateTimeInterface ? $c->{$campo}->format('Y-m-d') : $c->{$campo}])->all(),
+            ];
+        })->values();
+
+        return response()->json(['coincidencias' => $coincidencias]);
+    }
+
     public function store(Request $request)
     {
         $validated = $this->limpiarListas($request->validate($this->reglas(), $this->mensajes()));
@@ -229,9 +290,10 @@ class ClienteController extends Controller
         $resumen['ticket_promedio'] = $resumen['ventas'] > 0 ? $resumen['total_comprado'] / $resumen['ventas'] : 0.0;
 
         $canEdit = $this->rol() === 'Administración';
-        $canDelete = $this->rol() === 'Administración';
+        $canDelete = in_array($this->rol(), ['Administración', 'Contador'], true);
+        $soloSolicita = $this->rol() !== 'Administración';
 
-        return view('clientes.show', compact('cliente', 'ventas', 'cotizaciones', 'resumen', 'canEdit', 'canDelete'));
+        return view('clientes.show', compact('cliente', 'ventas', 'cotizaciones', 'resumen', 'canEdit', 'canDelete', 'soloSolicita'));
     }
 
     public function edit(Cliente $cliente)

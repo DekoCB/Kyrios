@@ -87,14 +87,26 @@
                         </a>
                     </li>
                     
-                    {{-- Aprobaciones pendientes --}}
-                    @php $aprobPendientes = \App\Models\Aprobacion::pendientes()->count(); @endphp
+                    {{-- Aprobaciones pendientes: productos e inventario / clientes --}}
+                    @php
+                        $aprobProductos = \App\Models\Aprobacion::pendientes()->deProductos()->count();
+                        $aprobClientes = \App\Models\Aprobacion::pendientes()->deClientes()->count();
+                    @endphp
                     <li>
                         <a href="{{ route('aprobaciones.index') }}"
-                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('aprobaciones.*') ? 'bg-blue-700' : '' }}">
-                            <i class="fas fa-clipboard-check mr-3"></i>Aprobaciones
-                            @if($aprobPendientes > 0)
-                                <span class="ml-auto bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $aprobPendientes }}</span>
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('aprobaciones.index') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-clipboard-check mr-3"></i>Aprobaciones · Productos
+                            @if($aprobProductos > 0)
+                                <span class="ml-auto bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $aprobProductos }}</span>
+                            @endif
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('aprobaciones.clientes') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('aprobaciones.clientes') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-user-check mr-3"></i>Aprobaciones · Clientes
+                            @if($aprobClientes > 0)
+                                <span class="ml-auto bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $aprobClientes }}</span>
                             @endif
                         </a>
                     </li>
