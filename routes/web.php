@@ -493,6 +493,49 @@ Route::middleware('auth')->group(function () {
     });
 
     // ========================================
+    // RECURSOS HUMANOS: personal, asistencia y solicitudes
+    // ========================================
+    Route::prefix('rrhh')->name('rrhh.')->group(function () {
+        $emp = \App\Http\Controllers\Rrhh\EmpleadoController::class;
+        $asi = \App\Http\Controllers\Rrhh\AsistenciaController::class;
+        $sol = \App\Http\Controllers\Rrhh\SolicitudRrhhController::class;
+        $doc = \App\Http\Controllers\Rrhh\EmpleadoDocumentoController::class;
+
+        // Cada persona del equipo: marcar su asistencia y pedir permisos o vacaciones
+        Route::middleware('role:Administración,Contador,Logística,Operaciones')->group(function () use ($asi, $sol) {
+            Route::get('/mi-asistencia', [$asi, 'mi'])->name('mi-asistencia');
+            Route::post('/mi-asistencia/marcar', [$asi, 'marcar'])->name('marcar');
+            Route::get('/mis-solicitudes', [$sol, 'mias'])->name('mis-solicitudes');
+            Route::post('/solicitudes', [$sol, 'store'])->name('solicitudes.store');
+        });
+
+        // Gestión del personal: solo Administración
+        Route::middleware('role:Administración')->group(function () use ($emp, $asi, $sol, $doc) {
+            Route::get('/empleados', [$emp, 'index'])->name('empleados.index');
+            Route::get('/empleados/nuevo', [$emp, 'create'])->name('empleados.create');
+            Route::post('/empleados', [$emp, 'store'])->name('empleados.store');
+            Route::get('/empleados/{empleado}', [$emp, 'show'])->whereNumber('empleado')->name('empleados.show');
+            Route::get('/empleados/{empleado}/editar', [$emp, 'edit'])->name('empleados.edit');
+            Route::put('/empleados/{empleado}', [$emp, 'update'])->name('empleados.update');
+            Route::post('/empleados/{empleado}/cesar', [$emp, 'cesar'])->name('empleados.cesar');
+            Route::post('/empleados/{empleado}/reactivar', [$emp, 'reactivar'])->name('empleados.reactivar');
+            Route::post('/empleados/{empleado}/documentos', [$doc, 'store'])->name('documentos.store');
+            Route::get('/documentos/{documento}', [$doc, 'descargar'])->name('documentos.descargar');
+            Route::delete('/documentos/{documento}', [$doc, 'destroy'])->name('documentos.destroy');
+
+            Route::get('/asistencia', [$asi, 'control'])->name('asistencia.control');
+            Route::post('/asistencia/faltas', [$asi, 'faltas'])->name('asistencia.faltas');
+            Route::get('/asistencia/reporte', [$asi, 'reporte'])->name('asistencia.reporte');
+            Route::get('/asistencia/reporte/exportar', [$asi, 'exportar'])->name('asistencia.exportar');
+            Route::post('/asistencia/{empleado}', [$asi, 'registrar'])->name('asistencia.registrar');
+
+            Route::get('/solicitudes', [$sol, 'index'])->name('solicitudes.index');
+            Route::post('/solicitudes/{solicitud}/aprobar', [$sol, 'aprobar'])->name('solicitudes.aprobar');
+            Route::post('/solicitudes/{solicitud}/rechazar', [$sol, 'rechazar'])->name('solicitudes.rechazar');
+        });
+    });
+
+    // ========================================
     // NOTAS DE PEDIDO (de una cotización confirmada a la preparación en almacén)
     // ========================================
     Route::prefix('notas-pedido')->name('notas-pedido.')->group(function () {

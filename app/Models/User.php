@@ -98,4 +98,10 @@ class User extends Authenticatable
     {
         return $query->where('estado', 'activo');
     }
+
+    /** Ficha de personal vinculada a este usuario (para marcar asistencia). */
+    public function empleado(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Empleado::class);
+    }
 }

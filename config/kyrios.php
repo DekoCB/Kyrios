@@ -33,6 +33,12 @@ return [
     /*
      * Cotizaciones: valores por defecto del formulario (se pueden cambiar en cada cotización).
      */
+    // Recursos humanos: control de asistencia
+    'rrhh' => [
+        'tolerancia_min'   => (int) env('RRHH_TOLERANCIA_MIN', 10),
+        'dias_laborables'  => [1, 2, 3, 4, 5], // 1 = lunes … 7 = domingo
+    ],
+
     'cotizacion' => [
         'validez_dias' => 7,
         'condiciones'  => "Precios en soles (PEN) e incluyen IGV.

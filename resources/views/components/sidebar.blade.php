@@ -113,6 +113,24 @@
 
                     {{-- Pedidos internos entre almacenes --}}
                     <li>
+                        <a href="{{ route('rrhh.empleados.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.empleados.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-id-card mr-3"></i>Recursos humanos
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('rrhh.asistencia.control') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.asistencia.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-user-clock mr-3"></i>Control de asistencia
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('rrhh.mi-asistencia') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-fingerprint mr-3"></i>Mi asistencia
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('notas-pedido.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('notas-pedido.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-clipboard-list mr-3"></i>Notas de pedido
@@ -696,6 +714,12 @@
                         </ul>
                     </li>
                     <li>
+                        <a href="{{ route('rrhh.mi-asistencia') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-fingerprint mr-3"></i>Mi asistencia
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('notas-pedido.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('notas-pedido.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-clipboard-list mr-3"></i>Notas de pedido
@@ -772,6 +796,12 @@
                     </li>
 
                     {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('rrhh.mi-asistencia') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-fingerprint mr-3"></i>Mi asistencia
+                        </a>
+                    </li>
                     <li>
                         <a href="{{ route('notas-pedido.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('notas-pedido.*') ? 'bg-blue-700' : '' }}">
@@ -980,6 +1010,12 @@
                     </li>
 
                     {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('rrhh.mi-asistencia') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-fingerprint mr-3"></i>Mi asistencia
+                        </a>
+                    </li>
                     <li>
                         <a href="{{ route('pedidos-internos.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">
