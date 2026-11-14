@@ -273,3 +273,6 @@ body { transition: background-color .2s ease, color .2s ease; }
 /* Opciones tipo tarjeta seleccionadas (radio con peer-checked) */
 .dark :is(.peer-checked\:bg-blue-50,.peer-checked\:bg-indigo-50){--tw-bg-opacity:1}
 .dark input.peer:checked ~ :is([class*="peer-checked:bg-blue-50"],[class*="peer-checked:bg-indigo-50"]){background-color:rgba(250,208,0,.14)}
+/* Mismo criterio para el resto de colores (tipo de movimiento: verde, rojo, morado, naranja…) */
+.dark input.peer:checked ~ [class*="peer-checked:bg-"]{background-color:rgba(250,208,0,.14)}
+.dark input.peer:checked ~ [class*="peer-checked:border-"]{border-color:#FAD000}

@@ -303,7 +303,9 @@ class AprobacionService
                 )];
 
             case 'ingreso_movimiento':
-                return [ucfirst((string) ($in['tipo_movimiento'] ?? 'movimiento')) . ' de inventario: ' . $nombreProducto($in['producto_id'] ?? null), $this->camposLegibles($in)];
+                $n = count((array) ($in['lineas'] ?? []));
+
+                return [ucfirst((string) ($in['tipo_movimiento'] ?? 'movimiento')) . ' de inventario: ' . ($n > 1 ? "{$n} productos" : $nombreProducto($in['producto_id'] ?? ($in['lineas'][0]['producto_id'] ?? null))), array_merge($this->camposLegibles(Arr::except($in, ['lineas'])), $lineas())];
 
             case 'compra':
                 return ['Compra ' . ($in['numero_factura'] ?? '') . ' · ' . $this->referencia('proveedor_id', $in['proveedor_id'] ?? null), array_merge(

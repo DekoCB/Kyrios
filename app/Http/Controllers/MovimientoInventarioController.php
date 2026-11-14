@@ -95,8 +95,11 @@ class MovimientoInventarioController extends Controller
         // =====================================================
         // FIX 1: Validación condicional según tipo de producto
         // =====================================================
+        // Varios productos a la vez: «lineas»; el formato de un solo producto sigue admitido
+        $variasLineas = is_array($request->input('lineas'));
+
         $rules = [
-            'producto_id' => 'required|exists:productos,id',
+            'producto_id' => $variasLineas ? 'nullable' : 'required|exists:productos,id',
             'almacen_id' => 'required|exists:almacenes,id',
             'tipo_movimiento'      => 'required|in:ingreso,salida,ajuste,transferencia,devolucion,merma',
             'motivo_movimiento_id' => 'required|exists:motivos_movimiento,id',
@@ -104,8 +107,14 @@ class MovimientoInventarioController extends Controller
             'almacen_destino_id' => 'nullable|exists:almacenes,id',
             'numero_guia' => 'nullable|string|max:50',
             'variante_id' => 'nullable|exists:producto_variantes,id',
-            'cantidad' => 'required|integer|min:1',
+            'cantidad' => $variasLineas ? 'nullable' : 'required|integer|min:1',
         ];
+        if ($variasLineas) {
+            $rules['lineas'] = 'required|array|min:1|max:40';
+            $rules['lineas.*.producto_id'] = 'required|exists:productos,id';
+            $rules['lineas.*.variante_id'] = 'nullable|exists:producto_variantes,id';
+            $rules['lineas.*.cantidad'] = 'required|integer|min:1';
+        }
         
         // FIX 3: Almacén destino solo obligatorio en transferencias
         if ($request->tipo_movimiento === 'transferencia') {
@@ -127,16 +136,15 @@ class MovimientoInventarioController extends Controller
             'numero_guia.required' => 'El número de guía es obligatorio para transferencias.',
         ];
 
+        $messages['lineas.*.producto_id.required'] = 'Cada línea necesita un producto.';
+        $messages['lineas.*.cantidad.min'] = 'La cantidad de cada producto debe ser mayor a 0.';
+
         $validated = $request->validate($rules, $messages);
 
         try {
-            // Preparar datos para el modelo
-            $datos = [
-                'producto_id' => $request->producto_id,
-                'variante_id' => $request->variante_id,
+            $comunes = [
                 'almacen_id' => $request->almacen_id,
                 'tipo_movimiento'      => $request->tipo_movimiento,
-                'cantidad'            => $request->cantidad,
                 'motivo_movimiento_id'=> $request->motivo_movimiento_id,
                 'motivo'              => MotivoMovimiento::find($request->motivo_movimiento_id)?->nombre ?? '',
                 'observaciones'       => $request->observaciones,
@@ -144,12 +152,25 @@ class MovimientoInventarioController extends Controller
                 'numero_guia' => $request->numero_guia,
                 'user_id' => auth()->id(),
             ];
-            
-            MovimientoInventario::registrarMovimiento($datos);
+
+            $lineas = $variasLineas
+                ? $request->input('lineas')
+                : [['producto_id' => $request->producto_id, 'variante_id' => $request->variante_id, 'cantidad' => $request->cantidad]];
+
+            // Todo o nada: si una línea falla (por ejemplo stock insuficiente), no se registra ninguna
+            \Illuminate\Support\Facades\DB::transaction(function () use ($lineas, $comunes) {
+                foreach ($lineas as $l) {
+                    MovimientoInventario::registrarMovimiento($comunes + [
+                        'producto_id' => $l['producto_id'],
+                        'variante_id' => $l['variante_id'] ?? null,
+                        'cantidad'    => $l['cantidad'],
+                    ]);
+                }
+            });
 
             return redirect()
                 ->route('inventario.movimientos.index')
-                ->with('success', 'Movimiento registrado exitosamente.');
+                ->with('success', count($lineas) > 1 ? count($lineas) . ' movimientos registrados exitosamente.' : 'Movimiento registrado exitosamente.');
 
         } catch (\Exception $e) {
             \Log::error('❌ Error en store:', [

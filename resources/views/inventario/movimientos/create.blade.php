@@ -38,99 +38,14 @@ $catalogoJson = $productos->map(fn($p) => [
 @endphp
 
 <div class="md:ml-64 p-4 md:p-8"
-     x-data="{
-         /* ── Tipo de movimiento ───────────────────── */
-         tipoMovimiento: '{{ old('tipo_movimiento', '') }}',
-
-         /* ── Búsqueda de producto ─────────────────── */
-         query: '',
-         resultados: [],
-         abierto: false,
-         productoId: {{ old('producto_id') ? old('producto_id') : 'null' }},
-         productoNombre: '',
-         productoStock: 0,
-         variantes: [],
-         varianteId: '{{ old('variante_id') }}',
-         productoUnidad: '',
-         catalogo: {{ Js::from($catalogoJson) }},
-
-         /* ── Almacenes ────────────────────────────── */
-         almacenId: '{{ old('almacen_id', '') }}',
-
-         /* ── Otros campos ─────────────────────────── */
-         cantidad: {{ old('cantidad', 1) }},
-         motivoId: '{{ old('motivo_movimiento_id', '') }}',
-         observaciones: '',
-         motivos: {{ Js::from($motivos) }},
-         get motivosFiltrados() {
-             return this.tipoMovimiento ? (this.motivos[this.tipoMovimiento] ?? []) : [];
-         },
-
-         /* ── Estado del formulario ────────────────── */
-         enviando: false,
-         errorGeneral: '',
-
-         /* ── Getters ──────────────────────────────── */
-         get labelAlmacen()   { return this.tipoMovimiento === 'ingreso' ? 'Almacén Destino' : 'Almacén Origen'; },
-         get formularioValido() {
-             if (!this.tipoMovimiento) return false;
-             if (!this.productoId)     return false;
-             if (!this.almacenId)      return false;
-             if (this.cantidad < 1) return false;
-             if (!this.motivoId) return false;
-             return true;
-         },
-
-         /* ── Métodos ──────────────────────────────── */
-         buscar() {
-             if (this.query.length < 1) {
-                 this.resultados = [];
-                 this.abierto = false;
-                 return;
-             }
-             const q = this.query.toLowerCase();
-             this.resultados = this.catalogo
-                 .filter(p => (p.busqueda || '').includes(q) || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
-                     || (p.variantes || []).some(v => v.codigo.toLowerCase().includes(q)))
-                 .slice(0, 10);
-             this.abierto = this.resultados.length > 0;
-         },
-
-         seleccionar(p) {
-             this.productoId    = p.id;
-             this.productoNombre= p.nombre;
-             this.productoStock = p.stock_actual;
-             this.variantes     = p.variantes || [];
-             this.varianteId    = this.variantes.length === 1 ? this.variantes[0].id : '';
-             this.productoUnidad= p.unidad;
-             this.query         = p.nombre + ' [' + p.codigo + ']';
-             this.abierto       = false;
-             this.resultados    = [];
-         },
-
-         limpiarProducto() {
-             this.productoId    = null;
-             this.productoNombre= '';
-             this.productoStock = 0;
-             this.variantes     = [];
-             this.varianteId    = '';
-             this.query         = '';
-             this.resultados    = [];
-             this.abierto       = false;
-         },
-
-         onTipoChange() {
-             this.motivoId  = '';
-         },
-
-         init() {
-             /* Restaurar producto si hay old() values después de error de validación */
-             @if(old('producto_id'))
-             const found = this.catalogo.find(p => p.id == {{ old('producto_id') }});
-             if (found) this.seleccionar(found);
-             @endif
-         }
-     }"
+     x-data="movimientoForm({{ Js::from([
+         'tipo' => old('tipo_movimiento', ''),
+         'almacen' => (string) old('almacen_id', ''),
+         'motivo' => (string) old('motivo_movimiento_id', ''),
+         'catalogo' => $catalogoJson,
+         'motivos' => $motivos,
+         'lineas' => old('lineas', old('producto_id') ? [['producto_id' => old('producto_id'), 'variante_id' => old('variante_id'), 'cantidad' => old('cantidad', 1)]] : []),
+     ]) }})"
      x-init="init()">
 
     {{-- Breadcrumb --}}
@@ -174,7 +89,7 @@ $catalogoJson = $productos->map(fn($p) => [
     @endif
 
     <form action="{{ route('inventario.movimientos.store') }}" method="POST"
-          @submit.prevent="if(!formularioValido){ errorGeneral='Completa todos los campos requeridos.'; return; } enviando=true; errorGeneral=''; $el.submit()">
+          @submit.prevent="if(!formularioValido){ errorGeneral='Completa todos los campos requeridos: tipo, almacén, motivo y cada producto con su variante y cantidad.'; return; } enviando=true; errorGeneral=''; $el.submit()">
         @csrf
 
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -215,27 +130,25 @@ $catalogoJson = $productos->map(fn($p) => [
                     </div>
                 </div>
 
-                {{-- Panel de info del producto seleccionado --}}
-                <div x-show="productoId" x-cloak
+                {{-- Resumen de los productos del movimiento --}}
+                <div x-show="lineasCompletas.length" x-cloak
                      class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="bg-linear-to-r from-emerald-700 to-emerald-500 px-5 py-3">
                         <h2 class="text-sm font-semibold text-white flex items-center gap-2">
-                            <i class="fas fa-box"></i> Producto seleccionado
+                            <i class="fas fa-box"></i> Productos del movimiento
                         </h2>
                     </div>
-                    <div class="p-5 space-y-3">
-                        <div>
-                            <p class="text-sm font-bold text-gray-900" x-text="productoNombre"></p>
+                    <div class="p-5 space-y-2">
+                        <template x-for="l in lineasCompletas" :key="l.id">
+                            <div class="flex items-start justify-between gap-2 text-sm">
+                                <span class="text-gray-800 min-w-0 truncate" x-text="l.nombre"></span>
+                                <span class="font-bold text-emerald-700 shrink-0" x-text="'× ' + (parseInt(l.cantidad) || 0)"></span>
+                            </div>
+                        </template>
+                        <div class="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
+                            <span class="text-gray-500" x-text="lineasCompletas.length + (lineasCompletas.length === 1 ? ' producto' : ' productos')"></span>
+                            <span class="font-bold text-gray-900" x-text="unidadesTotal + ' unidades'"></span>
                         </div>
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-500">Stock global</span>
-                            <span class="font-bold text-emerald-700"
-                                  x-text="productoStock + ' ' + productoUnidad"></span>
-                        </div>
-                        <button type="button" @click="limpiarProducto()"
-                                class="w-full text-xs text-red-500 hover:text-red-700 transition-colors mt-1">
-                            <i class="fas fa-times-circle mr-1"></i> Cambiar producto
-                        </button>
                     </div>
                 </div>
 
@@ -297,70 +210,78 @@ $catalogoJson = $productos->map(fn($p) => [
 
                     <div class="p-6 space-y-5">
 
-                        {{-- Búsqueda dinámica de producto --}}
+                        {{-- Productos: se busca escribiendo o se elige de la lista desplegable; se pueden agregar varios --}}
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                Producto <span class="text-red-500">*</span>
+                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                                Productos <span class="text-red-500">*</span>
                             </label>
-                            <input type="hidden" name="producto_id" :value="productoId">
-                            <div class="relative" @click.away="abierto = false">
-                                <div class="relative">
-                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                                    <input type="text"
-                                           x-model="query"
-                                           @input.debounce.200ms="buscar()"
-                                           @focus="if(resultados.length) abierto = true"
-                                           :readonly="!!productoId"
-                                           :class="productoId ? 'bg-gray-50 text-gray-500 cursor-default' : ''"
-                                           placeholder="Buscar por nombre o código..."
-                                           class="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                                    <button x-show="productoId" type="button" @click="limpiarProducto()"
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors">
-                                        <i class="fas fa-times text-sm"></i>
-                                    </button>
-                                </div>
 
-                                {{-- Dropdown resultados --}}
-                                <div x-show="abierto" x-cloak
-                                     class="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                                    <template x-for="p in resultados" :key="p.id">
-                                        <button type="button" @click="seleccionar(p)"
-                                                class="w-full text-left px-4 py-2.5 hover:bg-blue-50 border-b border-gray-50 last:border-0 transition-colors">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <p class="text-sm font-medium text-gray-900" x-text="p.nombre"></p>
-                                                    <p class="text-xs text-gray-400 font-mono" x-text="p.codigos || p.codigo"></p>
+                            <div class="space-y-3">
+                                <template x-for="(l, idx) in lineas" :key="l.id">
+                                    <div class="rounded-xl border border-gray-200 p-3 space-y-2" data-linea-movimiento>
+                                        <div class="flex items-start gap-2">
+                                            <div class="relative flex-1 min-w-0" @click.outside="l.abierto = false">
+                                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                                                <input type="text" x-model="l.query"
+                                                       @input.debounce.150ms="buscar(l)"
+                                                       @focus="if (!l.productoId && !l.query) listar(l)"
+                                                       :readonly="!!l.productoId"
+                                                       :class="l.productoId ? 'bg-gray-50 text-gray-500 cursor-default' : ''"
+                                                       placeholder="Escribe o elige un producto…"
+                                                       class="w-full pl-9 pr-16 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                                <div class="absolute right-1 top-0 h-full flex items-center">
+                                                    <button x-show="l.productoId" type="button" @click="limpiar(l)" class="px-2 text-gray-400 hover:text-red-500" title="Cambiar producto"><i class="fas fa-times text-sm"></i></button>
+                                                    <button x-show="!l.productoId" type="button" data-lista-productos @click="l.abierto ? l.abierto = false : listar(l)" class="px-3 h-full text-gray-500 hover:text-blue-600" title="Ver lista de productos"><i class="fas fa-chevron-down text-xs"></i></button>
                                                 </div>
-                                                <div class="text-right shrink-0 ml-3">
-                                                    <span class="text-xs font-semibold text-emerald-700"
-                                                          x-text="'Stock: ' + p.stock_actual + ' ' + p.unidad"></span>
+
+                                                <div x-show="l.abierto" x-cloak class="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                                                    <template x-for="p in l.resultados" :key="p.id">
+                                                        <button type="button" @click="seleccionar(l, p)" class="w-full text-left px-4 py-2.5 hover:bg-blue-50 border-b border-gray-50 last:border-0 transition-colors">
+                                                            <div class="flex items-center justify-between">
+                                                                <div class="min-w-0">
+                                                                    <p class="text-sm font-medium text-gray-900 truncate" x-text="p.nombre"></p>
+                                                                    <p class="text-xs text-gray-400 font-mono truncate" x-text="p.codigos || p.codigo"></p>
+                                                                </div>
+                                                                <span class="text-xs font-semibold text-emerald-700 shrink-0 ml-3" x-text="'Stock: ' + p.stock_actual + ' ' + p.unidad"></span>
+                                                            </div>
+                                                        </button>
+                                                    </template>
+                                                    <p x-show="l.resultados.length === 0" class="px-4 py-3 text-center text-xs text-gray-400">Sin resultados</p>
                                                 </div>
                                             </div>
-                                        </button>
-                                    </template>
-                                </div>
-                            </div>
-                            @error('producto_id')
-                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
+                                            <button type="button" @click="quitar(idx)" :disabled="lineas.length === 1" class="mt-2 px-2 text-gray-400 hover:text-red-500 disabled:opacity-30" title="Quitar producto"><i class="fas fa-trash-can"></i></button>
+                                        </div>
 
-                        {{-- Variante (acabado, tamaño…): el stock se maneja por variante y almacén --}}
-                        <div x-show="variantes.length > 0" x-cloak>
-                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                Variante <span class="text-red-500">*</span>
-                            </label>
-                            <select name="variante_id" x-model="varianteId" :disabled="variantes.length === 0"
-                                    class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <option value="">— Selecciona la variante —</option>
-                                <template x-for="v in variantes" :key="v.id">
-                                    <option :value="v.id" :selected="v.id == varianteId"
-                                            x-text="v.codigo + ' · ' + v.detalle + (almacenId ? ' · stock aquí: ' + ((v.stock || {})[almacenId] || 0) : '')"></option>
+                                        <input type="hidden" :name="'lineas[' + idx + '][producto_id]'" :value="l.productoId">
+
+                                        <div class="grid grid-cols-3 gap-2" x-show="l.productoId" x-cloak>
+                                            <div class="col-span-2" x-show="l.variantes.length > 0">
+                                                <label class="block text-[11px] text-gray-500 mb-1">Variante *</label>
+                                                <select :name="'lineas[' + idx + '][variante_id]'" x-model="l.varianteId" :disabled="l.variantes.length === 0"
+                                                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                                                    <option value="">— Selecciona la variante —</option>
+                                                    <template x-for="v in l.variantes" :key="v.id">
+                                                        <option :value="v.id" :selected="v.id == l.varianteId"
+                                                                x-text="v.codigo + ' · ' + v.detalle + (almacenId ? ' · stock aquí: ' + ((v.stock || {})[almacenId] || 0) : '')"></option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div :class="l.variantes.length === 0 ? 'col-span-3' : ''">
+                                                <label class="block text-[11px] text-gray-500 mb-1">Cantidad *</label>
+                                                <input type="number" :name="'lineas[' + idx + '][cantidad]'" x-model="l.cantidad" min="1"
+                                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </template>
-                            </select>
-                            @error('variante_id')
-                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
+                            </div>
+
+                            <button type="button" @click="agregar()" class="mt-3 inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                <i class="fas fa-plus-circle"></i> Agregar otro producto
+                            </button>
+                            @error('lineas') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                            @error('lineas.*.producto_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                            @error('lineas.*.cantidad') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
 
                         {{-- Almacén --}}
@@ -392,18 +313,6 @@ $catalogoJson = $productos->map(fn($p) => [
                                 @endif
                             </select>
                             @error('almacen_id')
-                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        {{-- Cantidad --}}
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                Cantidad <span class="text-red-500">*</span>
-                            </label>
-                            <input type="number" name="cantidad" x-model="cantidad" min="1"
-                                   class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500">
-                            @error('cantidad')
                                 <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
@@ -478,5 +387,65 @@ $catalogoJson = $productos->map(fn($p) => [
         </div>
     </form>
 </div>
+<script>
+function movimientoForm(c) {
+    let contador = 0;
+    const nueva = () => ({ id: ++contador, query: '', abierto: false, resultados: [], productoId: null, nombre: '', stock: 0, unidad: '', variantes: [], varianteId: '', cantidad: 1 });
+    return {
+        tipoMovimiento: c.tipo, almacenId: c.almacen, motivoId: c.motivo, catalogo: c.catalogo, motivos: c.motivos,
+        lineas: [nueva()], enviando: false, errorGeneral: '',
+
+        get motivosFiltrados() { return this.tipoMovimiento ? (this.motivos[this.tipoMovimiento] ?? []) : []; },
+        get labelAlmacen() { return this.tipoMovimiento === 'ingreso' ? 'Almacén Destino' : 'Almacén Origen'; },
+        get lineasCompletas() { return this.lineas.filter(l => l.productoId); },
+        get unidadesTotal() { return this.lineasCompletas.reduce((a, l) => a + (parseInt(l.cantidad) || 0), 0); },
+        get formularioValido() {
+            if (!this.tipoMovimiento || !this.almacenId || !this.motivoId) return false;
+            return this.lineas.length > 0 && this.lineas.every(l => l.productoId && (parseInt(l.cantidad) || 0) >= 1 && (l.variantes.length === 0 || l.varianteId));
+        },
+
+        buscar(l) {
+            const q = (l.query || '').toLowerCase();
+            if (q.length < 1) { l.resultados = []; l.abierto = false; return; }
+            l.resultados = this.catalogo
+                .filter(p => (p.busqueda || '').includes(q) || p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q) || (p.variantes || []).some(v => v.codigo.toLowerCase().includes(q)))
+                .slice(0, 12);
+            l.abierto = true;
+        },
+        /* Lista desplegable: todo el catálogo por orden alfabético, sin escribir */
+        listar(l) {
+            l.resultados = this.catalogo.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).slice(0, 80);
+            l.abierto = true;
+        },
+        seleccionar(l, p) {
+            l.productoId = p.id; l.nombre = p.nombre; l.stock = p.stock_actual; l.unidad = p.unidad;
+            l.variantes = p.variantes || [];
+            l.varianteId = l.variantes.length === 1 ? l.variantes[0].id : '';
+            l.query = p.nombre + ' [' + p.codigo + ']';
+            l.abierto = false; l.resultados = [];
+        },
+        limpiar(l) {
+            Object.assign(l, { productoId: null, nombre: '', stock: 0, unidad: '', variantes: [], varianteId: '', query: '', resultados: [], abierto: false });
+        },
+        agregar() { this.lineas.push(nueva()); },
+        quitar(i) { if (this.lineas.length > 1) this.lineas.splice(i, 1); },
+        onTipoChange() { this.motivoId = ''; },
+
+        init() {
+            /* Restaurar los productos si el formulario volvió con errores */
+            const previas = (c.lineas || []).filter(x => x && x.producto_id);
+            if (previas.length) {
+                this.lineas = previas.map(x => {
+                    const l = nueva();
+                    const p = this.catalogo.find(k => k.id == x.producto_id);
+                    if (p) { this.seleccionar(l, p); l.varianteId = x.variante_id || l.varianteId; }
+                    l.cantidad = x.cantidad || 1;
+                    return l;
+                });
+            }
+        },
+    };
+}
+</script>
 </body>
 </html>
