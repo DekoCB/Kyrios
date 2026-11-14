@@ -89,6 +89,9 @@ body { transition: background-color .2s ease, color .2s ease; }
 .dark .bg-gray-300{background-color:#44413A}
 .dark .hover\:bg-gray-50:hover, .dark .hover\:bg-gray-100:hover{background-color:#2a2822}
 .dark .hover\:bg-gray-200:hover{background-color:#3a372f}
+/* Variantes con opacidad (hover:bg-gray-50/70, bg-gray-50/50…): sin esto el hover se veía gris claro sobre fondo oscuro */
+.dark [class*="hover:bg-gray-50/"]:hover, .dark [class*="hover:bg-gray-100/"]:hover{background-color:#2a2822}
+.dark [class~="bg-gray-50/40"], .dark [class~="bg-gray-50/50"]{background-color:rgba(255,255,255,.03)}
 .dark .bg-gray-800, .dark .bg-gray-900{background-color:#0d0c09}
 .dark .hover\:bg-gray-900:hover{background-color:#000}
 .dark .text-gray-900{color:#f3f0e6}
