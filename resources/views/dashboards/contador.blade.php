@@ -14,6 +14,7 @@
 
     <div class="md:ml-64 p-4 md:p-8">
         <x-header title="Panel del Contador" subtitle="Comprobantes, cobranzas y pagos, {{ auth()->user()->name }}" />
+        <x-tareas-hoy />
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-amber-500">

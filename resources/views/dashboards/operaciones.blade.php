@@ -14,6 +14,7 @@
 
     <div class="md:ml-64 p-4 md:p-8">
         <x-header title="Panel de Operaciones" subtitle="Tareas internas y externas, {{ auth()->user()->name }}" />
+        <x-tareas-hoy />
 
         <div class="bg-white rounded-lg shadow-md p-8 text-center">
             <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">

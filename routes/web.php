@@ -493,6 +493,21 @@ Route::middleware('auth')->group(function () {
     });
 
     // ========================================
+    // TABLERO DE TAREAS DIARIAS DEL EQUIPO
+    // ========================================
+    Route::prefix('tareas')->name('tareas.')->middleware('role:Administración,Contador,Logística,Operaciones')->group(function () {
+        $c = \App\Http\Controllers\TareaController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::post('/arrastrar', [$c, 'arrastrar'])->name('arrastrar');
+        Route::patch('/items/{item}', [$c, 'actualizarItem'])->name('items.update');
+        Route::delete('/items/{item}', [$c, 'eliminarItem'])->name('items.destroy');
+        Route::patch('/{tarea}', [$c, 'update'])->name('update');
+        Route::delete('/{tarea}', [$c, 'destroy'])->name('destroy');
+        Route::post('/{tarea}/items', [$c, 'agregarItem'])->name('items.store');
+    });
+
+    // ========================================
     // RECURSOS HUMANOS: personal, asistencia y solicitudes
     // ========================================
     Route::prefix('rrhh')->name('rrhh.')->group(function () {

@@ -125,6 +125,12 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('tareas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('tareas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-list-check mr-3"></i>Tareas del día
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('rrhh.mi-asistencia') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-fingerprint mr-3"></i>Mi asistencia
@@ -714,6 +720,12 @@
                         </ul>
                     </li>
                     <li>
+                        <a href="{{ route('tareas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('tareas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-list-check mr-3"></i>Tareas del día
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('rrhh.mi-asistencia') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-fingerprint mr-3"></i>Mi asistencia
@@ -796,6 +808,12 @@
                     </li>
 
                     {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('tareas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('tareas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-list-check mr-3"></i>Tareas del día
+                        </a>
+                    </li>
                     <li>
                         <a href="{{ route('rrhh.mi-asistencia') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
@@ -1010,6 +1028,12 @@
                     </li>
 
                     {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('tareas.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('tareas.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-list-check mr-3"></i>Tareas del día
+                        </a>
+                    </li>
                     <li>
                         <a href="{{ route('rrhh.mi-asistencia') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('rrhh.mi-asistencia') ? 'bg-blue-700' : '' }}">
