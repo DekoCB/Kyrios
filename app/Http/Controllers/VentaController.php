@@ -357,8 +357,11 @@ class VentaController extends Controller
     }
 
     /** PDF sencillo con las proformas (cotizaciones) y el presupuesto de la venta. */
-    public function resumenPdf(Venta $venta)
+    public function resumenPdf(Request $request, Venta $venta)
     {
+        // Como la proforma oficial, sale en dólares; con ?moneda=PEN sale en soles
+        $enDolares = $request->query('moneda') !== 'PEN';
+        $tc = \App\Models\TipoCambio::ventaDelDia($venta->fecha);
         $venta->load('vendedor', 'cliente', 'serieComprobante', 'detalles.producto', 'detalles.variante');
         $cotizaciones = \App\Models\Cotizacion::where('venta_id', $venta->id)->with(['detalles.producto', 'detalles.variante'])->orderBy('id')->get();
         // La proforma oficial lleva los datos de Kyrios; lo que falte en Empresa se completa con ellos.
@@ -368,9 +371,9 @@ class VentaController extends Controller
         }
 
         return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
-            ->loadView('pdf.resumen-venta', compact('venta', 'cotizaciones', 'empresa'))
+            ->loadView('pdf.resumen-venta', compact('venta', 'cotizaciones', 'empresa', 'enDolares', 'tc'))
             ->setPaper('A4', 'portrait')
-            ->stream('proforma-presupuesto-' . $venta->codigo . '.pdf');
+            ->stream('proforma-presupuesto-' . $venta->codigo . ($enDolares ? '-usd' : '-pen') . '.pdf');
     }
 
     public function pdf(Request $request, Venta $venta)

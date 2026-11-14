@@ -69,8 +69,10 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
 
 @php
     \Carbon\Carbon::setLocale('es');
-    $moneda = 'S/ ';
+    $moneda = $enDolares ? 'US$ ' : 'S/ ';
     $m = fn ($n) => $moneda . number_format((float) $n, 2);
+    // Los importes se guardan en soles: en dólares se convierten con el tipo de cambio del día de la venta
+    $conv = fn ($soles) => $enDolares ? round((float) $soles / $tc, 2) : round((float) $soles, 2);
     $fecha = \Carbon\Carbon::parse($venta->fecha);
     $fechaTexto = 'Lima, ' . $fecha->day . ' de ' . ucfirst($fecha->translatedFormat('F')) . ' del ' . $fecha->year;
     $cliente = $venta->cliente;
@@ -153,22 +155,26 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
                 <td class="r">{{ $it->d->cantidad }}</td>
                 <td>{{ $it->descripcion }}</td>
                 <td class="c">{{ $it->cod }}</td>
-                <td class="r">{{ $m($it->d->precio_unitario) }}</td>
-                <td class="r">{{ $m($it->d->subtotal) }}</td>
+                <td class="r">{{ $m($conv($it->d->precio_unitario)) }}</td>
+                <td class="r">{{ $m($it->d->cantidad * $conv($it->d->precio_unitario)) }}</td>
             </tr>
         @endforeach
     </tbody>
 </table>
 <table class="tot">
-    <tr class="sub"><td>Subtotal Artículos:</td><td>{{ $m($venta->subtotal) }}</td></tr>
-    <tr><td>Subtotal Final:</td><td class="v">{{ $m($venta->subtotal) }}</td></tr>
-    <tr><td>IGV:</td><td class="v">{{ $m($venta->igv) }}</td></tr>
-    <tr><td>TOTAL:</td><td class="v">{{ $m($venta->total) }}</td></tr>
+    @php
+        $subtotalPdf = round($items->sum(fn ($it) => $it->d->cantidad * $conv($it->d->precio_unitario)), 2);
+        $igvPdf = round($subtotalPdf * 0.18, 2);
+    @endphp
+    <tr class="sub"><td>Subtotal Artículos:</td><td>{{ $m($subtotalPdf) }}</td></tr>
+    <tr><td>Subtotal Final:</td><td class="v">{{ $m($subtotalPdf) }}</td></tr>
+    <tr><td>IGV:</td><td class="v">{{ $m($igvPdf) }}</td></tr>
+    <tr><td>TOTAL:</td><td class="v">{{ $m($subtotalPdf + $igvPdf) }}</td></tr>
 </table>
 
 <h2 class="cond">CONDICIONES COMERCIALES:</h2>
 <table class="cond">
-    <tr><td colspan="2">Los precios están expresados en Soles y NO INCLUYEN EL 18% I.G.V.</td></tr>
+    <tr><td colspan="2">Los precios están expresados en {{ $enDolares ? 'Dólares Americanos' : 'Soles' }} y NO INCLUYEN EL 18% I.G.V.@if($enDolares) Tipo de cambio de referencia: S/ {{ number_format($tc, 3) }} por dólar.@endif</td></tr>
     <tr><td class="e">Forma de Pago:</td><td>100% Con la orden de compra. Depósito o transferencia a Cta Cte del banco INTERBANK US$ 2003007861610 / CCI: US$ 003-200-003007861610-36 a nombre de la empresa KYRIOS LUCES Y ENTORNO S.A.C.</td></tr>
     <tr><td class="e">Tiempo de Entrega:</td><td>A coordinar / vigencia a partir del conocimiento de realizado el depósito y/o transferencia en cta.</td></tr>
 </table>

@@ -194,7 +194,11 @@
             <div class="flex items-center gap-2 flex-wrap">
                 <a href="{{ route('ventas.resumen-pdf', $venta) }}" target="_blank"
                    class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm">
-                    <i class="fas fa-file-lines"></i> Proforma y presupuesto
+                    <i class="fas fa-file-lines"></i> Proforma y presupuesto (US$)
+                </a>
+                <a href="{{ route('ventas.resumen-pdf', [$venta, 'moneda' => 'PEN']) }}" target="_blank"
+                   class="inline-flex items-center gap-2 border border-teal-300 text-teal-700 hover:bg-teal-50 px-3 py-2 rounded-xl text-sm font-medium transition-colors">
+                    en soles
                 </a>
                 @if($venta->tipo_comprobante !== 'cotizacion')
                 <a href="{{ route('ventas.pdf', [$venta, 'formato' => 'a4']) }}" target="_blank"

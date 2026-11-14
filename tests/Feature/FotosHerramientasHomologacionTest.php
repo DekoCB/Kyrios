@@ -260,6 +260,22 @@ class FotosHerramientasHomologacionTest extends TestCase
         $this->actingAs($this->operaciones)->get(route('ventas.resumen-pdf', $venta))->assertForbidden();
     }
 
+    public function test_la_proforma_sale_en_dolares_con_el_tipo_de_cambio_del_dia_de_la_venta(): void
+    {
+        \App\Models\TipoCambio::create(['fecha' => today()->subDays(10), 'compra' => 3.6, 'venta' => 4.0]);
+        \App\Models\TipoCambio::create(['fecha' => today()->addDays(5), 'compra' => 3.9, 'venta' => 9.0]); // posterior: no cuenta
+        $venta = $this->venta();
+        $venta->update(['fecha' => today()]);
+
+        $usd = $this->actingAs($this->admin)->get(route('ventas.resumen-pdf', $venta))->assertOk();
+        $this->assertStringContainsString('-usd.pdf', $usd->headers->get('Content-Disposition'));
+        $pen = $this->get(route('ventas.resumen-pdf', [$venta, 'moneda' => 'PEN']))->assertOk();
+        $this->assertStringContainsString('-pen.pdf', $pen->headers->get('Content-Disposition'));
+
+        $this->assertSame(4.0, \App\Models\TipoCambio::ventaDelDia(today()));
+        $this->assertSame(9.0, \App\Models\TipoCambio::ventaDelDia(today()->addDays(6)));
+    }
+
     // ── 7. Homologación ───────────────────────────────────────────────────
 
     private function excel(array $filas): UploadedFile

@@ -28,6 +28,14 @@ class TipoCambio extends Model
         return self::orderByDesc('fecha')->orderByDesc('id')->first();
     }
 
+    /** Tipo de cambio de venta vigente en una fecha (el último registrado hasta ese día; si no hay, el actual). */
+    public static function ventaDelDia($fecha): float
+    {
+        $t = self::whereDate('fecha', '<=', $fecha)->orderByDesc('fecha')->orderByDesc('id')->first();
+
+        return (float) ($t?->venta ?? self::actual());
+    }
+
     /** Soles por dólar para mostrar y vender (tipo de cambio de venta). */
     public static function actual(): float
     {
