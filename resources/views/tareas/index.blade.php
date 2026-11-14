@@ -199,7 +199,7 @@ function tablero(datos) {
             try { this.reemplazar((await this.api('PATCH', this.urls.base + '/' + this.abierta.id, { [campo]: this.abierta[campo] })).tarea); } catch (e) {}
         },
         async eliminar() {
-            if (!confirm('¿Eliminar esta tarea?')) return;
+            if (!(await window.kyrConfirm('¿Eliminar esta tarea?'))) return;
             try { await this.api('DELETE', this.urls.base + '/' + this.abierta.id); this.tareas = this.tareas.filter(x => x.id !== this.abierta.id); this.abierta = null; } catch (e) {}
         },
         async agregarPaso() {
