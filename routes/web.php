@@ -481,6 +481,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{cotizacion}/renovar', [$c, 'renovar'])->name('renovar');
         Route::post('/{cotizacion}/duplicar', [$c, 'duplicar'])->name('duplicar');
         Route::post('/{cotizacion}/convertir', [$c, 'convertir'])->name('convertir');
+        Route::post('/{cotizacion}/nota-pedido', [\App\Http\Controllers\NotaPedidoController::class, 'store'])->name('nota-pedido');
     });
     // Lectura: Administración y Contador
     Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administración,Contador')->group(function () {
@@ -489,6 +490,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/{cotizacion}', [$c, 'show'])->name('show');
         Route::get('/{cotizacion}/pdf', [$c, 'pdf'])->name('pdf');
         Route::get('/{cotizacion}/ficha-tecnica', [$c, 'fichaTecnica'])->name('ficha-tecnica');
+    });
+
+    // ========================================
+    // NOTAS DE PEDIDO (de una cotización confirmada a la preparación en almacén)
+    // ========================================
+    Route::prefix('notas-pedido')->name('notas-pedido.')->group(function () {
+        $c = \App\Http\Controllers\NotaPedidoController::class;
+        Route::middleware('role:Administración,Logística')->group(function () use ($c) {
+            Route::post('/{nota}/preparar', [$c, 'preparar'])->name('preparar');
+            Route::post('/{nota}/estado', [$c, 'estado'])->name('estado');
+        });
+        Route::middleware('role:Administración,Contador,Logística')->group(function () use ($c) {
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::get('/{nota}', [$c, 'show'])->name('show');
+            Route::get('/{nota}/pdf', [$c, 'pdf'])->name('pdf');
+        });
     });
 
     // ========================================

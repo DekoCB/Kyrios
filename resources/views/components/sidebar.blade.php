@@ -113,6 +113,12 @@
 
                     {{-- Pedidos internos entre almacenes --}}
                     <li>
+                        <a href="{{ route('notas-pedido.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('notas-pedido.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-clipboard-list mr-3"></i>Notas de pedido
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('pedidos-internos.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-dolly mr-3"></i>Pedidos internos
@@ -690,6 +696,12 @@
                         </ul>
                     </li>
                     <li>
+                        <a href="{{ route('notas-pedido.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('notas-pedido.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-clipboard-list mr-3"></i>Notas de pedido
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('cotizaciones.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('cotizaciones.*') ? 'bg-blue-700' : '' }}">
                             <i class="fas fa-file-contract mr-3"></i>Cotizaciones
@@ -760,6 +772,12 @@
                     </li>
 
                     {{-- Pedidos internos entre almacenes --}}
+                    <li>
+                        <a href="{{ route('notas-pedido.index') }}"
+                            class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('notas-pedido.*') ? 'bg-blue-700' : '' }}">
+                            <i class="fas fa-clipboard-list mr-3"></i>Notas de pedido
+                        </a>
+                    </li>
                     <li>
                         <a href="{{ route('pedidos-internos.index') }}"
                             class="flex items-center px-4 py-3 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('pedidos-internos.*') ? 'bg-blue-700' : '' }}">

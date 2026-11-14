@@ -66,6 +66,12 @@
                     <i class="fas fa-ban"></i> Anular
                 </button>
             @endif
+            @php $notaPedido = \App\Models\NotaPedido::where('cotizacion_id', $c->id)->where('estado', '!=', 'anulada')->first(); @endphp
+            @if($notaPedido)
+                <a href="{{ route('notas-pedido.show', $notaPedido) }}" class="inline-flex items-center gap-2 border border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-dolly"></i> Nota de pedido {{ $notaPedido->codigo }}</a>
+            @elseif($c->estado === 'aceptada' && auth()->user()->role?->nombre === 'Administración')
+                <button type="button" @click="modal = 'nota-pedido'" class="inline-flex items-center gap-2 border border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-dolly"></i> Generar nota de pedido</button>
+            @endif
             @if($c->estado === 'rechazada')
                 <form method="POST" action="{{ route('cotizaciones.estado', $c) }}" class="inline">@csrf <input type="hidden" name="estado" value="pendiente">
                     <button class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-undo"></i> Reabrir</button>
@@ -180,6 +186,23 @@
 
         {{-- ─── Modales ─── --}}
         {{-- Rechazar / anular --}}
+        <div x-show="modal === 'nota-pedido'" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/40" @click="modal = null"></div>
+            <form method="POST" action="{{ route('cotizaciones.nota-pedido', $c) }}" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                @csrf
+                <h3 class="text-lg font-bold text-gray-900 mb-1">Generar nota de pedido</h3>
+                <p class="text-sm text-gray-500 mb-4">Almacén recibirá la lista de productos de esta cotización para dejarla preparada.</p>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Fecha prevista de entrega (opcional)</label>
+                <input type="date" name="fecha_entrega" min="{{ today()->toDateString() }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Indicaciones para almacén (opcional)</label>
+                <textarea name="observaciones" rows="3" maxlength="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" @click="modal = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                    <button class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Generar y avisar a almacén</button>
+                </div>
+            </form>
+        </div>
+
         <div x-show="modal === 'estado'" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/50" @click="modal = null"></div>
             <form method="POST" action="{{ route('cotizaciones.estado', $c) }}" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
