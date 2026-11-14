@@ -30,7 +30,8 @@
             <h1 class="text-2xl font-bold text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</h1>
             <p class="text-sm text-gray-500 mt-0.5">Gestión de precios y márgenes</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+            <x-selector-moneda />
             <a href="{{ route('precios.historial', $producto) }}"
                class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
                 <i class="fas fa-history"></i> Historial
@@ -215,16 +216,16 @@
                         <span class="text-gray-500 font-semibold">Precio de Venta</span>
                         <span class="font-bold text-emerald-700 text-base">
                             @if($precioVentaMin == $precioVentaMax)
-                                S/ {{ number_format($precioVentaMin, 2) }}
+                                {{ precio_dual($precioVentaMin, 'USD') }}
                             @else
-                                S/ {{ number_format($precioVentaMin, 2) }} – S/ {{ number_format($precioVentaMax, 2) }}
+                                {{ precio_dual($precioVentaMin, 'USD') }} – {{ precio_dual($precioVentaMax, 'USD') }}
                             @endif
                         </span>
                     </div>
                     @if($precioVentaMin == $precioVentaMax)
                     <div class="flex items-center justify-between text-xs text-gray-400 mt-1">
-                        <span>Base: S/ {{ number_format($precioVentaMin / 1.18, 2) }}</span>
-                        <span>IGV: S/ {{ number_format($precioVentaMin - ($precioVentaMin / 1.18), 2) }}</span>
+                        <span>Base: {{ precio_dual($precioVentaMin / 1.18, 'USD') }}</span>
+                        <span>IGV: {{ precio_dual($precioVentaMin - ($precioVentaMin / 1.18), 'USD') }}</span>
                     </div>
                     @else
                     <p class="text-xs text-gray-400 mt-1">Varía según la capacidad — ver detalle a la derecha.</p>
@@ -251,6 +252,13 @@
                 </div>
 
                 <form method="POST" action="{{ route('precios.store', $producto) }}" class="p-5 space-y-4">
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+                        <label for="moneda-precio" class="text-xs font-semibold text-blue-900">Moneda de los precios que ingresas</label>
+                        <select id="moneda-precio" name="moneda" class="rounded-lg border border-blue-200 bg-white px-2 py-1 text-sm">
+                            <option value="USD" selected>Dólares (US$)</option>
+                            <option value="PEN">Soles (S/)</option>
+                        </select>
+                    </div>
                     @csrf
 
                     {{-- Variante agrupada por capacidad --}}
@@ -576,11 +584,11 @@
                                 <div class="space-y-1.5">
                                     <div class="flex justify-between text-xs">
                                         <span class="text-gray-500">Compra</span>
-                                        <span class="font-medium text-gray-700">{{ $pCap->precio_compra ? 'S/ ' . number_format($pCap->precio_compra, 2) : '—' }}</span>
+                                        <span class="font-medium text-gray-700">{{ $pCap->precio_compra ? precio_dual($pCap->precio_compra, $pCap->moneda) : '—' }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs text-gray-500">P. Venta</span>
-                                        <span class="text-base font-bold text-blue-700">S/ {{ number_format($pCap->precio, 2) }}</span>
+                                        <span class="text-base font-bold text-blue-700">{{ precio_dual($pCap->precio, $pCap->moneda) }}</span>
                                     </div>
                                     <div class="flex justify-between text-xs border-t border-gray-100 pt-1.5 mt-1.5">
                                         <span class="text-gray-500">Margen</span>
@@ -594,7 +602,7 @@
                                                 <i class="fas fa-tags text-[9px]"></i> Mayorista
                                             </span>
                                             <div class="text-right">
-                                                <span class="text-sm font-bold text-amber-700">S/ {{ number_format($pMay->precio, 2) }}</span>
+                                                <span class="text-sm font-bold text-amber-700">{{ precio_dual($pMay->precio, $pMay->moneda) }}</span>
                                                 @if($pMay->margen)
                                                     <span class="block text-[10px] text-amber-500">{{ $pMay->margen }}% mg.</span>
                                                 @endif
@@ -619,7 +627,7 @@
                     <div class="bg-white rounded-xl border border-blue-200 shadow-sm p-4 text-center">
                         <p class="text-xs text-blue-600 uppercase tracking-wide mb-1 font-semibold">Precio de Venta</p>
                         <p class="text-xl font-bold text-blue-700">
-                            {{ $precioGlobal ? 'S/ ' . number_format($precioGlobal->precio, 2) : '—' }}
+                            {{ $precioGlobal ? precio_dual($precioGlobal->precio, $precioGlobal->moneda) : '—' }}
                         </p>
                         @if($precioGlobal)
                             <p class="text-[10px] text-gray-400 mt-0.5">Base: S/ {{ number_format($precioGlobal->precio / 1.18, 2) }} + IGV</p>
@@ -628,7 +636,7 @@
                     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
                         <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Precio Compra</p>
                         <p class="text-xl font-bold text-gray-700">
-                            {{ $precioGlobal ? 'S/ ' . number_format($precioGlobal->precio_compra, 2) : '—' }}
+                            {{ $precioGlobal ? precio_dual($precioGlobal->precio_compra, $precioGlobal->moneda) : '—' }}
                         </p>
                     </div>
                     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
@@ -642,7 +650,7 @@
                             <i class="fas fa-tags text-[9px]"></i> Mayorista
                         </p>
                         <p class="text-xl font-bold {{ $precioMayoristaGlobal ? 'text-amber-700' : 'text-gray-400' }}">
-                            {{ $precioMayoristaGlobal ? 'S/ ' . number_format($precioMayoristaGlobal->precio, 2) : '—' }}
+                            {{ $precioMayoristaGlobal ? precio_dual($precioMayoristaGlobal->precio, $precioMayoristaGlobal->moneda) : '—' }}
                         </p>
                         @if($precioMayoristaGlobal?->margen)
                             <p class="text-xs text-amber-500 mt-1">{{ $precioMayoristaGlobal->margen }}% mg.</p>
@@ -703,11 +711,11 @@
                                             {{ $precio?->proveedor?->razon_social ?? '—' }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-right text-gray-700">
-                                            {{ $precio?->precio_compra ? 'S/ ' . number_format($precio->precio_compra, 2) : '—' }}
+                                            {{ $precio?->precio_compra ? precio_dual($precio->precio_compra, $precio->moneda) : '—' }}
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             @if($precio)
-                                                <span class="text-sm font-bold text-blue-700">S/ {{ number_format($precio->precio, 2) }}</span>
+                                                <span class="text-sm font-bold text-blue-700">{{ precio_dual($precio->precio, $precio->moneda) }}</span>
                                             @else
                                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                                     <i class="fas fa-exclamation-circle text-[9px]"></i> Sin precio
@@ -766,10 +774,10 @@
                                         <td class="px-4 py-3 text-sm text-gray-400 italic">Base</td>
                                         <td class="px-4 py-3 text-sm text-gray-600">{{ $precioBase->proveedor?->razon_social ?? '—' }}</td>
                                         <td class="px-4 py-3 text-sm text-right text-gray-700">
-                                            {{ $precioBase->precio_compra ? 'S/ ' . number_format($precioBase->precio_compra, 2) : '—' }}
+                                            {{ $precioBase->precio_compra ? precio_dual($precioBase->precio_compra, $precioBase->moneda) : '—' }}
                                         </td>
                                         <td class="px-4 py-3 text-right">
-                                            <span class="text-sm font-bold text-blue-700">S/ {{ number_format($precioBase->precio, 2) }}</span>
+                                            <span class="text-sm font-bold text-blue-700">{{ precio_dual($precioBase->precio, $precioBase->moneda) }}</span>
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             <span class="text-sm font-semibold {{ ($precioBase->margen ?? 0) >= 20 ? 'text-green-700' : 'text-yellow-700' }}">
@@ -1092,10 +1100,10 @@
                                                         {{ $pRep->proveedor?->razon_social ?? '—' }}
                                                     </td>
                                                     <td class="px-4 py-2.5 text-sm text-right text-gray-600">
-                                                        {{ $pRep->precio_compra ? 'S/ ' . number_format($pRep->precio_compra, 2) : '—' }}
+                                                        {{ $pRep->precio_compra ? precio_dual($pRep->precio_compra, $pRep->moneda) : '—' }}
                                                     </td>
                                                     <td class="px-4 py-2.5 text-right">
-                                                        <span class="text-sm font-bold text-indigo-700">S/ {{ number_format($pRep->precio, 2) }}</span>
+                                                        <span class="text-sm font-bold text-indigo-700">{{ precio_dual($pRep->precio, $pRep->moneda) }}</span>
                                                     </td>
                                                     <td class="px-4 py-2.5 text-right">
                                                         @if($pRep->margen !== null)
@@ -1131,7 +1139,7 @@
                                                                 <button type="button"
                                                                         @click="openConfirm(
                                                                             'Restaurar precio global',
-                                                                            'Se aplicará S/ {{ number_format($globalCap->precio, 2) }} ({{ $cap ?: 'base' }}) en {{ $nombreTienda }}. ¿Continuar?',
+                                                                            'Se aplicará {{ precio_dual($globalCap->precio, $globalCap->moneda) }} ({{ $cap ?: 'base' }}) en {{ $nombreTienda }}. ¿Continuar?',
                                                                             'fa-undo-alt', 'text-purple-500',
                                                                             'Sí, restaurar', 'bg-purple-600 hover:bg-purple-700',
                                                                             () => applyToSelected('restore_global', null, {{ json_encode($capIds) }})

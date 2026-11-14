@@ -307,6 +307,13 @@
                           method="POST">
                         @csrf
                         @method('PUT')
+                        <div class="mb-4 flex items-center justify-between gap-3 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+                            <label for="moneda-precio" class="text-xs font-semibold text-blue-900">Moneda de los precios</label>
+                            <select id="moneda-precio" name="moneda" class="rounded-lg border border-blue-200 bg-white px-2 py-1 text-sm">
+                                <option value="USD" @selected(($precio->moneda ?? 'PEN') === 'USD')>Dólares (US$)</option>
+                                <option value="PEN" @selected(($precio->moneda ?? 'PEN') !== 'USD')>Soles (S/)</option>
+                            </select>
+                        </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 

@@ -155,7 +155,7 @@ class PrecioController extends Controller
 
         // Rango real de precio de venta por capacidad/variante (para no mostrar el campo
         // productos.precio_venta cuando quedó desactualizado frente a los precios por capacidad).
-        $preciosVentaActivos = $preciosGlobalesActivos->pluck('precio')->map(fn($p) => (float) $p);
+        $preciosVentaActivos = $preciosGlobalesActivos->map(fn ($p) => \App\Support\Moneda::aDolares((float) $p->precio, $p->moneda));
         $precioVentaMin = $preciosVentaActivos->min();
         $precioVentaMax = $preciosVentaActivos->max();
 
@@ -236,7 +236,8 @@ class PrecioController extends Controller
 
             // Helper para crear un registro de precio
             $incluyeIgv = (bool) ($validated['incluye_igv'] ?? true);
-            $crearPrecio = function (int|null $varianteId, int|null $almacenId) use ($validated, $producto, $incluyeIgv) {
+            $moneda = $request->input('moneda') === 'USD' ? 'USD' : 'PEN';
+            $crearPrecio = function (int|null $varianteId, int|null $almacenId) use ($validated, $producto, $incluyeIgv, $moneda) {
                 ProductoPrecio::where('producto_id', $producto->id)
                     ->where('variante_id', $varianteId)
                     ->where('almacen_id', $almacenId)
@@ -251,6 +252,7 @@ class PrecioController extends Controller
                     'tipo_precio'      => 'venta_regular',
                     'precio'           => $validated['precio_venta'],
                     'precio_compra'    => $validated['precio_compra'],
+                    'moneda'           => $moneda,
                     'precio_mayorista' => $validated['precio_mayorista'] ?? null,
                     'margen'           => $validated['margen'],
                     'incluye_igv'      => $incluyeIgv,
@@ -294,6 +296,7 @@ class PrecioController extends Controller
                         'tipo_precio'   => 'venta_mayorista',
                         'precio'        => $validated['precio_mayorista'],
                         'precio_compra' => $validated['precio_compra'],
+                        'moneda' => $moneda,
                         'margen'        => $margenMay,
                         'proveedor_id'  => $validated['proveedor_id'] ?? null,
                         'activo'        => true,
@@ -440,6 +443,7 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
             $precio->update([
                 'precio'           => $validated['precio_venta'],
                 'precio_compra'    => $validated['precio_compra'],
+                'moneda'           => in_array($request->input('moneda'), ['USD', 'PEN'], true) ? $request->input('moneda') : ($precio->moneda ?? 'PEN'),
                 'precio_mayorista' => $validated['precio_mayorista'] ?? null,
                 'margen'           => $validated['margen'],
                 'incluye_igv'      => (bool) ($validated['incluye_igv'] ?? true),
@@ -480,6 +484,7 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
                         'tipo_precio'   => 'venta_mayorista',
                         'precio'        => $validated['precio_mayorista'],
                         'precio_compra' => $validated['precio_compra'],
+                        'moneda' => $precio->moneda ?? 'PEN',
                         'margen'        => $margenMay,
                         'proveedor_id'  => $precio->proveedor_id,
                         'activo'        => true,

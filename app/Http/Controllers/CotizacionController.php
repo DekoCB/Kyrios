@@ -346,7 +346,7 @@ class CotizacionController extends Controller
             $p = $precios->first(fn ($x) => $x->producto_id === $productoId && $x->variante_id === $varianteId)
                 ?? $precios->first(fn ($x) => $x->producto_id === $productoId && $x->variante_id === null);
 
-            return $p ? round((float) $p->precio * ($p->incluye_igv ? 1 : CotizacionService::IGV), 2) : null;
+            return $p ? round((float) $p->precio_soles * ($p->incluye_igv ? 1 : CotizacionService::IGV), 2) : null;
         };
 
         $items = $variantes->map(fn ($v) => [

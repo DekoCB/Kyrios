@@ -17,6 +17,7 @@ class ProductoPrecio extends Model
         'tipo_precio',
         'precio',
         'precio_compra',
+        'moneda',
         'precio_mayorista',
         'margen',
         'incluye_igv',
@@ -84,5 +85,11 @@ class ProductoPrecio extends Model
     public function scopeTipo($query, $tipo)
     {
         return $query->where('tipo_precio', $tipo);
+    }
+
+    /** Precio de venta en soles: lo expresado en dólares se convierte con el tipo de cambio vigente. */
+    public function getPrecioSolesAttribute(): float
+    {
+        return \App\Support\Moneda::aSoles((float) $this->precio, $this->moneda);
     }
 }

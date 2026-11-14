@@ -193,6 +193,14 @@
                                     <i class="fas fa-tags mr-3 text-sm"></i>Gestión de Precios
                                 </a>
                             </li>
+                            @if($role === \App\Models\Role::ADMINISTRACION)
+                            <li>
+                                <a href="{{ route('tipo-cambio.index') }}"
+                                    class="flex items-center px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition-colors {{ request()->routeIs('tipo-cambio.*') ? 'bg-blue-600' : '' }}">
+                                    <i class="fas fa-dollar-sign mr-3 text-sm"></i>Tipo de cambio
+                                </a>
+                            </li>
+                            @endif
                             @php
                                 $cpcVencidas = \App\Models\CuentaPorCobrar::where(function($q) {
                                     $q->where('estado', 'vencido')

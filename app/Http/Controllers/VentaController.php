@@ -136,9 +136,9 @@ class VentaController extends Controller
             ->where(fn ($q) => $q->whereNull('fecha_inicio')->orWhere('fecha_inicio', '<=', $ahora))
             ->where(fn ($q) => $q->whereNull('fecha_fin')->orWhere('fecha_fin', '>=', $ahora))
             ->orderByDesc('prioridad')
-            ->get(['producto_id', 'precio'])
+            ->get(['producto_id', 'precio', 'moneda'])
             ->groupBy('producto_id')
-            ->map(fn ($filas) => (float) $filas->first()->precio);
+            ->map(fn ($filas) => (float) $filas->first()->precio_soles);
 
         $productos = $productos->map(function($p) use ($stockPorAlmacen, $stockVariantePorAlmacen, $precioRespaldo) {
             // Separar precios por tipo
@@ -159,7 +159,7 @@ class VentaController extends Controller
                 $precioMayorista = $preciosMayoristaPorVariante->get($v->id) ?? $precioMayoristaBase;
                 $precioVenta = $v->precio_venta !== null
                     ? (float)$v->precio_venta
-                    : ($precioGestion ? (float)$precioGestion->precio : null);
+                    : ($precioGestion ? (float)$precioGestion->precio_soles : null);
 
                 return [
                 'id'                => $v->id,
@@ -170,7 +170,7 @@ class VentaController extends Controller
                 'capacidad'         => $v->capacidad,
                 'sobreprecio'       => (float)$v->sobreprecio,
                 'precio_venta'      => $precioVenta,
-                'precio_mayorista'  => $precioMayorista ? (float)$precioMayorista->precio : null,
+                'precio_mayorista'  => $precioMayorista ? (float)$precioMayorista->precio_soles : null,
                 'incluye_igv'       => $precioGestion ? (bool)$precioGestion->incluye_igv : null,
                 'stock_actual'      => (int)$v->stock_actual,
                 // Stock de la variante en cada almacén (la pantalla de venta lo usa por tienda)
@@ -201,9 +201,9 @@ class VentaController extends Controller
                 'stock_actual'     => (int) array_sum($stockMap),
                 'stock_por_almacen'=> $stockMap,  // {almacen_id: qty}
                 'precio_venta'     => (float) ($variantes->isNotEmpty()
-                    ? ($variantes->filter(fn($v) => $v['precio_venta'] !== null)->min('precio_venta') ?? $precioBase?->precio ?? ($precioRespaldo[$p->id] ?? 0.0))
-                    : ($precioBase?->precio ?? $precioActivo?->precio ?? ($precioRespaldo[$p->id] ?? 0.0))),
-                'precio_mayorista' => $precioMayoristaBase ? (float)$precioMayoristaBase->precio : null,
+                    ? ($variantes->filter(fn($v) => $v['precio_venta'] !== null)->min('precio_venta') ?? $precioBase?->precio_soles ?? ($precioRespaldo[$p->id] ?? 0.0))
+                    : ($precioBase?->precio_soles ?? $precioActivo?->precio_soles ?? ($precioRespaldo[$p->id] ?? 0.0))),
+                'precio_mayorista' => $precioMayoristaBase ? (float)$precioMayoristaBase->precio_soles : null,
                 'incluye_igv'      => (bool) ($precioActivo?->incluye_igv ?? false),
                 'imagen'           => $p->imagen_url ?? null,
                 'tiene_variantes'  => $variantes->isNotEmpty(),

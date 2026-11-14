@@ -762,6 +762,13 @@ Route::middleware('auth')->group(function () {
     });
 
 
+    // Tipo de cambio (USD → PEN): lo actualiza Administración y lo usan los precios en dólares
+    Route::prefix('tipo-cambio')->name('tipo-cambio.')->middleware('role:Administración')->group(function () {
+        Route::get('/', [App\Http\Controllers\TipoCambioAdminController::class, 'index'])->name('index');
+        Route::post('/', [App\Http\Controllers\TipoCambioAdminController::class, 'store'])->name('store');
+        Route::post('/sunat', [App\Http\Controllers\TipoCambioAdminController::class, 'sincronizar'])->name('sunat');
+    });
+
     // ========================================
     // MÓDULO DE PRECIOS
     // ========================================

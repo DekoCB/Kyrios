@@ -1,5 +1,22 @@
 <?php
 
+if (!function_exists('precio_dual')) {
+    /**
+     * Precio que se muestra en dólares (principal) y se puede alternar a soles con el selector de moneda.
+     * $monto está expresado en $moneda (USD o PEN); el tipo de cambio es el vigente.
+     */
+    function precio_dual(float|int|string|null $monto, ?string $moneda = 'PEN'): \Illuminate\Support\HtmlString
+    {
+        $tc = \App\Models\TipoCambio::actual();
+        $usd = \App\Support\Moneda::aDolares((float) $monto, $moneda, $tc);
+        $pen = \App\Support\Moneda::aSoles((float) $monto, $moneda, $tc);
+
+        return new \Illuminate\Support\HtmlString(
+            '<span class="precio-dual" data-usd="' . number_format($usd, 2, '.', '') . '" data-pen="' . number_format($pen, 2, '.', '') . '">US$ ' . number_format($usd, 2) . '</span>'
+        );
+    }
+}
+
 if (!function_exists('montoEnLetras')) {
     /**
      * Convierte un monto numérico a texto en español (formato SUNAT).
