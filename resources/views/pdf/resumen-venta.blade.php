@@ -77,7 +77,7 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
     $fechaTexto = 'Lima, ' . $fecha->day . ' de ' . ucfirst($fecha->translatedFormat('F')) . ' del ' . $fecha->year;
     $cliente = $venta->cliente;
     $logo = \App\Models\Empresa::logoDocumentoDataUri($empresa ?? null);
-    $numeroProforma = $cotizaciones->first()?->codigo ?? $venta->codigo;
+    $numeroProforma = $venta->proforma_numero;
     $nombreAsesor = $venta->vendedor?->name;
     $web = preg_replace('#^https?://#', '', $empresa->web ?: 'www.kyrios.com.pe');
 

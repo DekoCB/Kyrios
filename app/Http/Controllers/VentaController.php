@@ -360,6 +360,7 @@ class VentaController extends Controller
     public function resumenPdf(Request $request, Venta $venta)
     {
         // Como la proforma oficial, sale en dólares; con ?moneda=PEN sale en soles
+        $venta->asignarNumeroProforma();
         $enDolares = $request->query('moneda') !== 'PEN';
         $tc = \App\Models\TipoCambio::ventaDelDia($venta->fecha);
         $venta->load('vendedor', 'cliente', 'serieComprobante', 'detalles.producto', 'detalles.variante');
@@ -373,7 +374,7 @@ class VentaController extends Controller
         return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
             ->loadView('pdf.resumen-venta', compact('venta', 'cotizaciones', 'empresa', 'enDolares', 'tc'))
             ->setPaper('A4', 'portrait')
-            ->stream('proforma-presupuesto-' . $venta->codigo . ($enDolares ? '-usd' : '-pen') . '.pdf');
+            ->stream('proforma-' . str_replace('/', '-', $venta->proforma_numero) . ($enDolares ? '-usd' : '-pen') . '.pdf');
     }
 
     public function pdf(Request $request, Venta $venta)

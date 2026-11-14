@@ -33,6 +33,11 @@ return [
     /*
      * Cotizaciones: valores por defecto del formulario (se pueden cambiar en cada cotización).
      */
+    // Proformas: el número oficial es IL-{correlativo de 5 dígitos}/{año}; «inicio» es el primer correlativo a usar
+    'proforma' => [
+        'inicio' => (int) env('PROFORMA_INICIO', 1),
+    ],
+
     // Recursos humanos: control de asistencia
     'rrhh' => [
         'tolerancia_min'   => (int) env('RRHH_TOLERANCIA_MIN', 10),

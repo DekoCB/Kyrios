@@ -276,6 +276,28 @@ class FotosHerramientasHomologacionTest extends TestCase
         $this->assertSame(9.0, \App\Models\TipoCambio::ventaDelDia(today()->addDays(6)));
     }
 
+    public function test_la_proforma_lleva_numero_oficial_correlativo_que_no_cambia(): void
+    {
+        $venta = $this->venta();
+        $this->actingAs($this->admin)->get(route('ventas.resumen-pdf', $venta))->assertOk();
+        $anio = now()->format('y');
+        $this->assertSame("IL-00001/{$anio}", $venta->fresh()->proforma_numero);
+
+        $this->get(route('ventas.resumen-pdf', [$venta, 'moneda' => 'PEN']))->assertOk();
+        $this->assertSame("IL-00001/{$anio}", $venta->fresh()->proforma_numero, 'el número no cambia al volver a emitirla');
+
+        $otra = $venta->replicate(['codigo', 'proforma_numero', 'proforma_correlativo', 'serie_comprobante_id', 'correlativo']);
+        $otra->save();
+        $this->get(route('ventas.resumen-pdf', $otra))->assertOk();
+        $this->assertSame("IL-00002/{$anio}", $otra->fresh()->proforma_numero);
+
+        config(['kyrios.proforma.inicio' => 63080]);
+        $tercera = $venta->replicate(['codigo', 'proforma_numero', 'proforma_correlativo', 'serie_comprobante_id', 'correlativo']);
+        $tercera->save();
+        $this->get(route('ventas.resumen-pdf', $tercera))->assertOk();
+        $this->assertSame("IL-63080/{$anio}", $tercera->fresh()->proforma_numero, 'se puede continuar la numeración que ya usaban');
+    }
+
     // ── 7. Homologación ───────────────────────────────────────────────────
 
     private function excel(array $filas): UploadedFile

@@ -11,6 +11,8 @@ class Venta extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'proforma_correlativo',
+        'proforma_numero',
         'codigo',
         'user_id',
         'cliente_id',
@@ -201,5 +203,33 @@ class Venta extends Model
 
         $numero = ($maxNum ?? 0) + 1;
         return 'VEN-' . str_pad($numero, 5, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Número de proforma con el formato oficial «IL-00001/26» (correlativo y año de dos dígitos).
+     * Se asigna la primera vez que se emite la proforma y se conserva en las siguientes.
+     */
+    public function asignarNumeroProforma(): string
+    {
+        if ($this->proforma_numero) {
+            return $this->proforma_numero;
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            $actual = self::lockForUpdate()->find($this->id);
+            if ($actual->proforma_numero) {
+                $this->setRawAttributes($actual->getAttributes(), true);
+
+                return $actual->proforma_numero;
+            }
+
+            $inicio = (int) config('kyrios.proforma.inicio', 1);
+            $siguiente = max((int) self::max('proforma_correlativo') + 1, $inicio);
+            $numero = sprintf('IL-%05d/%s', $siguiente, now()->format('y'));
+            $actual->update(['proforma_correlativo' => $siguiente, 'proforma_numero' => $numero]);
+            $this->setRawAttributes($actual->fresh()->getAttributes(), true);
+
+            return $numero;
+        });
     }
 }
