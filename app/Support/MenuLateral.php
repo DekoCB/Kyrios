@@ -185,8 +185,8 @@ class MenuLateral
             self::titulo('Finanzas'),
             self::grupo('caja', 'Caja', 'fa-cash-register', [
                 self::enlace('Caja activa', 'fa-door-open', 'caja.actual'),
-                self::enlace('Historial de cajas', 'fa-history', 'caja.index'),
-                self::enlace('Caja chica', 'fa-wallet', 'caja-chica.index', ['caja-chica.*']),
+                self::enlace('Historial de Cajas', 'fa-history', 'caja.index'),
+                self::enlace('Caja Chica', 'fa-wallet', 'caja-chica.index', ['caja-chica.*']),
                 self::enlace('Supervisión de cajas', 'fa-eye', 'admin.cajas.dashboard', ['admin.cajas.*'], self::alertasCajas()),
             ]),
             self::grupo('reportes', 'Reportes', 'fa-chart-line', [
@@ -221,7 +221,7 @@ class MenuLateral
             self::grupo('sistema', 'Administración', 'fa-cogs', [
                 self::enlace('Usuarios', 'fa-users', 'users.index', ['users.*']),
                 self::enlace('Empresa', 'fa-building', 'admin.empresa.edit', ['admin.empresa.*']),
-                self::enlace('Mi perfil', 'fa-user-circle', 'profile.edit', ['profile.*']),
+                self::enlace('Mi Perfil', 'fa-user-circle', 'profile.edit', ['profile.*']),
             ]),
         ];
     }
