@@ -22,9 +22,10 @@ class CajaChicaMovimiento extends Model
     protected $fillable = [
         'caja_chica_id', 'tipo', 'fecha', 'monto', 'categoria', 'concepto', 'emisor', 'tipo_comprobante', 'numero_comprobante',
         'estado', 'user_id', 'revisado_por', 'revisado_en', 'motivo_revision',
+        'grupo', 'recibo_numero', 'recibo_emitido_en', 'recibo_emitido_por',
     ];
 
-    protected $casts = ['fecha' => 'date', 'monto' => 'decimal:2', 'revisado_en' => 'datetime'];
+    protected $casts = ['fecha' => 'date', 'monto' => 'decimal:2', 'revisado_en' => 'datetime', 'recibo_emitido_en' => 'datetime'];
 
     public function caja(): BelongsTo
     {

@@ -445,12 +445,15 @@ Route::middleware('auth')->group(function () {
         Route::put('/movimientos/{mov}', [$c, 'actualizarGasto'])->name('gasto.update');
         Route::delete('/movimientos/{mov}', [$c, 'eliminarMovimiento'])->name('movimiento.destroy');
         Route::post('/movimientos/{mov}/revisar', [$c, 'revisar'])->name('revisar');
+        Route::get('/movimientos/{mov}/recibo', [$c, 'recibo'])->name('recibo');
         Route::get('/adjuntos/{adjunto}', [$c, 'adjunto'])->name('adjunto');
         Route::delete('/adjuntos/{adjunto}', [$c, 'eliminarAdjunto'])->name('adjunto.destroy');
         Route::get('/{caja}', [$c, 'show'])->name('show');
         Route::post('/{caja}/ingreso', [$c, 'ingreso'])->name('ingreso');
         Route::post('/{caja}/gasto', [$c, 'gasto'])->name('gasto');
         Route::post('/{caja}/cerrar', [$c, 'cerrar'])->name('cerrar');
+        Route::post('/{caja}/aprobar-todo', [$c, 'aprobarTodo'])->name('aprobar-todo');
+        Route::get('/{caja}/recibos', [$c, 'recibosCaja'])->name('recibos');
         Route::get('/{caja}/rendicion', [$c, 'rendicion'])->name('rendicion');
         Route::get('/{caja}/exportar', [$c, 'exportar'])->name('exportar');
     });

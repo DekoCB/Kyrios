@@ -124,6 +124,10 @@ class CajaChicaController extends Controller
             ->when($request->filled('categoria'), fn ($q) => $q->where('categoria', $request->categoria))
             ->orderByDesc('fecha')->orderByDesc('id')->paginate(25)->withQueryString();
 
+        // Los archivos de un comprobante repartido en varios conceptos están en el primero del grupo
+        $adjuntosGrupo = CajaChicaAdjunto::whereHas('movimiento', fn ($q) => $q->where('caja_chica_id', $caja->id)->whereNotNull('grupo'))
+            ->with('movimiento:id,grupo')->get()->groupBy(fn ($a) => $a->movimiento->grupo);
+
         $resumen = [
             'ingresos'   => $caja->total_ingresos,
             'gastos'     => $caja->total_gastos,
@@ -132,7 +136,7 @@ class CajaChicaController extends Controller
         ];
         $esAdmin = $this->esAdmin();
 
-        return view('caja-chica.show', compact('caja', 'movimientos', 'resumen', 'esAdmin'));
+        return view('caja-chica.show', compact('caja', 'movimientos', 'resumen', 'esAdmin', 'adjuntosGrupo'));
     }
 
     public function ingreso(Request $request, CajaChica $caja)
@@ -150,12 +154,87 @@ class CajaChicaController extends Controller
     public function gasto(Request $request, CajaChica $caja)
     {
         $this->autorizar($caja);
+
+        // Un comprobante repartido en varios conceptos: la suma de los conceptos debe dar el monto total
+        if (is_array($request->input('conceptos')) && count($request->input('conceptos')) > 0) {
+            $d = $request->validate(array_merge($this->reglasGasto(), [
+                'concepto'               => 'nullable|string|max:255',
+                'conceptos'              => 'required|array|min:2|max:12',
+                'conceptos.*.concepto'   => 'required|string|max:255',
+                'conceptos.*.monto'      => 'required|numeric|min:0.01|max:99999',
+                'conceptos.*.categoria'  => ['nullable', Rule::in(array_keys(CajaChicaMovimiento::CATEGORIAS))],
+            ]), ['conceptos.min' => 'Agregue al menos dos conceptos para repartir el gasto.']);
+
+            return $this->conErrores(
+                fn () => $this->service->registrarGastoRepartido($caja, $d, $request->file('adjuntos', []), $request->user()),
+                count($d['conceptos']) . ' conceptos registrados' . ($this->esAdmin() ? '' : ' y enviados a revisión')
+            );
+        }
+
         $d = $request->validate($this->reglasGasto());
 
         return $this->conErrores(
             fn () => $this->service->registrarGasto($caja, $d, $request->file('adjuntos', []), $request->user()),
             'Gasto registrado' . ($this->esAdmin() ? '' : ' y enviado a revisión')
         );
+    }
+
+    /** El administrador aprueba de golpe todos los gastos por revisar de la caja. */
+    public function aprobarTodo(Request $request, CajaChica $caja)
+    {
+        $this->soloAdmin();
+
+        try {
+            $r = $this->service->aprobarTodo($caja, $request->user());
+        } catch (DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', "Se aprobaron {$r['cantidad']} gasto(s) por S/ " . number_format($r['monto'], 2) . '.');
+    }
+
+    /** Recibo de pago de un gasto (PDF para imprimir y firmar). */
+    public function recibo(CajaChicaMovimiento $mov)
+    {
+        $this->autorizarGasto($mov);
+
+        try {
+            $mov = $this->service->emitirRecibo($mov, auth()->user());
+        } catch (DomainException $e) {
+            return redirect()->route('caja-chica.show', $mov->caja)->with('error', $e->getMessage());
+        }
+
+        return $this->pdfRecibos($mov->caja, collect([$mov->load(['registrador', 'caja.responsable'])]), "recibo-{$mov->recibo_numero}.pdf");
+    }
+
+    /** Recibos de pago de todos los gastos de la caja que no fueron rechazados, uno por hoja. */
+    public function recibosCaja(CajaChica $caja)
+    {
+        $this->autorizar($caja);
+        $gastos = $caja->movimientos()->where('tipo', 'gasto')->where('estado', '!=', 'rechazado')
+            ->when(!$this->esAdmin(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->with('registrador')->orderBy('fecha')->orderBy('id')->get();
+
+        if ($gastos->isEmpty()) {
+            return redirect()->route('caja-chica.show', $caja)->with('error', 'No hay gastos para emitir recibos.');
+        }
+
+        $gastos = $gastos->map(fn ($g) => $this->service->emitirRecibo($g, auth()->user())->load('registrador'));
+
+        return $this->pdfRecibos($caja, $gastos, "recibos-{$caja->codigo}.pdf");
+    }
+
+    private function pdfRecibos(CajaChica $caja, $gastos, string $archivo)
+    {
+        $empresa = Empresa::first() ?? new Empresa();
+        foreach (['razon_social' => 'KYRIOS LUCES S.A.C', 'ruc' => '20606247746'] as $campo => $valor) {
+            $empresa->{$campo} = $empresa->{$campo} ?: $valor;
+        }
+
+        return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
+            ->loadView('pdf.recibo-caja-chica', ['caja' => $caja, 'gastos' => $gastos, 'empresa' => $empresa])
+            ->setPaper('a4')
+            ->stream($archivo);
     }
 
     /** Un gasto solo lo toca quien lo registró (o el administrador). */

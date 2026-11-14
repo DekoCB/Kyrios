@@ -30,6 +30,13 @@
             <a href="{{ route('caja-chica.index') }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-arrow-left"></i> Volver</a>
             <a href="{{ route('caja-chica.rendicion', $caja) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-file-pdf text-red-500"></i> Rendición PDF</a>
             <a href="{{ route('caja-chica.exportar', $caja) }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-file-csv text-green-600"></i> Exportar</a>
+            <a href="{{ route('caja-chica.recibos', $caja) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm" title="Un recibo de pago por cada gasto, listo para firmar"><i class="fas fa-receipt text-amber-600"></i> Recibos de pago</a>
+            @if($esAdmin && $caja->esta_activa && $resumen['por_revisar'] > 0)
+                <form method="POST" action="{{ route('caja-chica.aprobar-todo', $caja) }}" data-confirm="¿Aprobar los {{ $resumen['por_revisar'] }} gastos por revisar de esta caja?">
+                    @csrf
+                    <button class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><i class="fas fa-check-double"></i> Aprobar todo ({{ $resumen['por_revisar'] }})</button>
+                </form>
+            @endif
             @if($esAdmin && $caja->esta_activa)
                 <form method="POST" action="{{ route('caja-chica.cerrar', $caja) }}" class="ml-auto" data-confirm="¿Cerrar esta caja chica? Ya no admitirá movimientos.">
                     @csrf
@@ -121,8 +128,10 @@
                             <td class="px-4 py-3">
                                 @if($m->tipo === 'gasto')
                                     <p class="text-gray-700">{{ $m->comprobante_nombre }} {{ $m->numero_comprobante }}</p>
+                                    @if($m->grupo)<p class="text-[11px] text-indigo-600"><i class="fas fa-layer-group mr-1"></i>Comprobante repartido en varios conceptos</p>@endif
+                                    @if($m->recibo_numero)<p class="text-[11px] text-amber-700"><i class="fas fa-receipt mr-1"></i>Recibo {{ $m->recibo_numero }}</p>@endif
                                     <div class="flex flex-wrap gap-1 mt-1">
-                                        @foreach($m->adjuntos as $a)
+                                        @foreach(($m->adjuntos->isNotEmpty() || !$m->grupo) ? $m->adjuntos : ($adjuntosGrupo[$m->grupo] ?? collect()) as $a)
                                             <a href="{{ route('caja-chica.adjunto', $a) }}" target="_blank" title="{{ $a->nombre_original }}" class="block">
                                                 @if($a->es_imagen)<img src="{{ route('caja-chica.adjunto', $a) }}" alt="Comprobante" loading="lazy" class="h-12 w-12 object-cover rounded border">
                                                 @else<span class="flex h-12 w-12 items-center justify-center rounded border bg-red-50 text-red-500"><i class="fas fa-file-pdf text-xl"></i></span>@endif
@@ -149,6 +158,9 @@
                                         <input type="text" name="motivo" x-show="d !== 'aprobar'" :required="d !== 'aprobar'" placeholder="Motivo" class="px-2 py-1 border border-gray-300 rounded text-xs w-28">
                                         <button class="text-xs bg-gray-800 hover:bg-gray-900 text-white px-2 py-1 rounded">OK</button>
                                     </form><br>
+                                @endif
+                                @if($m->tipo === 'gasto' && $m->estado !== 'rechazado' && ($esAdmin || $m->user_id === auth()->id()))
+                                    <a href="{{ route('caja-chica.recibo', $m) }}" target="_blank" class="text-amber-600 hover:text-amber-800 mr-2" title="Recibo de pago"><i class="fas fa-receipt"></i></a>
                                 @endif
                                 @if($puedeTocar && $m->tipo === 'gasto')
                                     <a href="{{ route('caja-chica.gasto.edit', $m) }}" class="text-yellow-600 hover:text-yellow-800 mr-2" title="Editar"><i class="fas fa-edit"></i></a>

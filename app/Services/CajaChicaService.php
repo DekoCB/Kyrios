@@ -96,6 +96,98 @@ class CajaChicaService
         });
     }
 
+    /**
+     * Un mismo comprobante repartido en varios conceptos: se crea un gasto por concepto (todos con el mismo grupo)
+     * y la suma de los conceptos debe ser igual al monto total. Los archivos quedan en el primero.
+     *
+     * @param array $datos datos del comprobante + 'conceptos' => [['concepto', 'monto', 'categoria'?], …]
+     * @return CajaChicaMovimiento[]
+     */
+    public function registrarGastoRepartido(CajaChica $caja, array $datos, array $archivos, User $user): array
+    {
+        $lineas = array_values($datos['conceptos'] ?? []);
+        if (count($lineas) < 2) {
+            throw new DomainException('Agregue al menos dos conceptos para repartir el gasto.');
+        }
+
+        return DB::transaction(function () use ($caja, $datos, $archivos, $user, $lineas) {
+            $caja = CajaChica::lockForUpdate()->findOrFail($caja->id);
+            $this->exigirActiva($caja);
+
+            $total = round((float) ($datos['monto'] ?? 0), 2);
+            $suma = round(array_sum(array_map(fn ($l) => (float) ($l['monto'] ?? 0), $lineas)), 2);
+            if (abs($total - $suma) > 0.001) {
+                $dif = $total - $suma;
+                throw new DomainException('Los conceptos suman S/ ' . number_format($suma, 2) . ' y el monto total es S/ ' . number_format($total, 2)
+                    . ($dif > 0 ? ': faltan S/ ' . number_format($dif, 2) . ' por repartir.' : ': se pasan por S/ ' . number_format(-$dif, 2) . '.'));
+            }
+            foreach ($lineas as $l) {
+                if ((float) ($l['monto'] ?? 0) <= 0 || blank($l['concepto'] ?? null)) {
+                    throw new DomainException('Cada concepto necesita descripción y un monto mayor a cero.');
+                }
+            }
+
+            $this->validarGasto($datos + ['monto' => $total], count($archivos), null);
+            if ($total > $caja->saldo + 0.001) {
+                throw new DomainException('Saldo insuficiente en la caja: disponible S/ ' . number_format($caja->saldo, 2) . '.');
+            }
+
+            $grupo = (string) \Illuminate\Support\Str::uuid();
+            $estado = $user->role?->nombre === 'Administración' ? 'aprobado' : 'pendiente';
+            $movs = [];
+            foreach ($lineas as $l) {
+                $movs[] = $caja->movimientos()->create($this->camposGasto(array_merge($datos, [
+                    'monto' => $l['monto'], 'concepto' => $l['concepto'], 'categoria' => $l['categoria'] ?? ($datos['categoria'] ?? 'otros'),
+                ])) + ['tipo' => 'gasto', 'user_id' => $user->id, 'estado' => $estado, 'grupo' => $grupo]);
+            }
+            $this->guardarAdjuntos($movs[0], $archivos);
+
+            return $movs;
+        });
+    }
+
+    /** Aprueba de una vez todos los gastos por revisar (pendientes u observados) de la caja. Devuelve cuántos y cuánto. */
+    public function aprobarTodo(CajaChica $caja, User $revisor): array
+    {
+        return DB::transaction(function () use ($caja, $revisor) {
+            $caja = CajaChica::lockForUpdate()->findOrFail($caja->id);
+            $this->exigirActiva($caja);
+
+            $pendientes = $caja->movimientos()->where('tipo', 'gasto')->whereIn('estado', ['pendiente', 'observado'])->lockForUpdate()->get();
+            if ($pendientes->isEmpty()) {
+                throw new DomainException('No hay gastos por revisar en esta caja.');
+            }
+
+            $caja->movimientos()->whereIn('id', $pendientes->pluck('id'))->update([
+                'estado' => 'aprobado', 'motivo_revision' => null, 'revisado_por' => $revisor->id, 'revisado_en' => now(), 'updated_at' => now(),
+            ]);
+
+            return ['cantidad' => $pendientes->count(), 'monto' => round((float) $pendientes->sum('monto'), 2)];
+        });
+    }
+
+    /** Número de recibo de pago del gasto: se asigna la primera vez y no cambia. */
+    public function emitirRecibo(CajaChicaMovimiento $mov, User $por): CajaChicaMovimiento
+    {
+        if ($mov->tipo !== 'gasto' || $mov->estado === 'rechazado') {
+            throw new DomainException('Solo se emite recibo de gastos que no fueron rechazados.');
+        }
+
+        return DB::transaction(function () use ($mov, $por) {
+            $mov = CajaChicaMovimiento::lockForUpdate()->findOrFail($mov->id);
+            if (!$mov->recibo_numero) {
+                $ultimo = (int) CajaChicaMovimiento::whereNotNull('recibo_numero')->lockForUpdate()
+                    ->selectRaw("MAX(CAST(SUBSTRING(recibo_numero, 4) AS UNSIGNED)) as n")->value('n');
+                $mov->update([
+                    'recibo_numero' => 'RP-' . str_pad((string) ($ultimo + 1), 4, '0', STR_PAD_LEFT),
+                    'recibo_emitido_en' => now(), 'recibo_emitido_por' => $por->id,
+                ]);
+            }
+
+            return $mov;
+        });
+    }
+
     /** Edita un gasto aún no aprobado; vuelve a quedar pendiente de revisión. */
     public function actualizarGasto(CajaChicaMovimiento $mov, array $datos, array $archivos, User $user): CajaChicaMovimiento
     {
@@ -202,6 +294,14 @@ class CajaChicaService
             // Quitar dinero que ya se gastó dejaría el saldo en negativo
             if ($mov->tipo === 'ingreso' && $caja->saldo - (float) $mov->monto < -0.001) {
                 throw new DomainException('No se puede eliminar este ingreso: los gastos registrados superarían el saldo que quedaría (S/ ' . number_format($caja->saldo - (float) $mov->monto, 2) . ').');
+            }
+
+            $hermano = $mov->grupo
+                ? CajaChicaMovimiento::where('grupo', $mov->grupo)->where('id', '!=', $mov->id)->orderBy('id')->first()
+                : null;
+            if ($hermano && $mov->adjuntos()->exists()) {
+                // Los archivos son del comprobante compartido: pasan a otro concepto del mismo grupo
+                $mov->adjuntos()->update(['movimiento_id' => $hermano->id]);
             }
 
             $rutas = $mov->adjuntos()->pluck('ruta');
