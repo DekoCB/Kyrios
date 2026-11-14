@@ -1,4 +1,5 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* sin «*»: un margin:0 universal anula el margen de @page en dompdf y el texto quedaría pegado al borde */
+body, div, p, h1, h2, h3, table, thead, tbody, tr, td, th, ul, li, img, span { margin: 0; padding: 0; box-sizing: border-box; }
 @page { margin: 16mm 14mm; }
 body { font-family: DejaVu Sans, sans-serif; font-size: 8.5pt; color: #1a1a1a; background: #fff; }
 .cab { display: table; width: 100%; margin-bottom: 10px; }
