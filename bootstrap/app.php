@@ -32,4 +32,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
             return redirect()->route('login')->with('error', 'Tu sesión ha expirado por inactividad. Por favor, inicia sesión nuevamente.');
         });
+        // Si la base de datos está saturada un instante, una página que se reintenta sola en lugar de un error 500
+        $exceptions->render(function (\Illuminate\Database\QueryException|\PDOException $e, \Illuminate\Http\Request $request) {
+            if (!\App\Database\ReintentaMySqlConnector::esPasajero($e)) {
+                return null;
+            }
+            \Illuminate\Support\Facades\Log::warning('Base de datos saturada: ' . $e->getMessage());
+
+            return $request->expectsJson()
+                ? response()->json(['message' => 'El sistema está muy ocupado. Intenta de nuevo en unos segundos.'], 503, ['Retry-After' => 3])
+                : response()->view('errors.base-ocupada', [], 503, ['Retry-After' => 3]);
+        });
     })->create();

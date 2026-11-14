@@ -12,6 +12,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Conexión a MySQL con reintentos ante saturación pasajera del hosting compartido
+        $this->app->bind('db.connector.mysql', fn () => new \App\Database\ReintentaMySqlConnector());
         //
     }
 
