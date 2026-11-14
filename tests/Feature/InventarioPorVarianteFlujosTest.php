@@ -160,6 +160,16 @@ class InventarioPorVarianteFlujosTest extends TestCase
         $this->assertSame(['KY-LU2501-0001' => 6, 'KY-LU2501-0002' => 0], collect($r[0]['variantes'])->pluck('stock', 'sku')->all());
     }
 
+    public function test_el_traslado_ofrece_una_lista_desplegable_con_lo_que_hay_en_el_origen(): void
+    {
+        $r = $this->getJson(route('traslados.buscar-productos', ['listado' => 1, 'almacen_id' => $this->a->id]))->assertOk()->json();
+        $this->assertNotEmpty($r, 'sin escribir nada lista los productos con stock en el almacén');
+        $this->assertSame(14, $r[0]['stock_origen']);
+        $this->assertTrue(collect($r)->every(fn ($p) => $p['stock_origen'] > 0));
+
+        $this->get(route('traslados.create'))->assertOk()->assertSee('listarProductos', false)->assertSee('data-lista-productos', false);
+    }
+
     public function test_la_pantalla_de_ventas_recibe_el_stock_de_cada_variante_por_almacen(): void
     {
         $productos = $this->get(route('ventas.create'))->assertOk()->viewData('productos');

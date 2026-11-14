@@ -225,19 +225,25 @@
                                         </div>
 
                                         {{-- Buscador (visible cuando no hay producto seleccionado) --}}
-                                        <div x-show="!producto.productoId" class="relative">
+                                        <div x-show="!producto.productoId" class="relative" @click.outside="producto.resultados = []">
                                             <div class="relative">
                                                 <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs pointer-events-none"></i>
                                                 <input type="text"
                                                        x-model="producto.busqueda"
                                                        @input="buscarProducto(idx)"
+                                                       @focus="if (!producto.busqueda) listarProductos(idx)"
                                                        @keydown.escape="producto.resultados = []"
                                                        :placeholder="almacenId ? 'Buscar por nombre o código...' : 'Selecciona almacén origen primero'"
                                                        :disabled="!almacenId"
                                                        class="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed">
-                                                <div x-show="producto.buscando" class="absolute right-3 top-2.5">
+                                                <div x-show="producto.buscando" class="absolute right-9 top-2.5">
                                                     <i class="fas fa-spinner fa-spin text-gray-400 text-xs"></i>
                                                 </div>
+                                                <button type="button" data-lista-productos :disabled="!almacenId"
+                                                        @click="producto.resultados.length ? producto.resultados = [] : listarProductos(idx)"
+                                                        class="absolute right-0 top-0 h-full px-3 text-gray-500 hover:text-blue-600 disabled:opacity-40" title="Ver lista de productos">
+                                                    <i class="fas fa-chevron-down text-xs"></i>
+                                                </button>
                                             </div>
 
                                             {{-- Dropdown resultados --}}
@@ -495,6 +501,22 @@ function trasladoForm() {
         onAlmacenDestinoChange() {},
 
         // ── Búsqueda dinámica de productos ───────────────────────────
+
+        /** Lista desplegable: productos con stock en el almacén de origen, sin necesidad de escribir. */
+        async listarProductos(idx) {
+            if (!this.almacenId) return;
+            const p = this.productos[idx];
+            p.buscando = true;
+            try {
+                const url  = `${buscarProductosUrl}?listado=1&almacen_id=${this.almacenId}`;
+                const resp = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                p.resultados = await resp.json();
+            } catch {
+                p.resultados = [];
+            } finally {
+                p.buscando = false;
+            }
+        },
 
         buscarProducto(idx) {
             const p = this.productos[idx];

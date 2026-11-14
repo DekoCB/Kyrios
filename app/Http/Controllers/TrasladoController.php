@@ -253,11 +253,20 @@ class TrasladoController extends Controller
         $q        = trim($request->get('q', ''));
         $almacenId = (int) $request->get('almacen_id', 0);
 
-        $productos = \App\Support\EtiquetaProducto::buscar(
-                Producto::with(['variantesActivas.color'])->where('estado', 'activo'), $q
-            )
-            ->limit(15)
-            ->get(['id', 'nombre', 'nombre_fabrica', 'nombre_kyrios', 'codigo']);
+        if ($q === '' && $request->boolean('listado')) {
+            // Lista desplegable: los productos que tienen stock en el almacén de origen, por orden alfabético
+            $productos = Producto::with(['variantesActivas.color'])->where('estado', 'activo')
+                ->whereIn('id', StockAlmacen::where('almacen_id', $almacenId)->where('cantidad', '>', 0)->select('producto_id'))
+                ->orderBy('nombre')
+                ->limit(80)
+                ->get(['id', 'nombre', 'nombre_fabrica', 'nombre_kyrios', 'codigo']);
+        } else {
+            $productos = \App\Support\EtiquetaProducto::buscar(
+                    Producto::with(['variantesActivas.color'])->where('estado', 'activo'), $q
+                )
+                ->limit(15)
+                ->get(['id', 'nombre', 'nombre_fabrica', 'nombre_kyrios', 'codigo']);
+        }
 
         $productoIds = $productos->pluck('id');
 
