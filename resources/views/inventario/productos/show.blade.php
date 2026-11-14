@@ -385,6 +385,42 @@
                 </div>
                 @endif
 
+                <!-- Precios de venta: dólares (principal) con opción de ver en soles -->
+                @php
+                    $preciosVenta = $producto->precios()->whereIn('tipo_precio', ['venta_regular', 'venta_mayorista'])->where('activo', true)->whereNull('almacen_id')
+                        ->orderByDesc('prioridad')->orderByDesc('id')->get();
+                    $regularPorVariante = $preciosVenta->where('tipo_precio', 'venta_regular')->unique('variante_id')->keyBy(fn ($p) => $p->variante_id ?? 0);
+                    $mayoristaPorVariante = $preciosVenta->where('tipo_precio', 'venta_mayorista')->unique('variante_id')->keyBy(fn ($p) => $p->variante_id ?? 0);
+                    $filasPrecio = $producto->variantesActivas->isNotEmpty()
+                        ? $producto->variantesActivas->map(fn ($v) => [$v->nombre_completo, $regularPorVariante->get($v->id) ?? $regularPorVariante->get(0), $mayoristaPorVariante->get($v->id) ?? $mayoristaPorVariante->get(0)])
+                        : collect([['Precio del producto', $regularPorVariante->get(0), $mayoristaPorVariante->get(0)]]);
+                @endphp
+                <div class="bg-white rounded-lg shadow-md overflow-hidden" data-precios-venta>
+                    <div class="bg-emerald-700 px-6 py-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-white font-semibold"><i class="fas fa-tags mr-2"></i>Precios de venta</h3>
+                        <x-selector-moneda oscuro />
+                    </div>
+                    <div class="p-6 divide-y divide-gray-100">
+                        @foreach($filasPrecio as [$nombrePrecio, $regular, $mayorista])
+                            <div class="py-3 flex items-center justify-between gap-4">
+                                <span class="text-sm font-medium text-gray-700">{{ $nombrePrecio }}</span>
+                                <div class="flex gap-6 text-right">
+                                    <div>
+                                        <p class="text-xs text-gray-400">Regular{{ $regular?->incluye_igv ? ' (incl. IGV)' : '' }}</p>
+                                        <p class="text-sm font-semibold">{{ $regular ? precio_dual($regular->precio, $regular->moneda) : '—' }}</p>
+                                    </div>
+                                    @if($mayorista)
+                                        <div>
+                                            <p class="text-xs text-gray-400">Mayorista</p>
+                                            <p class="text-sm font-semibold">{{ precio_dual($mayorista->precio, $mayorista->moneda) }}</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
                 <!-- Información de costos (solo administradores) -->
                 @if(auth()->user()->role->nombre === 'Administración')
                 <div class="bg-white rounded-lg shadow-md overflow-hidden">

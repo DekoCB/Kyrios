@@ -17,6 +17,7 @@
         <x-header :title="$cotizacion ? 'Editar cotización ' . $cotizacion->codigo : 'Nueva cotización'"
                   subtitle="Elija el cliente, agregue los productos y revise los precios antes de guardar" />
 
+        <div class="flex justify-end mb-3"><x-selector-moneda /></div>
         @include('cotizaciones.partials.mensajes')
 
         <form method="POST" id="formCotizacion"
@@ -103,7 +104,7 @@
                                             <p x-show="p.dano" class="text-[11px] text-amber-700"><i class="fas fa-exclamation-triangle"></i> Daño <span x-text="p.dano"></span></p>
                                         </div>
                                         <div class="text-right shrink-0">
-                                            <p class="text-sm font-semibold" :class="p.precio ? 'text-gray-900' : 'text-gray-400'" x-text="p.precio ? 'S/ ' + Number(p.precio).toFixed(2) : 'sin precio'"></p>
+                                            <p class="text-sm font-semibold" :class="p.precio ? 'text-gray-900' : 'text-gray-400'" x-text="p.precio ? $store.moneda.fmt(p.precio) : 'sin precio'"></p>
                                             <p class="text-xs" :class="p.stock > 0 ? 'text-emerald-600' : 'text-red-500'" x-text="p.stock + ' en stock'"></p>
                                         </div>
                                     </button>
@@ -149,7 +150,7 @@
                                                        :class="!(l.precio > 0) ? 'border-red-400 bg-red-50' : 'border-gray-300'"
                                                        class="w-full px-2 py-1.5 border rounded-lg text-right">
                                             </td>
-                                            <td class="py-3 px-2 text-right font-semibold text-gray-900" x-text="'S/ ' + (Number(l.cantidad) * Number(l.precio || 0)).toFixed(2)"></td>
+                                            <td class="py-3 px-2 text-right font-semibold text-gray-900" x-text="$store.moneda.fmt(Number(l.cantidad) * Number(l.precio || 0))"></td>
                                             <td class="py-3 text-right">
                                                 <button type="button" @click="lineas.splice(i, 1)" class="text-red-400 hover:text-red-600" title="Quitar"><i class="fas fa-times"></i></button>
                                             </td>
@@ -169,9 +170,10 @@
                     <div class="bg-white rounded-xl shadow-sm p-5">
                         <h3 class="font-semibold text-gray-900 mb-3"><i class="fas fa-calculator mr-2 text-emerald-600"></i>Resumen</h3>
                         <dl class="text-sm space-y-2">
-                            <div class="flex justify-between"><dt class="text-gray-500">Op. gravada</dt><dd class="font-medium" x-text="'S/ ' + subtotal.toFixed(2)"></dd></div>
-                            <div class="flex justify-between"><dt class="text-gray-500">IGV (18%)</dt><dd class="font-medium" x-text="'S/ ' + igv.toFixed(2)"></dd></div>
-                            <div class="flex justify-between border-t pt-2 text-base"><dt class="font-semibold">Total</dt><dd class="font-bold text-gray-900" x-text="'S/ ' + total.toFixed(2)"></dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500">Op. gravada</dt><dd class="font-medium" x-text="$store.moneda.fmt(subtotal)"></dd></div>
+                            <div class="flex justify-between"><dt class="text-gray-500">IGV (18%)</dt><dd class="font-medium" x-text="$store.moneda.fmt(igv)"></dd></div>
+                            <div class="flex justify-between border-t pt-2 text-base"><dt class="font-semibold">Total</dt><dd class="font-bold text-gray-900" x-text="$store.moneda.fmt(total)"></dd></div>
+                            <p x-show="$store.moneda.modo === 'USD'" x-cloak class="text-right text-xs text-gray-400" x-text="'En soles: S/ ' + total.toFixed(2) + ' (T.C. ' + $store.moneda.tc.toFixed(3) + ')'"></p>
                         </dl>
                         <p class="text-xs text-gray-400 mt-2">Los precios incluyen IGV. El stock no se descuenta hasta convertirla en venta.</p>
                     </div>

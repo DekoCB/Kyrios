@@ -89,4 +89,22 @@ class TipoCambioYMonedaTest extends TestCase
         $this->assertSame('PEN', $precio->fresh()->moneda);
         $this->assertSame(100.0, $precio->precio_soles);
     }
+
+    public function test_la_ficha_del_producto_y_las_pantallas_comerciales_muestran_dolares_con_selector(): void
+    {
+        $this->como('Administración');
+        TipoCambio::create(['fecha' => today(), 'compra' => 3.7, 'venta' => 3.8]);
+        $p = $this->producto();
+        ProductoPrecio::create(['producto_id' => $p->id, 'tipo_precio' => 'venta_regular', 'precio' => 100, 'precio_compra' => 60, 'moneda' => 'USD', 'incluye_igv' => true, 'activo' => true, 'prioridad' => 1]);
+
+        $ficha = $this->get(route('inventario.productos.show', $p))->assertOk()->getContent();
+        $this->assertStringContainsString('data-precios-venta', $ficha);
+        $this->assertStringContainsString('data-usd="100.00" data-pen="380.00"', $ficha);
+        $this->assertStringContainsString('data-selector-moneda', $ficha);
+
+        $this->get(route('cotizaciones.index'))->assertOk()->assertSee('data-selector-moneda', false);
+        $this->get(route('cotizaciones.create'))->assertOk()->assertSee('data-selector-moneda', false)->assertSee('$store.moneda.fmt', false);
+        $this->get(route('ventas.index'))->assertOk()->assertSee('data-selector-moneda', false);
+        $this->get(route('ventas.create'))->assertOk()->assertSee('$store.moneda.fmt', false)->assertSee('name="tipo-cambio" content="3.8', false);
+    }
 }

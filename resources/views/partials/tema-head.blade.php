@@ -3,6 +3,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('img/favicon-32.png') }}">
 <link rel="apple-touch-icon" href="{{ asset('img/apple-touch-icon.png') }}">
 <meta name="theme-color" content="#44413A">
+@php try { $tcPagina = \App\Models\TipoCambio::actual(); } catch (\Throwable) { $tcPagina = \App\Models\TipoCambio::POR_DEFECTO_VENTA; } @endphp
+<meta name="tipo-cambio" content="{{ $tcPagina }}">
 <script>
     (function () {
         var tema = null;

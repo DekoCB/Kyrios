@@ -14,6 +14,7 @@
 
     <div class="md:ml-64 p-4 md:p-8">
         <x-header title="Cotizaciones" subtitle="Propuestas comerciales que se convierten en nota de venta, boleta o factura" />
+        <div class="flex justify-end mb-3"><x-selector-moneda /></div>
 
         @include('cotizaciones.partials.mensajes')
 
@@ -109,7 +110,7 @@
                             <td class="px-4 py-3 text-sm text-gray-500">{{ $c->vendedor?->name }}</td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ $c->fecha->format('d/m/Y') }}</td>
                             <td class="px-4 py-3 text-sm {{ $c->esta_vencida ? 'text-red-600 font-medium' : 'text-gray-500' }}">{{ $c->fecha_vencimiento->format('d/m/Y') }}</td>
-                            <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900">S/ {{ number_format($c->total, 2) }}</td>
+                            <td class="px-4 py-3 text-sm text-right font-semibold text-gray-900">{{ precio_dual($c->total, 'PEN') }}</td>
                             <td class="px-4 py-3">@include('cotizaciones.partials.badge', ['estado' => $c->estado_visible])</td>
                             <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
                                 <a href="{{ route('cotizaciones.show', $c) }}" class="text-blue-600 hover:text-blue-800 mr-3" title="Ver"><i class="fas fa-eye"></i></a>

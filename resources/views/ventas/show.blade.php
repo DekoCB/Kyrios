@@ -21,6 +21,7 @@
     <x-sidebar :role="auth()->user()->role->nombre" class="no-print" />
 
     <div class="md:ml-64 p-4 md:p-10">
+        <div class="flex justify-end mb-3"><x-selector-moneda /></div>
 
         {{-- Modal de confirmación de venta nueva --}}
         @if(request()->has('nuevo'))
@@ -119,7 +120,7 @@
                         @endif
                         <div class="flex items-center justify-between text-sm py-2">
                             <span class="text-gray-500 flex items-center gap-2"><i class="fas fa-money-bill w-4 text-center text-blue-400"></i> Total</span>
-                            <span class="font-bold text-blue-600 text-base">S/ {{ number_format($venta->total, 2) }}</span>
+                            <span class="font-bold text-blue-600 text-base">{{ precio_dual($venta->total, 'PEN') }}</span>
                         </div>
                     </div>
                     {{-- Acciones --}}
@@ -855,15 +856,15 @@
                 <dl class="space-y-3">
                     <div class="flex justify-between items-center">
                         <dt class="text-sm text-gray-400">Subtotal</dt>
-                        <dd class="text-sm text-gray-700">S/ {{ number_format($venta->subtotal, 2) }}</dd>
+                        <dd class="text-sm text-gray-700">{{ precio_dual($venta->subtotal, 'PEN') }}</dd>
                     </div>
                     <div class="flex justify-between items-center">
                         <dt class="text-sm text-gray-400">IGV (18%)</dt>
-                        <dd class="text-sm text-gray-700">S/ {{ number_format($venta->igv, 2) }}</dd>
+                        <dd class="text-sm text-gray-700">{{ precio_dual($venta->igv, 'PEN') }}</dd>
                     </div>
                     <div class="flex justify-between items-center border-t border-gray-100 pt-3">
                         <dt class="font-bold text-gray-700">Total</dt>
-                        <dd class="text-2xl font-bold text-gray-900">S/ {{ number_format($venta->total, 2) }}</dd>
+                        <dd class="text-2xl font-bold text-gray-900">{{ precio_dual($venta->total, 'PEN') }}</dd>
                     </div>
                     <div class="flex justify-between items-center">
                         <dt class="text-sm text-gray-400">Método</dt>
@@ -1019,8 +1020,8 @@
                             </td>
                             <td class="px-4 py-4 text-center text-sm text-gray-600">{{ $detalle->producto->unidadMedida?->abreviatura ?? 'UNID.' }}</td>
                             <td class="px-4 py-4 text-center font-bold text-gray-700">{{ $detalle->cantidad }}</td>
-                            <td class="px-4 py-4 text-right text-sm text-gray-700">S/ {{ number_format($precioFinal, 2) }}</td>
-                            <td class="px-4 py-4 text-right font-bold text-gray-900">S/ {{ number_format($totalFinal, 2) }}</td>
+                            <td class="px-4 py-4 text-right text-sm text-gray-700">{{ precio_dual($precioFinal, 'PEN') }}</td>
+                            <td class="px-4 py-4 text-right font-bold text-gray-900">{{ precio_dual($totalFinal, 'PEN') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -1038,11 +1039,11 @@
                 <div class="w-full md:w-72 shrink-0">
                     <div class="flex justify-between py-1.5 text-sm border-b border-gray-100">
                         <span class="text-gray-500">Gravada</span>
-                        <span class="font-semibold text-gray-800">S/ {{ number_format($venta->subtotal, 2) }}</span>
+                        <span class="font-semibold text-gray-800">{{ precio_dual($venta->subtotal, 'PEN') }}</span>
                     </div>
                     <div class="flex justify-between py-1.5 text-sm border-b border-gray-100">
                         <span class="text-gray-500">IGV (18.00%)</span>
-                        <span class="font-semibold text-gray-800">S/ {{ number_format($venta->igv, 2) }}</span>
+                        <span class="font-semibold text-gray-800">{{ precio_dual($venta->igv, 'PEN') }}</span>
                     </div>
                     <div class="flex justify-between py-1.5 text-sm border-b border-gray-100">
                         <span class="text-gray-500">Descuento Total</span>
@@ -1050,7 +1051,7 @@
                     </div>
                     <div class="flex justify-between py-2 mt-1">
                         <span class="font-bold text-gray-900 text-base">Total</span>
-                        <span class="font-bold text-blue-600 text-xl">S/ {{ number_format($venta->total, 2) }}</span>
+                        <span class="font-bold text-blue-600 text-xl">{{ precio_dual($venta->total, 'PEN') }}</span>
                     </div>
                 </div>
             </div>

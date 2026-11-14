@@ -19,6 +19,8 @@
             subtitle="Administra las ventas realizadas y sus detalles"
         />
 
+        <div class="flex justify-end mb-3"><x-selector-moneda /></div>
+
         {{-- Flash --}}
         @if(session('success'))
             <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl mb-6 flex items-center gap-2 shadow-sm">
@@ -199,7 +201,7 @@
                                 <span class="text-sm text-gray-700">{{ $venta->almacen->nombre }}</span>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <span class="text-sm font-bold text-gray-900">S/ {{ number_format($venta->total, 2) }}</span>
+                                <span class="text-sm font-bold text-gray-900">{{ precio_dual($venta->total, 'PEN') }}</span>
                             </td>
                             <td class="px-6 py-4">
                                 @if($venta->metodo_pago)

@@ -21,6 +21,7 @@
 
     <div class="md:ml-64 p-4 md:p-8" x-data="{ modal: null, estadoNuevo: '', tipo: '{{ $esRuc ? 'factura' : 'boleta' }}', condicion: 'contado' }">
         <x-header title="Cotización {{ $c->codigo }}" subtitle="Elaborada el {{ $c->fecha->format('d/m/Y') }} por {{ $c->vendedor?->name }}" />
+        <div class="flex justify-end mb-3"><x-selector-moneda /></div>
 
         @include('cotizaciones.partials.mensajes')
 
@@ -117,15 +118,15 @@
                                         <td class="px-4 py-3 text-center">
                                             <span class="{{ $hay >= $d->cantidad ? 'text-emerald-600' : 'text-red-600 font-semibold' }}">{{ $hay }}</span>
                                         </td>
-                                        <td class="px-4 py-3 text-right">S/ {{ number_format($d->precio_con_igv, 2) }}</td>
-                                        <td class="px-4 py-3 text-right font-semibold">S/ {{ number_format($d->subtotal_con_igv, 2) }}</td>
+                                        <td class="px-4 py-3 text-right">{{ precio_dual($d->precio_con_igv, 'PEN') }}</td>
+                                        <td class="px-4 py-3 text-right font-semibold">{{ precio_dual($d->subtotal_con_igv, 'PEN') }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
                             <tfoot class="text-sm">
-                                <tr><td colspan="4" class="px-4 pt-3 text-right text-gray-500">Op. gravada</td><td class="px-4 pt-3 text-right">S/ {{ number_format($c->subtotal, 2) }}</td></tr>
-                                <tr><td colspan="4" class="px-4 text-right text-gray-500">IGV (18%)</td><td class="px-4 text-right">S/ {{ number_format($c->igv, 2) }}</td></tr>
-                                <tr><td colspan="4" class="px-4 py-3 text-right font-semibold">Total</td><td class="px-4 py-3 text-right text-lg font-bold text-gray-900">S/ {{ number_format($c->total, 2) }}</td></tr>
+                                <tr><td colspan="4" class="px-4 pt-3 text-right text-gray-500">Op. gravada</td><td class="px-4 pt-3 text-right">{{ precio_dual($c->subtotal, 'PEN') }}</td></tr>
+                                <tr><td colspan="4" class="px-4 text-right text-gray-500">IGV (18%)</td><td class="px-4 text-right">{{ precio_dual($c->igv, 'PEN') }}</td></tr>
+                                <tr><td colspan="4" class="px-4 py-3 text-right font-semibold">Total</td><td class="px-4 py-3 text-right text-lg font-bold text-gray-900">{{ precio_dual($c->total, 'PEN') }}</td></tr>
                             </tfoot>
                         </table>
                     </div>
@@ -241,7 +242,7 @@
                 @csrf
                 <div class="bg-gradient-to-r from-blue-700 to-blue-600 px-6 py-5 rounded-t-2xl">
                     <h3 class="text-lg font-bold text-white">Convertir en venta</h3>
-                    <p class="text-blue-100 text-sm mt-0.5">{{ $c->codigo }} · S/ {{ number_format($c->total, 2) }}</p>
+                    <p class="text-blue-100 text-sm mt-0.5">{{ $c->codigo }} · {{ precio_dual($c->total, 'PEN') }}</p>
                 </div>
                 <div class="p-6 space-y-5">
                     <div>

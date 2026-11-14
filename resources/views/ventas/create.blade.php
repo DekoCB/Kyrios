@@ -155,6 +155,8 @@
                 </div>
             </div>
 
+            <div class="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 shrink-0 flex justify-end"><x-selector-moneda compacto /></div>
+
             {{-- Category pills --}}
             <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700 overflow-x-auto shrink-0">
                 <div class="flex gap-1.5 min-w-max">
@@ -202,10 +204,10 @@
                                     <div>
                                         <p class="text-sm font-bold"
                                            :class="modoMayorista && precioMayoristaEfectivo(producto) != null ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'"
-                                           x-text="(producto.tiene_variantes ? 'Desde ' : '') + 'S/ ' + (modoMayorista && precioMayoristaEfectivo(producto) != null ? precioMayoristaEfectivo(producto).toFixed(2) : producto.precio_venta.toFixed(2))"></p>
+                                           x-text="(producto.tiene_variantes ? 'Desde ' : '') + $store.moneda.fmt(modoMayorista && precioMayoristaEfectivo(producto) != null ? precioMayoristaEfectivo(producto) : producto.precio_venta)"></p>
                                         <p x-show="precioMayoristaEfectivo(producto) != null" x-cloak
                                            class="text-[9px] text-amber-500 dark:text-amber-400 font-semibold leading-tight"
-                                           x-text="modoMayorista ? 'Regular: S/ ' + producto.precio_venta.toFixed(2) : 'Mayor: S/ ' + precioMayoristaEfectivo(producto)?.toFixed(2)"></p>
+                                           x-text="modoMayorista ? 'Regular: ' + $store.moneda.fmt(producto.precio_venta) : 'Mayor: ' + $store.moneda.fmt(precioMayoristaEfectivo(producto))"></p>
                                     </div>
                                     <span x-show="orden.almacenId" x-cloak
                                           class="text-[9px] font-semibold text-gray-400 dark:text-gray-500 shrink-0"
@@ -239,7 +241,7 @@
                                     <div class="p-2">
                                         <p class="text-[11px] text-gray-500 font-medium line-clamp-2 leading-tight mb-1" x-text="producto.nombre"></p>
                                         <p class="text-[9px] text-gray-400 font-mono truncate mb-1" x-text="producto.codigos" :title="producto.codigos"></p>
-                                        <p class="text-xs font-bold text-gray-400" x-text="'S/ ' + producto.precio_venta.toFixed(2)"></p>
+                                        <p class="text-xs font-bold text-gray-400" x-text="$store.moneda.fmt(producto.precio_venta)"></p>
                                     </div>
                                 </div>
                             </template>
@@ -349,8 +351,8 @@
                                     </button>
                                 </div>
                                 <div class="text-right">
-                                    <p class="text-[11px] text-gray-400" x-text="'S/ ' + item.precio_unitario.toFixed(2) + ' c/u'"></p>
-                                    <p class="text-base font-bold text-gray-800 dark:text-gray-100" x-text="'S/ ' + (item.cantidad * item.precio_unitario).toFixed(2)"></p>
+                                    <p class="text-[11px] text-gray-400" x-text="$store.moneda.fmt(item.precio_unitario) + ' c/u'"></p>
+                                    <p class="text-base font-bold text-gray-800 dark:text-gray-100" x-text="$store.moneda.fmt(item.cantidad * item.precio_unitario)"></p>
                                 </div>
                             </div>
                         </div>
@@ -886,16 +888,17 @@
                 <div class="space-y-1 mb-3">
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
-                        <span class="text-gray-700 dark:text-gray-300 font-medium" x-text="'S/ ' + subtotal.toFixed(2)"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-medium" x-text="$store.moneda.fmt(subtotal)"></span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500 dark:text-gray-400">IGV (18%)</span>
-                        <span class="text-gray-700 dark:text-gray-300 font-medium" x-text="'S/ ' + igv.toFixed(2)"></span>
+                        <span class="text-gray-700 dark:text-gray-300 font-medium" x-text="$store.moneda.fmt(igv)"></span>
                     </div>
                     <div class="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
                         <span class="text-base font-bold text-gray-800 dark:text-gray-100">TOTAL</span>
-                        <span class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="'S/ ' + total.toFixed(2)"></span>
+                        <span class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="$store.moneda.fmt(total)"></span>
                     </div>
+                    <p x-show="$store.moneda.modo === 'USD'" x-cloak class="text-right text-xs text-gray-400" x-text="'Se cobra en soles: S/ ' + total.toFixed(2) + ' (T.C. ' + $store.moneda.tc.toFixed(3) + ')'"></p>
                     <div x-show="vuelto > 0" x-cloak class="flex justify-between items-center">
                         <span class="text-sm text-green-600 dark:text-green-400 font-semibold">Vuelto</span>
                         <span class="text-lg font-bold text-green-600 dark:text-green-400" x-text="'S/ ' + vuelto.toFixed(2)"></span>
@@ -1310,12 +1313,12 @@
                             <div>
                                 <span class="font-semibold"
                                       :class="modoMayorista && (v.precio_mayorista != null || productoActual?.precio_mayorista != null) ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'"
-                                      x-text="'S/ ' + (modoMayorista && (v.precio_mayorista != null || productoActual?.precio_mayorista != null)
+                                      x-text="$store.moneda.fmt(modoMayorista && (v.precio_mayorista != null || productoActual?.precio_mayorista != null)
                                           ? parseFloat(v.precio_mayorista ?? productoActual?.precio_mayorista)
-                                          : (v.precio_venta != null ? parseFloat(v.precio_venta) : (parseFloat(productoActual?.precio_venta || 0) + parseFloat(v.sobreprecio || 0)))).toFixed(2)"></span>
+                                          : (v.precio_venta != null ? parseFloat(v.precio_venta) : (parseFloat(productoActual?.precio_venta || 0) + parseFloat(v.sobreprecio || 0))))"></span>
                                 <span x-show="(v.precio_mayorista != null || productoActual?.precio_mayorista != null)" x-cloak
                                       class="block text-[9px] text-amber-500 font-medium leading-tight"
-                                      x-text="modoMayorista ? 'Regular: S/ ' + (v.precio_venta != null ? parseFloat(v.precio_venta) : (parseFloat(productoActual?.precio_venta || 0) + parseFloat(v.sobreprecio || 0))).toFixed(2) : 'Mayor: S/ ' + parseFloat(v.precio_mayorista ?? productoActual?.precio_mayorista).toFixed(2)"></span>
+                                      x-text="modoMayorista ? 'Regular: ' + $store.moneda.fmt(v.precio_venta != null ? parseFloat(v.precio_venta) : (parseFloat(productoActual?.precio_venta || 0) + parseFloat(v.sobreprecio || 0))) : 'Mayor: ' + $store.moneda.fmt(parseFloat(v.precio_mayorista ?? productoActual?.precio_mayorista))"></span>
                             </div>
                             <span class="text-green-600 dark:text-green-400"
                                   x-text="stockVarianteEnAlmacen(v) + ' en stock'"></span>
