@@ -11,7 +11,7 @@ class ProductoImagen extends Model
 
     protected $table = 'producto_imagenes';
 
-    protected $fillable = ['producto_id', 'variante_id', 'ruta', 'orden', 'es_principal'];
+    protected $fillable = ['producto_id', 'variante_id', 'ruta', 'hash_origen', 'orden', 'es_principal'];
 
     protected $casts = ['es_principal' => 'boolean', 'orden' => 'integer'];
 

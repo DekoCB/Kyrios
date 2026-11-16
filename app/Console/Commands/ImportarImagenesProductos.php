@@ -27,12 +27,15 @@ class ImportarImagenesProductos extends Command
     protected $signature = 'productos:importar-imagenes
                             {carpeta : Carpeta con las imágenes (se recorre completa)}
                             {--reemplazar : Elimina las imágenes actuales de las variantes que reciban imágenes nuevas}
+                            {--lado=1600 : Lado máximo en píxeles; las fotos se reducen y guardan como JPG (0 = copiar tal cual)}
+                            {--sin-codigo= : Archivo CSV donde dejar las imágenes sin código reconocible o ambiguas}
                             {--dry-run : Solo muestra qué se asociaría}';
 
     protected $description = 'Asocia imágenes (hasta 6 por variante) a las variantes por código';
 
     public function handle(): int
     {
+        ini_set('memory_limit', '1G');
         $carpeta = $this->argument('carpeta');
         if (!is_dir($carpeta)) {
             $this->error("No existe la carpeta: {$carpeta}");
@@ -80,10 +83,14 @@ class ImportarImagenesProductos extends Command
             usort($archivos, fn ($a, $b) => [$a[0] ?? 99, $a[1]] <=> [$b[0] ?? 99, $b[1]]);
             $ocupados = $this->option('reemplazar') ? [] : $variante->imagenes()->pluck('orden')->all();
 
-            // Contenido de las fotos que la variante ya tiene: una foto igual no se vuelve a cargar
+            // Huella de las fotos que la variante ya tiene (del archivo original o, en las antiguas, del guardado):
+            // una foto igual no se vuelve a cargar
             $existentes = [];
             if (!$this->option('reemplazar')) {
                 foreach ($variante->imagenes as $img) {
+                    if ($img->hash_origen) {
+                        $existentes[$img->hash_origen] = true;
+                    }
                     if (Storage::disk('public')->exists($img->ruta)) {
                         $existentes[md5(Storage::disk('public')->get($img->ruta))] = true;
                     }
@@ -112,17 +119,31 @@ class ImportarImagenesProductos extends Command
                 if ($this->option('dry-run')) {
                     continue;
                 }
-                $destino = "productos/{$variante->id}/{$orden}." . strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
-                Storage::disk('public')->put($destino, file_get_contents($ruta));
+                [$contenido, $extension] = $this->prepararImagen($ruta);
+                $destino = "productos/{$variante->id}/{$orden}.{$extension}";
+                Storage::disk('public')->put($destino, $contenido);
                 ProductoImagen::updateOrCreate(
                     ['variante_id' => $variante->id, 'orden' => $orden],
-                    ['producto_id' => $variante->producto_id, 'ruta' => $destino, 'es_principal' => false]
+                    ['producto_id' => $variante->producto_id, 'ruta' => $destino, 'hash_origen' => $hash, 'es_principal' => false]
                 );
             }
 
             if (!$this->option('dry-run') && !$variante->imagenes()->where('es_principal', true)->exists()) {
                 $variante->imagenes()->orderBy('orden')->first()?->update(['es_principal' => true]);
             }
+        }
+
+        if ($csv = $this->option('sin-codigo')) {
+            $f = fopen($csv, 'w');
+            fwrite($f, "ï»¿");
+            fputcsv($f, ['Archivo', 'Motivo'], ';');
+            foreach ($sinCodigo as $a) {
+                fputcsv($f, [$a, 'Sin código reconocible'], ';');
+            }
+            foreach ($ambiguos as $a) {
+                fputcsv($f, [$a, 'Código ambiguo'], ';');
+            }
+            fclose($f);
         }
 
         $this->table(['Concepto', 'Cantidad'], [
@@ -142,6 +163,40 @@ class ImportarImagenesProductos extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Reduce la foto al lado máximo y la guarda como JPG (fondo blanco si tenía transparencia).
+     *
+     * @return array{0: string, 1: string} contenido y extensión
+     */
+    private function prepararImagen(string $ruta): array
+    {
+        $lado = (int) $this->option('lado');
+        $original = file_get_contents($ruta);
+        $extension = strtolower(pathinfo($ruta, PATHINFO_EXTENSION));
+        if ($lado <= 0 || !function_exists('imagecreatefromstring')) {
+            return [$original, $extension === 'jpeg' ? 'jpg' : $extension];
+        }
+
+        $img = @imagecreatefromstring($original);
+        if (!$img) {
+            return [$original, $extension === 'jpeg' ? 'jpg' : $extension];
+        }
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $factor = min(1, $lado / max($w, $h));
+        $nw = max(1, (int) round($w * $factor));
+        $nh = max(1, (int) round($h * $factor));
+
+        $lienzo = imagecreatetruecolor($nw, $nh);
+        imagefill($lienzo, 0, 0, imagecolorallocate($lienzo, 255, 255, 255));
+        imagecopyresampled($lienzo, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        ob_start();
+        imagejpeg($lienzo, null, 84);
+        $jpg = ob_get_clean();
+
+        return $jpg ? [$jpg, 'jpg'] : [$original, $extension === 'jpeg' ? 'jpg' : $extension];
     }
 
     /** clave normalizada del código → [variante_id, ...] */
