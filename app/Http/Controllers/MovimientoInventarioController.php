@@ -85,7 +85,16 @@ class MovimientoInventarioController extends Controller
         return view('inventario.movimientos.create', compact('productos', 'stockVariantes', 'almacenesCentral', 'almacenesTienda', 'motivos'));
     }
 
-    /**
+        /** Nombre del motivo; con «Otro» se le agrega lo que la persona haya escrito («Otro: muestra para cliente»). */
+    private function textoMotivo(int $motivoId, ?string $otro): string
+    {
+        $motivo = MotivoMovimiento::find($motivoId);
+        $detalle = trim((string) $otro);
+
+        return ($motivo?->nombre ?? '') . ($motivo?->codigo === 'OTRO01' && $detalle !== '' ? ': ' . $detalle : '');
+    }
+
+/**
      * Guardar nuevo movimiento
      */
     public function store(Request $request)
@@ -104,6 +113,7 @@ class MovimientoInventarioController extends Controller
             'tipo_movimiento'      => 'required|in:ingreso,salida,ajuste,transferencia,devolucion,merma',
             'motivo_movimiento_id' => 'required|exists:motivos_movimiento,id',
             'observaciones'        => 'nullable|string',
+            'motivo_otro'          => 'nullable|string|max:150',
             'almacen_destino_id' => 'nullable|exists:almacenes,id',
             'numero_guia' => 'nullable|string|max:50',
             'variante_id' => 'nullable|exists:producto_variantes,id',
@@ -146,7 +156,7 @@ class MovimientoInventarioController extends Controller
                 'almacen_id' => $request->almacen_id,
                 'tipo_movimiento'      => $request->tipo_movimiento,
                 'motivo_movimiento_id'=> $request->motivo_movimiento_id,
-                'motivo'              => MotivoMovimiento::find($request->motivo_movimiento_id)?->nombre ?? '',
+                'motivo'              => $this->textoMotivo((int) $request->motivo_movimiento_id, $request->input('motivo_otro')),
                 'observaciones'       => $request->observaciones,
                 'almacen_destino_id' => $request->almacen_destino_id,
                 'numero_guia' => $request->numero_guia,

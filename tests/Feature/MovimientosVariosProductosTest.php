@@ -116,4 +116,20 @@ class MovimientosVariosProductosTest extends TestCase
         $this->get(route('inventario.movimientos.create'))->assertOk()
             ->assertSee('data-lista-productos', false)->assertSee('Agregar otro producto')->assertSee('lineas[', false);
     }
+
+    public function test_el_motivo_otro_acepta_un_detalle_opcional_y_aparece_en_el_formulario(): void
+    {
+        $otro = MotivoMovimiento::where('codigo', 'OTRO01')->firstOrFail(); // lo crea la migración
+        $linea = [['producto_id' => $this->v1->producto_id, 'variante_id' => $this->v1->id, 'cantidad' => 2]];
+
+        $this->get(route('inventario.movimientos.create'))->assertOk()->assertSee('OTRO01', false)->assertSee('motivo_otro', false);
+
+        $base = ['almacen_id' => $this->almacen->id, 'tipo_movimiento' => 'ingreso', 'motivo_movimiento_id' => $otro->id, 'lineas' => $linea];
+        $this->post(route('inventario.movimientos.store'), $base + ['motivo_otro' => 'Muestra para cliente'])->assertSessionHasNoErrors();
+        $this->post(route('inventario.movimientos.store'), $base)->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('movimientos_inventario', ['motivo' => 'Otro: Muestra para cliente']);
+        $this->assertDatabaseHas('movimientos_inventario', ['motivo' => 'Otro']);
+        $this->assertSame(4, $this->stock($this->v1));
+    }
 }

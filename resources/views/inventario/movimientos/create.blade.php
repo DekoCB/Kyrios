@@ -345,6 +345,12 @@ $catalogoJson = $productos->map(fn($p) => [
                                     </label>
                                 </template>
                             </div>
+                            <div x-show="esMotivoOtro" x-cloak class="mt-2">
+                                <label class="block text-[11px] text-gray-500 mb-1">¿Cuál es el motivo? <span class="text-gray-400">(opcional)</span></label>
+                                <input type="text" name="motivo_otro" maxlength="150" value="{{ old('motivo_otro') }}" :disabled="!esMotivoOtro"
+                                       placeholder="Escribe el motivo…"
+                                       class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                            </div>
                             @error('motivo_movimiento_id')
                                 <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                             @enderror
@@ -395,7 +401,13 @@ function movimientoForm(c) {
         tipoMovimiento: c.tipo, almacenId: c.almacen, motivoId: c.motivo, catalogo: c.catalogo, motivos: c.motivos,
         lineas: [nueva()], enviando: false, errorGeneral: '',
 
-        get motivosFiltrados() { return this.tipoMovimiento ? (this.motivos[this.tipoMovimiento] ?? []) : []; },
+        get motivosFiltrados() {
+            if (!this.tipoMovimiento) return [];
+            const propios = this.motivos[this.tipoMovimiento] ?? [];
+            /* «Otro» (tipo «otros») se ofrece siempre, al final de la lista */
+            return propios.concat((this.motivos.otros ?? []).filter(m => !propios.some(p => p.id === m.id)));
+        },
+        get esMotivoOtro() { return this.motivosFiltrados.some(m => m.id == this.motivoId && m.codigo === 'OTRO01'); },
         get labelAlmacen() { return this.tipoMovimiento === 'ingreso' ? 'Almacén Destino' : 'Almacén Origen'; },
         get lineasCompletas() { return this.lineas.filter(l => l.productoId); },
         get unidadesTotal() { return this.lineasCompletas.reduce((a, l) => a + (parseInt(l.cantidad) || 0), 0); },
