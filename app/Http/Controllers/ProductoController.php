@@ -52,7 +52,12 @@ class ProductoController extends Controller
 
     public function consultaTienda(Request $request)
 {
-    $query = Producto::with('categoria')->activos();
+    $query = Producto::with([
+        'categoria', 'marca', 'modelo', 'tipoProducto',
+        'variantes:id,producto_id,codigo_fabricante,codigo_kyrios,nombre_fabrica,nombre_kyrios',
+        'variantesActivas.color', 'variantesActivas.imagenPrincipal',
+        'precios' => fn ($q) => $q->whereIn('tipo_precio', ['venta_regular', 'venta_mayorista'])->where('activo', true)->whereNull('almacen_id'),
+    ])->activos();
     
     // Búsqueda simple
     if ($request->filled('buscar')) {

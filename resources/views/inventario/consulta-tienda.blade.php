@@ -51,22 +51,23 @@
             </form>
         </div>
 
-        <!-- Tabla -->
+        <!-- Resultados -->
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
+            <div class="p-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-xl font-bold text-gray-900">
                     <i class="fas fa-boxes mr-2 text-blue-900"></i>
-                    Productos Disponibles
+                    Productos disponibles
+                    <span class="ml-2 text-sm font-normal text-gray-500">{{ $productos->total() }} resultado(s)</span>
                 </h2>
+                <x-selector-moneda />
             </div>
 
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Códigos</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stock</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Precio</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
@@ -74,67 +75,79 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($productos as $producto)
+                        @php
+                            $variantes = $producto->variantesActivas;
+                            $imagen = $producto->imagen ? $producto->imagen_url : $variantes->map->imagenPrincipal->filter()->first()?->url;
+                            $nombre = \App\Support\EtiquetaProducto::nombre($producto);
+                            $conNombre = \App\Support\EtiquetaProducto::tieneNombre($producto);
+                            $detalle = collect([$producto->tipoProducto?->nombre, $producto->marca?->nombre, $producto->modelo?->nombre])->filter()->implode(' · ');
+                            $stock = $variantes->count() > 0 ? (int) $variantes->sum('stock_actual') : (int) $producto->stock_actual;
+                            $regulares = $producto->precios->where('tipo_precio', 'venta_regular');
+                            $regular = $regulares->sortBy('precio')->first();
+                            $mayorista = $producto->precios->where('tipo_precio', 'venta_mayorista')->sortBy('precio')->first();
+                            $fabricantes = $producto->variantes->pluck('codigo_fabricante')->filter()->unique()->values();
+                        @endphp
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="text-sm font-medium text-gray-900 font-mono">{{ \App\Support\EtiquetaProducto::codigos(['codigo' => $producto->codigo, 'variantes' => $producto->variantesActivas ?? $producto->variantes ?? []]) }}</span>
-                            </td>
                             <td class="px-6 py-4">
-                                <div class="flex items-center">
-                                    @if($producto->imagen)
-                                        <img src="{{ $producto->imagen_url }}" alt="{{ \App\Support\EtiquetaProducto::nombre($producto) }}" class="h-12 w-12 rounded object-cover mr-3">
+                                <div class="flex items-center gap-3">
+                                    @if($imagen)
+                                        <img src="{{ $imagen }}" alt="{{ $nombre }}" class="h-14 w-14 rounded-lg object-cover shrink-0">
                                     @else
-                                        <div class="h-12 w-12 rounded bg-gray-200 flex items-center justify-center mr-3">
+                                        <div class="h-14 w-14 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                                             <i class="fas fa-box text-gray-400"></i>
                                         </div>
                                     @endif
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">{{ \App\Support\EtiquetaProducto::nombre($producto) }}</p>
-                                        @if($producto->marca)
-                                            <p class="text-xs text-gray-500">{{ $producto->marca }} {{ $producto->modelo }}</p>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold {{ $conNombre ? 'text-gray-900' : 'text-gray-400 italic' }}">{{ $nombre }}</p>
+                                        @if($detalle !== '')
+                                            <p class="text-xs text-gray-500 mt-0.5">{{ $detalle }}</p>
                                         @endif
+                                        <div class="flex flex-wrap items-center gap-1 mt-1">
+                                            @if($producto->categoria)
+                                                <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">{{ $producto->categoria->nombre }}</span>
+                                            @endif
+                                            @if($variantes->count() > 0)
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700">
+                                                    <i class="fas fa-layer-group"></i> {{ $variantes->count() }} variante(s)
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                    <i class="fas fa-lightbulb mr-1"></i>Producto
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span class="text-base font-bold
-                                    @if($producto->stock_actual == 0) text-red-600
-                                    @elseif($producto->stock_actual <= $producto->stock_minimo) text-yellow-600
-                                    @else text-green-600
-                                    @endif">
-                                    {{ $producto->stock_actual }}
-                                </span>
-                                <span class="text-xs text-gray-500 ml-1">{{ $producto->unidad_medida }}</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <p class="text-lg font-bold text-gray-900">S/ {{ number_format($producto->precio_venta, 2) }}</p>
-                                @if($producto->precio_mayorista)
-                                    <p class="text-xs text-gray-500">Mayor: S/ {{ number_format($producto->precio_mayorista, 2) }}</p>
+                                <p class="text-sm font-mono font-medium text-gray-900">{{ $producto->codigo }}</p>
+                                @if($fabricantes->isNotEmpty())
+                                    <p class="text-xs font-mono text-gray-500 mt-0.5">fab: {{ $fabricantes->first() }}@if($fabricantes->count() > 1) <span class="text-gray-400">+{{ $fabricantes->count() - 1 }}</span>@endif</p>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                @if($producto->stock_actual > $producto->stock_minimo)
-                                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                                        <i class="fas fa-check-circle mr-1"></i>Disponible
-                                    </span>
-                                @elseif($producto->stock_actual > 0)
-                                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>Stock Bajo
-                                    </span>
+                                <span class="text-base font-bold {{ $stock <= 0 ? 'text-red-600' : ($stock <= $producto->stock_minimo ? 'text-yellow-600' : 'text-green-600') }}">{{ $stock }}</span>
+                                <span class="text-xs text-gray-500 ml-1">unt</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right">
+                                @if($regular)
+                                    <p class="text-base font-bold text-gray-900">{{ $regulares->count() > 1 ? 'desde ' : '' }}{{ precio_dual($regular->precio, $regular->moneda) }}</p>
+                                    @if($mayorista)
+                                        <p class="text-xs text-gray-500">Mayor: {{ precio_dual($mayorista->precio, $mayorista->moneda) }}</p>
+                                    @endif
                                 @else
-                                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                                        <i class="fas fa-times-circle mr-1"></i>Agotado
-                                    </span>
+                                    <span class="text-sm text-gray-400">Sin precio</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                @if($stock > $producto->stock_minimo)
+                                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i>Disponible</span>
+                                @elseif($stock > 0)
+                                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800"><i class="fas fa-exclamation-triangle mr-1"></i>Stock bajo</span>
+                                @else
+                                    <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800"><i class="fas fa-times-circle mr-1"></i>Agotado</span>
                                 @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="5" class="px-6 py-12 text-center">
                                 <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
                                 <p class="text-lg font-medium text-gray-500">No se encontraron productos</p>
                             </td>

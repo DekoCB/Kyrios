@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Categoria;
+use App\Models\Catalogo\Marca;
 use App\Models\Producto;
 use App\Models\Role;
 use App\Models\User;
@@ -53,5 +54,16 @@ class BuscadorProductoDesplegableTest extends TestCase
 
         $this->get(route('inventario.productos.consulta-tienda'))->assertOk()->assertSee('data-lista-productos', false);
         $this->get(route('inventario.productos.index'))->assertOk()->assertSee('data-lista-productos', false);
+    }
+
+    public function test_la_consulta_de_inventario_muestra_marca_y_modelo_como_texto_y_no_como_json(): void
+    {
+        $this->productos();
+        $marca = Marca::create(['nombre' => 'LEDS-C4', 'codigo' => '01', 'estado' => 'activo']);
+        Producto::where('codigo', 'KY-LU2501-0001')->update(['marca_id' => $marca->id]);
+        $this->actingAs($this->usuario('Administración'));
+
+        $this->get(route('inventario.productos.consulta-tienda'))->assertOk()
+            ->assertSee('LEDS-C4')->assertDontSee('"codigo":"01"', false)->assertDontSee('created_at', false);
     }
 }
