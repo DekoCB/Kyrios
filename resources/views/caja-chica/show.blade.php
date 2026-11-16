@@ -31,10 +31,11 @@
             <a href="{{ route('caja-chica.rendicion', $caja) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-file-pdf text-red-500"></i> Rendición PDF</a>
             <a href="{{ route('caja-chica.exportar', $caja) }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-file-csv text-green-600"></i> Exportar</a>
             <a href="{{ route('caja-chica.recibos', $caja) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm" title="Un recibo de pago por cada gasto, listo para firmar"><i class="fas fa-receipt text-amber-600"></i> Recibos de pago</a>
-            @if($esAdmin && $caja->esta_activa && $resumen['por_revisar'] > 0)
+            @if($esAdmin && $caja->esta_activa)
                 <form method="POST" action="{{ route('caja-chica.aprobar-todo', $caja) }}" data-confirm="¿Aprobar los {{ $resumen['por_revisar'] }} gastos por revisar de esta caja?">
                     @csrf
-                    <button class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><i class="fas fa-check-double"></i> Aprobar todo ({{ $resumen['por_revisar'] }})</button>
+                    <button @disabled($resumen['por_revisar'] === 0) title="{{ $resumen['por_revisar'] === 0 ? 'No hay gastos por revisar: los que registra el administrador ya quedan aprobados' : 'Aprueba de una vez todos los gastos por revisar' }}"
+                            class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm"><i class="fas fa-check-double"></i> Aprobar todo ({{ $resumen['por_revisar'] }})</button>
                 </form>
             @endif
             @if($esAdmin && $caja->esta_activa)
