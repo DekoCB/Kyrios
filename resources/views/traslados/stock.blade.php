@@ -45,9 +45,7 @@
             <form method="GET" class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[180px]">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Buscar producto</label>
-                    <input type="text" name="buscar" value="{{ request('buscar') }}"
-                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                           placeholder="Nombre o código">
+                    <x-buscador-producto name="buscar" :value="request('buscar')" placeholder="Nombre o código" class="w-full pl-3 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div class="flex-1 min-w-[160px]">
                     <label class="block text-xs font-medium text-gray-600 mb-1">Categoría</label>

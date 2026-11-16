@@ -78,10 +78,8 @@
                 <input type="hidden" name="tab" value="{{ request('tab') }}">
             @endif
             <div class="relative flex-1 min-w-56">
-                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                <input type="text" name="buscar" value="{{ request('buscar') }}"
-                       placeholder="Buscar por nombre o código..."
-                       class="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10 pointer-events-none"></i>
+                <x-buscador-producto name="buscar" :value="request('buscar')" placeholder="Buscar por nombre o código..." class="w-full pl-9 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
             </div>
             <input type="hidden" name="categoria_id" id="categoriaHidden" value="{{ request('categoria_id') }}">
             <button type="submit"

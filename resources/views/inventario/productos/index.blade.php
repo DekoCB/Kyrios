@@ -107,11 +107,7 @@
                     <!-- Búsqueda -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
-                        <input type="text" 
-                               name="buscar" 
-                               value="{{ request('buscar') }}"
-                               placeholder="Código Kyrios, del fabricante, nombre o código de barras"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <x-buscador-producto name="buscar" :value="request('buscar')" placeholder="Código Kyrios, del fabricante, nombre o código de barras" />
                     </div>
 
                     <!-- Categoría -->

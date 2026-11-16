@@ -36,6 +36,20 @@ class ProductoController extends Controller
         // Solo Admin puede eliminar
         $this->middleware('role:Administración')->only(['destroy']);
     }
+    /** Lista desplegable de los buscadores de productos: sin texto, los primeros por orden alfabético. */
+    public function sugerencias(Request $request)
+    {
+        $consulta = Producto::activos()->with('variantes:id,producto_id,codigo_fabricante,codigo_kyrios,nombre_fabrica,nombre_kyrios');
+        \App\Support\EtiquetaProducto::buscar($consulta, (string) $request->query('q', ''));
+
+        return response()->json($consulta->orderBy('nombre')->limit(60)->get()->map(fn ($p) => [
+            'id' => $p->id,
+            'codigo' => $p->codigo,
+            'nombre' => \App\Support\EtiquetaProducto::nombre($p),
+            'codigos' => \App\Support\EtiquetaProducto::codigos($p),
+        ])->values());
+    }
+
     public function consultaTienda(Request $request)
 {
     $query = Producto::with('categoria')->activos();

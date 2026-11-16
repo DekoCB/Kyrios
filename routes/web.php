@@ -228,6 +228,8 @@ Route::middleware('auth')->group(function () {
                 Route::post('/productos/{producto}/proveedores', [ProductoController::class, 'asociarProveedor'])->name('productos.proveedores.asociar');
             });
 
+            Route::get('/productos/sugerencias', [ProductoController::class, 'sugerencias'])->middleware('role:Administración,Logística,Operaciones,Contador')->name('productos.sugerencias');
+
             Route::middleware('role:Administración,Logística,Operaciones')->group(function () {
                 Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
                 Route::get('/productos/buscar', [ProductoController::class, 'buscarAjax'])->name('productos.buscar-ajax');

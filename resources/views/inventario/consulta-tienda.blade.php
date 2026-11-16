@@ -24,9 +24,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Buscar Producto</label>
-                        <input type="text" name="buscar" value="{{ request('buscar') }}"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Buscar por código o nombre...">
+                        <x-buscador-producto name="buscar" :value="request('buscar')" placeholder="Buscar por código o nombre..." />
                     </div>
 
                     <div>

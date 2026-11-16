@@ -83,9 +83,7 @@
 
         {{-- Filters --}}
         <form method="GET" action="{{ route('inventario-fisico.show', $conteo) }}" class="flex flex-wrap gap-3 mb-4 items-end">
-            <input type="text" name="buscar" value="{{ request('buscar') }}"
-                   placeholder="Buscar producto o código..."
-                   class="flex-1 min-w-48 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <div class="flex-1 min-w-48"><x-buscador-producto name="buscar" :value="request('buscar')" placeholder="Buscar producto o código..." class="w-full pl-3 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" /></div>
 
             <select name="categoria_id"
                     class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
