@@ -29,6 +29,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @forelse($cajas as $c)
                 @php($saldo = $c->saldo)
+                <div>
                 <a href="{{ route('caja-chica.show', $c) }}" class="block bg-white rounded-xl shadow-sm p-5 border-l-4 {{ $c->esta_activa ? ($c->tipo === 'general' ? 'border-indigo-500' : 'border-emerald-500') : 'border-gray-300' }} hover:shadow-md transition">
                     <div class="flex items-start justify-between gap-2">
                         <div>
@@ -44,6 +45,13 @@
                         <p class="text-xs text-amber-700 mt-2"><i class="fas fa-hourglass-half mr-1"></i>{{ $c->por_revisar }} gasto(s) por revisar</p>
                     @endif
                 </a>
+                @if($esAdmin && $c->esta_activa && $c->por_revisar > 0)
+                    <form method="POST" action="{{ route('caja-chica.aprobar-todo', $c) }}" class="mt-2" data-confirm="¿Aprobar los {{ $c->por_revisar }} gastos por revisar de {{ $c->codigo }}?">
+                        @csrf
+                        <button class="w-full inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-check-double"></i> Aprobar todo ({{ $c->por_revisar }})</button>
+                    </form>
+                @endif
+                </div>
             @empty
                 <div class="md:col-span-2 xl:col-span-3 bg-white rounded-xl shadow-sm px-6 py-14 text-center text-gray-500">
                     <i class="fas fa-wallet text-4xl mb-3 text-gray-300"></i>
