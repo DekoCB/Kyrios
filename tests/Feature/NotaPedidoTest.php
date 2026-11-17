@@ -115,4 +115,38 @@ class NotaPedidoTest extends TestCase
         // La cotización muestra el acceso a su nota
         $this->actingAs($this->admin)->get(route('cotizaciones.show', $this->cotizacion))->assertOk()->assertSee('NP-00001');
     }
+
+    public function test_la_nota_guarda_los_datos_del_formato_comercial_y_el_pdf_no_lleva_precios(): void
+    {
+        $this->cotizacion->cliente->update(['direccion' => 'Av. Arequipa 123', 'contacto' => 'Ing. Carlos', 'telefono' => '999111222', 'email' => 'carlos@correo.com', 'numero_documento' => '20123456789']);
+        $this->cotizacion->update(['referencia' => 'VIVIENDA - Prueba']);
+
+        $this->actingAs($this->admin)->post(route('cotizaciones.nota-pedido', $this->cotizacion), [
+            'moneda' => 'PEN', 'forma_pago' => 'Transferencia', 'condicion' => 'Contado', 'tipo_comprobante' => 'Factura', 'transporte' => 'Recoge en tienda',
+        ])->assertSessionHasNoErrors();
+
+        $nota = NotaPedido::firstOrFail();
+        $this->assertSame('PEN', $nota->moneda);
+        $this->assertSame('Transferencia', $nota->forma_pago);
+        $this->assertSame('Factura', $nota->tipo_comprobante);
+        $this->assertSame('Av. Arequipa 123', $nota->lugar_entrega, 'sin lugar de entrega usa la dirección del cliente');
+        $this->assertSame('VIVIENDA - Prueba', $nota->referencia, 'sin referencia usa la de la cotización');
+        $this->assertSame('Ing. Carlos', $nota->contacto);
+
+        $detalle = $nota->detalles()->first();
+        $this->assertSame('KY-LU2501-0001', $detalle->codigo);
+        $this->assertSame('UND', $detalle->unidad);
+
+        $r = $this->get(route('notas-pedido.pdf', $nota))->assertOk();
+        $this->assertStringStartsWith('%PDF', $r->getContent());
+        $this->get(route('notas-pedido.show', $nota))->assertOk()->assertSee('Transferencia')->assertSee('Recoge en tienda');
+
+        // El formato no lleva precio ni importe
+        $html = view('pdf.nota-pedido', ['nota' => $nota->load(['cliente', 'almacen', 'cotizacion.vendedor', 'creador', 'detalles.producto.unidadMedida', 'detalles.variante']), 'empresa' => new \App\Models\Empresa(['razon_social' => 'KYRIOS'])])->render();
+        $this->assertStringContainsString('FORMATO COMERCIAL / REGISTRO DE PEDIDOS', $html);
+        $this->assertStringContainsString('DETALLE DE PRODUCTOS / SERVICIOS', $html);
+        $this->assertStringNotContainsStringIgnoringCase('P. UNITARIO', $html);
+        $this->assertStringNotContainsStringIgnoringCase('IMPORTE', $html);
+        $this->assertStringNotContainsString('precio', mb_strtolower($html));
+    }
 }

@@ -18,7 +18,7 @@ class Cotizacion extends Model
         'fecha', 'fecha_vencimiento', 'validez_dias',
         'subtotal', 'igv', 'total',
         'condiciones', 'observaciones',
-        'estado', 'motivo_estado',
+        'estado', 'motivo_estado', 'formato', 'referencia', 'proforma_numero', 'proforma_correlativo',
         'venta_id', 'tipo_comprobante_convertido', 'convertida_en', 'convertida_por',
     ];
 
@@ -66,6 +66,28 @@ class Cotizacion extends Model
     public function serieComprobante(): BelongsTo
     {
         return $this->belongsTo(SerieComprobante::class, 'serie_comprobante_id');
+    }
+
+    /**
+     * Número oficial de proforma («IL-00001/26»): se asigna la primera vez que se emite y no cambia.
+     * Comparte la serie con las proformas de ventas.
+     */
+    public function asignarNumeroProforma(): string
+    {
+        if ($this->proforma_numero) {
+            return $this->proforma_numero;
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            $actual = self::lockForUpdate()->find($this->id);
+            if (!$actual->proforma_numero) {
+                [$correlativo, $numero] = \App\Support\NumeroProforma::siguiente();
+                $actual->update(['proforma_correlativo' => $correlativo, 'proforma_numero' => $numero]);
+            }
+            $this->setRawAttributes($actual->fresh()->getAttributes(), true);
+
+            return $this->proforma_numero;
+        });
     }
 
     // ── Estado ────────────────────────────────────────────────────────────

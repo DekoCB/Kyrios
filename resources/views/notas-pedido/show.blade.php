@@ -43,6 +43,19 @@
             <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Entrega</p><p class="font-semibold text-gray-900">{{ $nota->fecha_entrega?->format('d/m/Y') ?? 'Por coordinar' }}</p></div>
         </div>
 
+        @php
+            $comerciales = array_filter([
+                'Moneda' => $nota->moneda === 'PEN' ? 'Soles (S/)' : 'Dólares (US$)', 'Forma de pago' => $nota->forma_pago, 'Condición' => $nota->condicion,
+                'Tipo de comprobante' => $nota->tipo_comprobante, 'Transporte' => $nota->transporte, 'Lugar de entrega' => $nota->lugar_entrega,
+                'Referencia' => $nota->referencia, 'Contacto' => $nota->contacto,
+            ], fn ($v) => filled($v));
+        @endphp
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-4 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+            @foreach($comerciales as $etiqueta => $valor)
+                <div><p class="text-xs text-gray-500 uppercase">{{ $etiqueta }}</p><p class="font-medium text-gray-900">{{ $valor }}</p></div>
+            @endforeach
+        </div>
+
         @if($nota->observaciones)
             <p class="mb-4 text-sm bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-4 py-3"><strong>Indicaciones:</strong> {{ $nota->observaciones }}</p>
         @endif

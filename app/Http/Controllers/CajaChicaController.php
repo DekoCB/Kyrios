@@ -163,10 +163,18 @@ class CajaChicaController extends Controller
                 'conceptos.*.concepto'   => 'required|string|max:255',
                 'conceptos.*.monto'      => 'required|numeric|min:0.01|max:99999',
                 'conceptos.*.categoria'  => ['nullable', Rule::in(array_keys(CajaChicaMovimiento::CATEGORIAS))],
+                'conceptos.*.adjuntos'   => 'nullable|array|max:6',
+                'conceptos.*.adjuntos.*' => 'file|mimes:jpg,jpeg,png,webp,heic,pdf|max:15360',
             ]), ['conceptos.min' => 'Agregue al menos dos conceptos para repartir el gasto.']);
 
+            // Foto o escaneo propio de cada concepto (opcional)
+            $porConcepto = [];
+            foreach (array_keys($request->input('conceptos')) as $i) {
+                $porConcepto[$i] = array_values(array_filter((array) $request->file("conceptos.$i.adjuntos", [])));
+            }
+
             return $this->conErrores(
-                fn () => $this->service->registrarGastoRepartido($caja, $d, $request->file('adjuntos', []), $request->user()),
+                fn () => $this->service->registrarGastoRepartido($caja, $d, $request->file('adjuntos', []), $request->user(), $porConcepto),
                 count($d['conceptos']) . ' conceptos registrados' . ($this->esAdmin() ? '' : ' y enviados a revisión')
             );
         }
@@ -294,12 +302,60 @@ class CajaChicaController extends Controller
     }
 
     /** Sirve el archivo del comprobante solo a quien puede ver la caja. */
-    public function adjunto(CajaChicaAdjunto $adjunto)
+    public function adjunto(Request $request, CajaChicaAdjunto $adjunto)
     {
         $this->autorizar($adjunto->movimiento->caja);
         abort_unless(Storage::disk(CajaChicaService::DISCO)->exists($adjunto->ruta), 404);
 
-        return Storage::disk(CajaChicaService::DISCO)->response($adjunto->ruta, $adjunto->nombre_original, ['Content-Type' => $adjunto->mime], 'inline');
+        // Los archivos no cambian: el navegador los guarda y no vuelve a pedirlos (cada pedido pasa por PHP y por la base)
+        $cabeceras = ['Content-Type' => $adjunto->mime, 'Cache-Control' => 'private, max-age=604800'];
+
+        // Listados: miniatura liviana en vez de la foto completa
+        if ($request->boolean('mini') && ($mini = $this->service->miniatura($adjunto))) {
+            return Storage::disk(CajaChicaService::DISCO)->response($mini, 'mini.jpg', ['Content-Type' => 'image/jpeg', 'Cache-Control' => $cabeceras['Cache-Control']], 'inline');
+        }
+
+        return Storage::disk(CajaChicaService::DISCO)->response($adjunto->ruta, $adjunto->nombre_original, $cabeceras, 'inline');
+    }
+
+    /** Gastos anteriores del usuario (o de cualquiera, si es Administración) para reutilizar sus datos al registrar uno nuevo. */
+    public function gastosPrevios(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $gastos = CajaChicaMovimiento::where('tipo', 'gasto')->where('estado', '!=', 'rechazado')
+            ->when(!$this->esAdmin(), fn ($c) => $c->whereHas('caja', fn ($w) => $w->where('responsable_id', auth()->id())))
+            ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->where('concepto', 'like', "%{$q}%")->orWhere('emisor', 'like', "%{$q}%")))
+            ->orderByDesc('fecha')->orderByDesc('id')->limit(80)->get();
+
+        // Un comprobante repartido aparece una sola vez, con todos sus conceptos
+        $grupos = $gastos->whereNotNull('grupo')->pluck('grupo')->unique();
+        $hermanos = $grupos->isEmpty() ? collect() : CajaChicaMovimiento::whereIn('grupo', $grupos)->orderBy('id')->get()->groupBy('grupo');
+
+        $vistos = [];
+        $lista = [];
+        foreach ($gastos as $g) {
+            if ($g->grupo) {
+                if (isset($vistos[$g->grupo])) {
+                    continue;
+                }
+                $vistos[$g->grupo] = true;
+                $lineas = $hermanos[$g->grupo];
+                $lista[] = $this->datosPrevio($g, (float) $lineas->sum('monto'), $lineas->map(fn ($l) => ['concepto' => $l->concepto, 'monto' => (float) $l->monto, 'categoria' => $l->categoria])->values()->all());
+            } else {
+                $lista[] = $this->datosPrevio($g, (float) $g->monto, []);
+            }
+        }
+
+        return response()->json(array_slice($lista, 0, 30));
+    }
+
+    private function datosPrevio(CajaChicaMovimiento $g, float $monto, array $conceptos): array
+    {
+        return [
+            'id' => $g->id, 'fecha' => $g->fecha->format('d/m/Y'), 'monto' => $monto, 'concepto' => $g->concepto,
+            'categoria' => $g->categoria, 'emisor' => $g->emisor, 'tipo_comprobante' => $g->tipo_comprobante,
+            'conceptos' => $conceptos,
+        ];
     }
 
     public function eliminarAdjunto(CajaChicaAdjunto $adjunto)

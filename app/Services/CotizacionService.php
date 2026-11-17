@@ -10,6 +10,7 @@ use App\Models\ProductoVariante;
 use App\Models\Sucursal;
 use App\Models\User;
 use App\Models\Venta;
+use App\Support\SeccionesProforma;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -59,6 +60,8 @@ class CotizacionService
                 'condiciones'          => $datos['condiciones'] ?? null,
                 'observaciones'        => $datos['observaciones'] ?? null,
                 'estado'               => 'pendiente',
+                'formato'              => SeccionesProforma::formatoValido($datos['formato'] ?? null),
+                'referencia'           => filled($datos['referencia'] ?? null) ? mb_substr(trim($datos['referencia']), 0, 160) : null,
             ]);
 
             $this->guardarDetalles($cotizacion, $detalles);
@@ -88,6 +91,8 @@ class CotizacionService
                 'fecha_vencimiento' => $cotizacion->fecha->copy()->addDays($validez)->toDateString(),
                 'condiciones'       => $datos['condiciones'] ?? null,
                 'observaciones'     => $datos['observaciones'] ?? null,
+                'formato'           => SeccionesProforma::formatoValido($datos['formato'] ?? $cotizacion->formato),
+                'referencia'        => filled($datos['referencia'] ?? null) ? mb_substr(trim($datos['referencia']), 0, 160) : null,
             ]);
 
             $cotizacion->detalles()->delete();
@@ -136,6 +141,7 @@ class CotizacionService
                 'variante_id'      => $variante?->id,
                 'codigo'           => $variante?->codigo_kyrios ?? $producto->codigo,
                 'descripcion'      => mb_substr(\App\Support\EtiquetaProducto::documento($producto, $variante) . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''), 0, 255),
+            ] + SeccionesProforma::limpiar($cotizacion->formato, $d['piso'] ?? null, $d['ambiente'] ?? null) + [
                 'cantidad'         => $cantidad,
                 'precio_unitario'  => $sinIgv,
                 'precio_con_igv'   => $conIgv,
@@ -198,9 +204,13 @@ class CotizacionService
             'cantidad'        => $d->cantidad,
             'precio_unitario' => (float) $d->precio_con_igv,
             'incluye_igv'     => true,
+            'piso'            => $d->piso,
+            'ambiente'        => $d->ambiente,
         ])->all();
 
         return $this->crear([
+            'formato'       => $original->formato,
+            'referencia'    => $original->referencia,
             'cliente_id'    => $original->cliente_id,
             'almacen_id'    => $original->almacen_id,
             'user_id'       => $usuario->id,

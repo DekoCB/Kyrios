@@ -5,6 +5,7 @@
         'personal'    => ['Personal', 'fa-id-card', route('rrhh.empleados.index')],
         'asistencia'  => ['Control de asistencia', 'fa-user-clock', route('rrhh.asistencia.control')],
         'reporte'     => ['Reporte mensual', 'fa-chart-column', route('rrhh.asistencia.reporte')],
+        'huellero'    => ['Huellero', 'fa-hand-pointer', route('rrhh.asistencia.huellero')],
         'solicitudes' => ['Solicitudes', 'fa-umbrella-beach', route('rrhh.solicitudes.index')],
     ];
 @endphp

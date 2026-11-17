@@ -448,6 +448,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/movimientos/{mov}', [$c, 'eliminarMovimiento'])->name('movimiento.destroy');
         Route::post('/movimientos/{mov}/revisar', [$c, 'revisar'])->name('revisar');
         Route::get('/movimientos/{mov}/recibo', [$c, 'recibo'])->name('recibo');
+        Route::get('/gastos-previos', [$c, 'gastosPrevios'])->name('gastos-previos');
         Route::get('/adjuntos/{adjunto}', [$c, 'adjunto'])->name('adjunto');
         Route::delete('/adjuntos/{adjunto}', [$c, 'eliminarAdjunto'])->name('adjunto.destroy');
         Route::get('/{caja}', [$c, 'show'])->name('show');
@@ -533,6 +534,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/empleados', [$emp, 'store'])->name('empleados.store');
             Route::get('/empleados/{empleado}', [$emp, 'show'])->whereNumber('empleado')->name('empleados.show');
             Route::get('/empleados/{empleado}/editar', [$emp, 'edit'])->name('empleados.edit');
+            Route::get('/empleados/{empleado}/ficha-pdf', [$emp, 'fichaPdf'])->name('empleados.ficha-pdf');
+            Route::get('/empleados/{empleado}/foto', [$emp, 'foto'])->name('empleados.foto');
             Route::put('/empleados/{empleado}', [$emp, 'update'])->name('empleados.update');
             Route::post('/empleados/{empleado}/cesar', [$emp, 'cesar'])->name('empleados.cesar');
             Route::post('/empleados/{empleado}/reactivar', [$emp, 'reactivar'])->name('empleados.reactivar');
@@ -543,6 +546,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/asistencia', [$asi, 'control'])->name('asistencia.control');
             Route::post('/asistencia/faltas', [$asi, 'faltas'])->name('asistencia.faltas');
             Route::get('/asistencia/reporte', [$asi, 'reporte'])->name('asistencia.reporte');
+            Route::get('/asistencia/huellero', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'index'])->name('asistencia.huellero');
+            Route::post('/asistencia/huellero/revisar', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'previsualizar'])->name('asistencia.huellero.revisar');
+            Route::post('/asistencia/huellero/importar', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'confirmar'])->name('asistencia.huellero.importar');
             Route::get('/asistencia/reporte/exportar', [$asi, 'exportar'])->name('asistencia.exportar');
             Route::post('/asistencia/{empleado}', [$asi, 'registrar'])->name('asistencia.registrar');
 
@@ -921,3 +927,10 @@ Route::prefix('api')->name('api.')->middleware(['auth', 'role:Administración,Co
     });
 });
 
+// ========================================
+// HUELLERO: recepción de marcaciones desde un puente en la red del cliente (token propio, sin sesión)
+// ========================================
+Route::post('/api/huellero/marcaciones', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'api'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->middleware('throttle:60,1')
+    ->name('api.huellero.marcaciones');

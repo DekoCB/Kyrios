@@ -35,6 +35,8 @@ class CotizacionController extends Controller
         return [
             'cliente_id'                  => 'required|exists:clientes,id',
             'almacen_id'                  => 'required|exists:almacenes,id',
+            'formato'                     => 'nullable|in:simple,ambiente,piso',
+            'referencia'                  => 'nullable|string|max:160',
             'validez_dias'                => 'required|integer|min:1|max:365',
             'condiciones'                 => 'nullable|string|max:3000',
             'observaciones'               => 'nullable|string|max:2000',
@@ -44,6 +46,8 @@ class CotizacionController extends Controller
             'detalles.*.cantidad'         => 'required|integer|min:1|max:100000',
             'detalles.*.precio_unitario'  => 'required|numeric|min:0.01|max:9999999',
             'detalles.*.incluye_igv'      => 'nullable|boolean',
+            'detalles.*.piso'             => 'nullable|string|max:60',
+            'detalles.*.ambiente'         => 'nullable|string|max:60',
         ];
     }
 
@@ -158,12 +162,14 @@ class CotizacionController extends Controller
                     'codigo' => $producto ? \App\Support\EtiquetaProducto::codigos($producto, $variante) : '',
                     'descripcion' => ($producto ? \App\Support\EtiquetaProducto::documento($producto, $variante) : '') . ($variante && $variante->nombre_completo !== 'Variante base' ? ' — ' . $variante->nombre_completo : ''),
                     'cantidad' => $l['cantidad'] ?? 1, 'precio_unitario' => $l['precio_unitario'] ?? 0,
+                    'piso' => $l['piso'] ?? null, 'ambiente' => $l['ambiente'] ?? null,
                 ];
             })->values();
         } else {
             $lineas = ($cotizacion?->detalles ?? collect())->map(fn ($d) => [
                 'producto_id' => $d->producto_id, 'variante_id' => $d->variante_id, 'codigo' => $d->codigos_mostrar, 'descripcion' => $d->nombre_mostrar,
                 'cantidad' => $d->cantidad, 'precio_unitario' => (float) $d->precio_con_igv,
+                'piso' => $d->piso, 'ambiente' => $d->ambiente,
             ])->values();
         }
 
@@ -175,6 +181,8 @@ class CotizacionController extends Controller
             'almacenId'   => old('almacen_id', $almacenPredeterminado),
             'lineas'      => $lineas,
             'cliente'     => old('cliente_id') ? Cliente::find(old('cliente_id')) : $cliente,
+            'formato'     => \App\Support\SeccionesProforma::formatoValido(old('formato', $cotizacion?->formato)),
+            'referencia'  => old('referencia', $cotizacion?->referencia),
             'validez'     => old('validez_dias', $cotizacion?->validez_dias ?? config('kyrios.cotizacion.validez_dias', 7)),
             'condiciones' => old('condiciones', $cotizacion?->condiciones ?? config('kyrios.cotizacion.condiciones')),
         ];
@@ -199,23 +207,33 @@ class CotizacionController extends Controller
         return view('cotizaciones.show', compact('cotizacion', 'stock', 'esVendedor'));
     }
 
-    public function pdf(Cotizacion $cotizacion)
+    /**
+     * Proforma con el diseño oficial. Sale en dólares como la oficial; con ?moneda=PEN sale en soles.
+     * El formato (simple, por ambiente o por piso) agrupa los ítems con sus títulos.
+     */
+    public function pdf(Request $request, Cotizacion $cotizacion)
     {
         $this->autorizar($cotizacion);
-        $cotizacion->load(['cliente', 'vendedor', 'almacen', 'sucursal', 'detalles.producto', 'detalles.variante']);
+        $cotizacion->asignarNumeroProforma();
+        $cotizacion->load(['cliente', 'vendedor', 'detalles.producto', 'detalles.variante']);
 
-        $empresa = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
-        $sucursal = $cotizacion->sucursal ?? Sucursal::where('almacen_id', $cotizacion->almacen_id)->first();
-        $pagos = $sucursal ? $sucursal->pagos()->where('activo', true)->get()->keyBy('tipo_pago') : collect();
+        $enDolares = $request->query('moneda') !== 'PEN';
+        $tc = \App\Models\TipoCambio::ventaDelDia($cotizacion->fecha);
 
-        return Pdf::setOptions([
-            'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled'      => true,
-            'defaultFont'          => 'sans-serif',
-            'chroot'               => public_path(),
-        ])->loadView('pdf.cotizacion', compact('cotizacion', 'empresa', 'sucursal', 'pagos'))
-            ->setPaper('A4', 'portrait')
-            ->stream('cotizacion-' . $cotizacion->codigo . '.pdf');
+        // El texto de condiciones por defecto habla de soles con IGV incluido: solo se imprime si la persona lo cambió
+        $notas = filled($cotizacion->condiciones) && trim($cotizacion->condiciones) !== trim((string) config('kyrios.cotizacion.condiciones'))
+            ? $cotizacion->condiciones : null;
+
+        return \App\Support\ProformaPdf::generar([
+            'numero'     => $cotizacion->proforma_numero,
+            'fecha'      => $cotizacion->fecha,
+            'cliente'    => $cotizacion->cliente,
+            'referencia' => mb_strtoupper($cotizacion->referencia ?: $cotizacion->codigo),
+            'asesor'     => $cotizacion->vendedor?->name,
+            'formato'    => $cotizacion->formato,
+            'detalles'   => $cotizacion->detalles,
+            'notas'      => $notas,
+        ], $enDolares, $tc)->stream('proforma-' . str_replace('/', '-', $cotizacion->proforma_numero) . ($enDolares ? '-usd' : '-pen') . '.pdf');
     }
 
     /** Ficha técnica en PDF: las características de cada producto cotizado. */

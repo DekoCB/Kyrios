@@ -31,7 +31,10 @@
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
             <a href="{{ route('cotizaciones.pdf', $c) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
-                <i class="fas fa-file-pdf text-red-500"></i> PDF
+                <i class="fas fa-file-pdf text-red-500"></i> Proforma (US$)
+            </a>
+            <a href="{{ route('cotizaciones.pdf', [$c, 'moneda' => 'PEN']) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
+                <i class="fas fa-file-pdf text-red-500"></i> Proforma (S/)
             </a>
             <a href="{{ route('cotizaciones.ficha-tecnica', $c) }}" target="_blank" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm">
                 <i class="fas fa-file-lines text-teal-600"></i> Ficha técnica
@@ -107,8 +110,16 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
-                                @foreach($c->detalles as $d)
-                                    @php $hay = $stock[$d->id] ?? 0; @endphp
+                                @php $seccionActual = null; @endphp
+                                @foreach(\App\Support\SeccionesProforma::ordenar($c->detalles, $c->formato) as $d)
+                                    @php
+                                        $hay = $stock[$d->id] ?? 0;
+                                        $seccion = \App\Support\SeccionesProforma::titulo($c->formato, $d->piso, $d->ambiente);
+                                    @endphp
+                                    @if($seccion !== null && $seccion !== $seccionActual)
+                                        @php $seccionActual = $seccion; @endphp
+                                        <tr class="bg-gray-50"><td colspan="5" class="px-4 py-2 text-xs font-semibold tracking-wide text-gray-700"><i class="fas fa-location-dot mr-1 text-indigo-500"></i>{{ $seccion }}</td></tr>
+                                    @endif
                                     <tr>
                                         <td class="px-4 py-3">
                                             <p class="font-medium text-gray-900">{{ $d->nombre_mostrar }}</p>
@@ -189,14 +200,32 @@
         {{-- Rechazar / anular --}}
         <div x-show="modal === 'nota-pedido'" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/40" @click="modal = null"></div>
-            <form method="POST" action="{{ route('cotizaciones.nota-pedido', $c) }}" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <form method="POST" action="{{ route('cotizaciones.nota-pedido', $c) }}" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-6">
                 @csrf
                 <h3 class="text-lg font-bold text-gray-900 mb-1">Generar nota de pedido</h3>
-                <p class="text-sm text-gray-500 mb-4">Almacén recibirá la lista de productos de esta cotización para dejarla preparada.</p>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Fecha prevista de entrega (opcional)</label>
-                <input type="date" name="fecha_entrega" min="{{ today()->toDateString() }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
-                <label class="block text-xs font-medium text-gray-600 mb-1">Indicaciones para almacén (opcional)</label>
-                <textarea name="observaciones" rows="3" maxlength="1000" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+                <p class="text-sm text-gray-500 mb-4">Almacén recibirá la lista de productos de esta cotización (sin precios) para dejarla preparada. Todos los datos son opcionales.</p>
+                @php
+                    $campo = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm';
+                    $etq = 'block text-xs font-medium text-gray-600 mb-1';
+                @endphp
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label class="{{ $etq }}">Fecha prevista de entrega</label><input type="date" name="fecha_entrega" min="{{ today()->toDateString() }}" class="{{ $campo }}"></div>
+                    <div><label class="{{ $etq }}">Moneda</label>
+                        <select name="moneda" class="{{ $campo }}"><option value="USD">Dólares (US$)</option><option value="PEN">Soles (S/)</option></select></div>
+                    <div><label class="{{ $etq }}">Forma de pago</label><input type="text" name="forma_pago" list="np-forma-pago" maxlength="80" placeholder="Ej.: Transferencia" class="{{ $campo }}"></div>
+                    <div><label class="{{ $etq }}">Condición</label><input type="text" name="condicion" list="np-condicion" maxlength="80" placeholder="Ej.: Contado" class="{{ $campo }}"></div>
+                    <div><label class="{{ $etq }}">Tipo de comprobante</label><input type="text" name="tipo_comprobante" list="np-comprobante" maxlength="30" placeholder="Ej.: Factura" class="{{ $campo }}"></div>
+                    <div><label class="{{ $etq }}">Transporte</label><input type="text" name="transporte" list="np-transporte" maxlength="120" placeholder="Ej.: Recoge en tienda" class="{{ $campo }}"></div>
+                    <div class="sm:col-span-2"><label class="{{ $etq }}">Lugar de entrega</label><input type="text" name="lugar_entrega" maxlength="255" value="{{ $c->cliente?->direccion }}" class="{{ $campo }}"></div>
+                    <div><label class="{{ $etq }}">Referencia</label><input type="text" name="referencia" maxlength="160" value="{{ $c->referencia }}" class="{{ $campo }}"></div>
+                    <div><label class="{{ $etq }}">Contacto</label><input type="text" name="contacto" maxlength="120" value="{{ $c->cliente?->contacto }}" class="{{ $campo }}"></div>
+                </div>
+                <datalist id="np-forma-pago"><option value="Contado"><option value="Transferencia"><option value="Depósito"><option value="Yape / Plin"><option value="Tarjeta"></datalist>
+                <datalist id="np-condicion"><option value="Contado"><option value="Adelanto 50%"><option value="Crédito 15 días"><option value="Crédito 30 días"></datalist>
+                <datalist id="np-comprobante"><option value="Factura"><option value="Boleta"><option value="Nota de venta"></datalist>
+                <datalist id="np-transporte"><option value="Recoge en tienda"><option value="Delivery Kyrios"><option value="Agencia de transporte"></datalist>
+                <label class="{{ $etq }} mt-3">Indicaciones para almacén</label>
+                <textarea name="observaciones" rows="2" maxlength="1000" class="{{ $campo }}"></textarea>
                 <div class="flex justify-end gap-2 mt-4">
                     <button type="button" @click="modal = null" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
                     <button class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Generar y avisar a almacén</button>

@@ -146,4 +146,78 @@ class CajaChicaAprobacionRepartoRecibosTest extends TestCase
         $this->actingAs($this->usuario('Logística'));
         $this->get(route('caja-chica.recibos', $caja))->assertForbidden();
     }
+
+    public function test_cada_concepto_repartido_puede_traer_su_propia_foto(): void
+    {
+        $caja = $this->caja();
+        $this->actingAs($this->tecnico)->post(route('caja-chica.gasto', $caja), [
+            'fecha' => today()->toDateString(), 'monto' => 50, 'categoria' => 'otros', 'tipo_comprobante' => 'boleta', 'numero_comprobante' => 'B001-77', 'emisor' => 'Ferretería',
+            'conceptos' => [
+                ['concepto' => 'Cables', 'monto' => 30, 'categoria' => 'materiales', 'adjuntos' => [UploadedFile::fake()->image('cables.jpg', 600, 400)]],
+                ['concepto' => 'Cinta', 'monto' => 20, 'categoria' => 'materiales', 'adjuntos' => [UploadedFile::fake()->image('cinta1.jpg', 600, 400), UploadedFile::fake()->image('cinta2.jpg', 600, 400)]],
+            ],
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $movs = CajaChicaMovimiento::where('caja_chica_id', $caja->id)->where('tipo', 'gasto')->orderBy('id')->get();
+        $this->assertCount(2, $movs);
+        $this->assertSame(1, $movs[0]->adjuntos()->count());
+        $this->assertSame(2, $movs[1]->adjuntos()->count());
+    }
+
+    public function test_los_archivos_de_los_conceptos_cuentan_como_comprobante(): void
+    {
+        $caja = $this->caja();
+        // Sin archivo general: basta con la foto de un concepto
+        $this->actingAs($this->tecnico)->post(route('caja-chica.gasto', $caja), [
+            'fecha' => today()->toDateString(), 'monto' => 50, 'categoria' => 'otros', 'tipo_comprobante' => 'boleta', 'numero_comprobante' => 'B001-78',
+            'conceptos' => [
+                ['concepto' => 'A', 'monto' => 30, 'adjuntos' => [UploadedFile::fake()->image('a.jpg')]],
+                ['concepto' => 'B', 'monto' => 20],
+            ],
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        // Sin ningún archivo, en cambio, se pide el comprobante
+        $this->post(route('caja-chica.gasto', $caja), [
+            'fecha' => today()->toDateString(), 'monto' => 50, 'categoria' => 'otros', 'tipo_comprobante' => 'boleta', 'numero_comprobante' => 'B001-79',
+            'conceptos' => [['concepto' => 'A', 'monto' => 30], ['concepto' => 'B', 'monto' => 20]],
+        ])->assertSessionHas('error');
+    }
+
+    public function test_los_gastos_anteriores_se_pueden_traer_para_reutilizarlos(): void
+    {
+        $caja = $this->caja();
+        $svc = app(CajaChicaService::class);
+        $svc->registrarGasto($caja, $this->gasto(['concepto' => 'Gasolina visita obra', 'numero_comprobante' => 'B001-1']), [UploadedFile::fake()->image('f.jpg')], $this->tecnico);
+        $svc->registrarGastoRepartido($caja, $this->gasto(['monto' => 50, 'numero_comprobante' => 'B001-2', 'conceptos' => [
+            ['concepto' => 'Cables', 'monto' => 30], ['concepto' => 'Cinta', 'monto' => 20],
+        ]]), [UploadedFile::fake()->image('g.jpg')], $this->tecnico);
+
+        $lista = $this->actingAs($this->tecnico)->getJson(route('caja-chica.gastos-previos'))->assertOk()->json();
+        $this->assertCount(2, $lista);                                   // el repartido aparece una sola vez
+        $repartido = collect($lista)->firstWhere(fn ($g) => count($g['conceptos']) === 2);
+        $this->assertEquals(50, $repartido['monto']);
+
+        $filtrado = $this->getJson(route('caja-chica.gastos-previos', ['q' => 'obra']))->assertOk()->json();
+        $this->assertCount(1, $filtrado);
+        $this->assertSame('Gasolina visita obra', $filtrado[0]['concepto']);
+
+        // Otro técnico no ve los gastos ajenos
+        $this->actingAs($this->usuario('Logística'))->getJson(route('caja-chica.gastos-previos'))->assertOk()->assertJsonCount(0);
+        // El formulario trae el botón
+        $this->actingAs($this->tecnico)->get(route('caja-chica.show', $caja))->assertOk()->assertSee('Reutilizar un gasto anterior');
+    }
+
+    public function test_el_listado_usa_miniaturas_livianas_y_cacheables(): void
+    {
+        $caja = $this->caja();
+        $mov = app(CajaChicaService::class)->registrarGasto($caja, $this->gasto(), [UploadedFile::fake()->image('grande.jpg', 2000, 1500)], $this->tecnico);
+        $adj = $mov->adjuntos()->first();
+
+        $this->actingAs($this->tecnico)->get(route('caja-chica.show', $caja))->assertOk()->assertSee('mini=1', false);
+
+        $mini = $this->get(route('caja-chica.adjunto', [$adj, 'mini' => 1]))->assertOk();
+        $this->assertStringContainsString('max-age=604800', $mini->headers->get('Cache-Control'));
+        $this->assertLessThan($adj->tamano, strlen($mini->streamedContent()));
+        Storage::disk(CajaChicaService::DISCO)->assertExists(preg_replace('/\.[^.\/]+$/', '', $adj->ruta) . '.mini.jpg');
+    }
 }

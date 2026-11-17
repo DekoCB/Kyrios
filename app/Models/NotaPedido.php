@@ -19,7 +19,11 @@ class NotaPedido extends Model
         'anulada'        => ['Anulada', 'bg-red-100 text-red-700'],
     ];
 
-    protected $fillable = ['codigo', 'cotizacion_id', 'cliente_id', 'almacen_id', 'user_id', 'estado', 'fecha_entrega', 'observaciones', 'atendido_por', 'lista_en'];
+    /** Campos del formato comercial que se piden al generar la nota (todos opcionales). */
+    public const CAMPOS_COMERCIALES = ['moneda', 'forma_pago', 'condicion', 'tipo_comprobante', 'transporte', 'lugar_entrega', 'referencia', 'contacto'];
+
+    protected $fillable = ['codigo', 'cotizacion_id', 'cliente_id', 'almacen_id', 'user_id', 'estado', 'fecha_entrega', 'observaciones', 'atendido_por', 'lista_en',
+        'moneda', 'forma_pago', 'condicion', 'tipo_comprobante', 'transporte', 'lugar_entrega', 'referencia', 'contacto'];
 
     protected $casts = ['fecha_entrega' => 'date', 'lista_en' => 'datetime'];
 

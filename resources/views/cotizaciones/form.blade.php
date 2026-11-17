@@ -68,6 +68,27 @@
                         </div>
                     </div>
 
+                    {{-- Formato de la proforma --}}
+                    <div class="bg-white rounded-xl shadow-sm p-5">
+                        <h3 class="font-semibold text-gray-900 mb-3"><i class="fas fa-layer-group mr-2 text-indigo-600"></i>Formato de la proforma</h3>
+                        <input type="hidden" name="formato" :value="formato">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <template x-for="f in formatos" :key="f.id">
+                                <button type="button" @click="formato = f.id"
+                                        :class="formato === f.id ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-gray-200 hover:border-gray-300'"
+                                        class="text-left border-2 rounded-xl p-3 transition-colors">
+                                    <p class="text-sm font-semibold text-gray-900"><i class="fas mr-2" :class="f.icono"></i><span x-text="f.nombre"></span></p>
+                                    <p class="text-xs text-gray-500 mt-1" x-text="f.ayuda"></p>
+                                </button>
+                            </template>
+                        </div>
+                        <div class="mt-4">
+                            <label for="referencia" class="block text-sm font-medium text-gray-700 mb-1">Referencia del proyecto <span class="text-gray-400 font-normal">(se imprime: «Referencia: COTIZACIÓN …»)</span></label>
+                            <input type="text" id="referencia" name="referencia" maxlength="160" value="{{ $referencia }}" placeholder="Ej.: VIVIENDA - Prueba de Luces"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
                     {{-- Productos --}}
                     <div class="bg-white rounded-xl shadow-sm p-5">
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -140,6 +161,18 @@
                                                 <input type="hidden" :name="`detalles[${i}][producto_id]`" :value="l.producto_id">
                                                 <input type="hidden" :name="`detalles[${i}][variante_id]`" :value="l.variante_id || ''">
                                                 <input type="hidden" :name="`detalles[${i}][incluye_igv]`" value="1">
+                                                {{-- Dónde va el producto: piso y/o ambiente, según el formato --}}
+                                                <div x-show="formato !== 'simple'" x-cloak class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    <div x-show="formato === 'piso'">
+                                                        <input type="text" list="lista-pisos" :name="`detalles[${i}][piso]`" x-model="l.piso" maxlength="60" placeholder="Piso (ej. Primer nivel)"
+                                                               :disabled="formato !== 'piso'" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
+                                                    </div>
+                                                    <div :class="formato === 'ambiente' ? 'sm:col-span-2' : ''">
+                                                        <input type="text" list="lista-ambientes" :name="`detalles[${i}][ambiente]`" x-model="l.ambiente" maxlength="60"
+                                                               :placeholder="formato === 'piso' ? 'Ambiente (opcional)' : 'Ambiente (ej. Sala, Baño, Dormitorio)'"
+                                                               :disabled="formato === 'simple'" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td class="py-3 px-2">
                                                 <input type="number" min="1" :name="`detalles[${i}][cantidad]`" x-model.number="l.cantidad" required
@@ -158,6 +191,12 @@
                                     </template>
                                 </tbody>
                             </table>
+                            <datalist id="lista-pisos">@foreach(\App\Support\SeccionesProforma::PISOS as $p)<option value="{{ $p }}">@endforeach</datalist>
+                            <datalist id="lista-ambientes">@foreach(\App\Support\SeccionesProforma::AMBIENTES as $a)<option value="{{ $a }}">@endforeach</datalist>
+                            <p x-show="sinUbicacion > 0" x-cloak class="text-xs text-amber-700 mt-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span x-text="sinUbicacion"></span> producto(s) sin <span x-text="formato === 'piso' ? 'piso' : 'ambiente'"></span>: saldrán bajo el título «SIN <span x-text="formato === 'piso' ? 'PISO' : 'AMBIENTE'"></span>».
+                            </p>
                             <p x-show="lineas.some(l => !(l.precio > 0))" class="text-xs text-red-600 mt-2">
                                 <i class="fas fa-exclamation-circle"></i> Hay productos sin precio: escríbalo en la casilla roja (los productos importados todavía no tienen precio de venta cargado).
                             </p>
@@ -249,6 +288,8 @@
         'descripcion' => $l['descripcion'] ?? '',
         'cantidad' => (int) $l['cantidad'],
         'precio' => (float) ($l['precio_unitario'] ?? 0),
+        'piso' => $l['piso'] ?? '',
+        'ambiente' => $l['ambiente'] ?? '',
         'stock' => null,
     ])->values();
 @endphp
@@ -264,6 +305,12 @@ function cotizacionForm() {
         almacenId: @json((string) ($almacenId ?? '')),
         cliente: @json($clienteJs),
         lineas: @json($lineasJs),
+        formato: @json($formato),
+        formatos: [
+            { id: 'simple', nombre: 'Simple', icono: 'fa-list', ayuda: 'Solo los productos, sin agrupar.' },
+            { id: 'ambiente', nombre: 'Por ambiente', icono: 'fa-couch', ayuda: 'Agrupado por baño, dormitorio, sala, etc.' },
+            { id: 'piso', nombre: 'Por piso', icono: 'fa-building', ayuda: 'Agrupado por piso; dentro de cada piso también por ambiente.' },
+        ],
         q: '', resultados: [], qCliente: '', resultadosCliente: [], buscandoCliente: false,
         modalCliente: false, guardandoCliente: false, errorNuevo: '', enviando: false,
         nuevo: { tipo_documento: 'DNI', numero_documento: '', nombre: '', direccion: '', telefono: '', email: '' },
@@ -273,6 +320,10 @@ function cotizacionForm() {
         get total() { return this.lineas.reduce((s, l) => s + Number(l.cantidad || 0) * Number(l.precio || 0), 0); },
         get subtotal() { return this.total / IGV; },
         get igv() { return this.total - this.subtotal; },
+        get sinUbicacion() {
+            if (this.formato === 'simple') return 0;
+            return this.lineas.filter(l => !String((this.formato === 'piso' ? l.piso : l.ambiente) ?? '').trim()).length;
+        },
         get motivoNoGuardar() {
             if (!this.cliente) return 'Elija un cliente.';
             if (!this.almacenId) return 'Elija el almacén.';
@@ -293,10 +344,15 @@ function cotizacionForm() {
         agregar(p) {
             const existente = this.lineas.find(l => l.producto_id === p.producto_id && (l.variante_id || null) === (p.variante_id || null));
             if (existente) { existente.cantidad = Number(existente.cantidad) + 1; existente.stock = p.stock; }
-            else this.lineas.push({
-                producto_id: p.producto_id, variante_id: p.variante_id || null, codigo: p.codigo,
-                descripcion: p.nombre + (p.detalle ? ' — ' + p.detalle : ''), cantidad: 1, precio: p.precio || '', stock: p.stock,
-            });
+            else {
+                // Los productos que se agregan seguidos suelen ir en el mismo piso y ambiente: se hereda de la última línea
+                const ultima = this.lineas[this.lineas.length - 1];
+                this.lineas.push({
+                    producto_id: p.producto_id, variante_id: p.variante_id || null, codigo: p.codigo,
+                    descripcion: p.nombre + (p.detalle ? ' — ' + p.detalle : ''), cantidad: 1, precio: p.precio || '', stock: p.stock,
+                    piso: ultima ? ultima.piso : '', ambiente: ultima ? ultima.ambiente : '',
+                });
+            }
             this.q = ''; this.resultados = [];
         },
         async refrescarStock() {

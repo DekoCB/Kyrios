@@ -98,19 +98,20 @@ class CajaChicaService
 
     /**
      * Un mismo comprobante repartido en varios conceptos: se crea un gasto por concepto (todos con el mismo grupo)
-     * y la suma de los conceptos debe ser igual al monto total. Los archivos quedan en el primero.
+     * y la suma de los conceptos debe ser igual al monto total. Los archivos generales quedan en el primero y
+     * cada concepto puede traer además sus propios archivos ($archivosPorConcepto[índice] = UploadedFile[]).
      *
      * @param array $datos datos del comprobante + 'conceptos' => [['concepto', 'monto', 'categoria'?], …]
      * @return CajaChicaMovimiento[]
      */
-    public function registrarGastoRepartido(CajaChica $caja, array $datos, array $archivos, User $user): array
+    public function registrarGastoRepartido(CajaChica $caja, array $datos, array $archivos, User $user, array $archivosPorConcepto = []): array
     {
         $lineas = array_values($datos['conceptos'] ?? []);
         if (count($lineas) < 2) {
             throw new DomainException('Agregue al menos dos conceptos para repartir el gasto.');
         }
 
-        return DB::transaction(function () use ($caja, $datos, $archivos, $user, $lineas) {
+        return DB::transaction(function () use ($caja, $datos, $archivos, $user, $lineas, $archivosPorConcepto) {
             $caja = CajaChica::lockForUpdate()->findOrFail($caja->id);
             $this->exigirActiva($caja);
 
@@ -127,7 +128,8 @@ class CajaChicaService
                 }
             }
 
-            $this->validarGasto($datos + ['monto' => $total], count($archivos), null);
+            $nArchivos = count($archivos) + array_sum(array_map('count', $archivosPorConcepto));
+            $this->validarGasto($datos + ['monto' => $total], $nArchivos, null);
             if ($total > $caja->saldo + 0.001) {
                 throw new DomainException('Saldo insuficiente en la caja: disponible S/ ' . number_format($caja->saldo, 2) . '.');
             }
@@ -135,11 +137,14 @@ class CajaChicaService
             $grupo = (string) \Illuminate\Support\Str::uuid();
             $estado = $user->role?->nombre === 'Administración' ? 'aprobado' : 'pendiente';
             $movs = [];
-            foreach ($lineas as $l) {
+            foreach ($lineas as $i => $l) {
                 $movs[] = $caja->movimientos()->create($this->camposGasto(array_merge($datos, [
                     'monto' => $l['monto'], 'concepto' => $l['concepto'], 'categoria' => $l['categoria'] ?? ($datos['categoria'] ?? 'otros'),
                 ])) + ['tipo' => 'gasto', 'user_id' => $user->id, 'estado' => $estado, 'grupo' => $grupo]);
+                // La foto de cada concepto queda en su propio gasto
+                $this->guardarAdjuntos($movs[$i], $archivosPorConcepto[$i] ?? []);
             }
+            // Los archivos del comprobante en general quedan en el primer concepto
             $this->guardarAdjuntos($movs[0], $archivos);
 
             return $movs;
@@ -367,7 +372,29 @@ class CajaChicaService
         }
     }
 
-    private function reducirImagen(string $ruta): ?string
+    /**
+     * Miniatura (lado mayor 220 px) de una foto del comprobante, para los listados: se crea la primera vez que se pide
+     * y queda guardada junto al original. Devuelve la ruta en el disco o null si no es imagen / no se pudo reducir.
+     */
+    public function miniatura(CajaChicaAdjunto $adjunto): ?string
+    {
+        if (!$adjunto->es_imagen) {
+            return null;
+        }
+        $disco = Storage::disk(self::DISCO);
+        $mini = preg_replace('/\.[^.\/]+$/', '', $adjunto->ruta) . '.mini.jpg';
+        if (!$disco->exists($mini)) {
+            $jpg = $disco->exists($adjunto->ruta) ? $this->reducirImagen($disco->path($adjunto->ruta), 220, 70) : null;
+            if (!$jpg) {
+                return null;
+            }
+            $disco->put($mini, $jpg);
+        }
+
+        return $mini;
+    }
+
+    private function reducirImagen(string $ruta, int $ladoMax = self::LADO_MAX, int $calidad = 82): ?string
     {
         if (!function_exists('imagecreatefromstring')) {
             return null;
@@ -388,13 +415,13 @@ class CajaChicaService
 
         $w = imagesx($img);
         $h = imagesy($img);
-        $factor = min(1, self::LADO_MAX / max($w, $h));
+        $factor = min(1, $ladoMax / max($w, $h));
         if ($factor < 1) {
             $img = imagescale($img, (int) round($w * $factor), (int) round($h * $factor));
         }
 
         ob_start();
-        imagejpeg($img, null, 82);
+        imagejpeg($img, null, $calidad);
 
         return ob_get_clean() ?: null;
     }

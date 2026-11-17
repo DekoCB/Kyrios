@@ -253,4 +253,97 @@ class RecursosHumanosTest extends TestCase
         $this->assertSame('rechazada', $s->fresh()->estado);
         $this->assertSame(0, Asistencia::count());
     }
+
+    // ── Ficha del colaborador (formato oficial de ingreso) ───────────────────
+
+    private function datosFicha(): array
+    {
+        return $this->datosEmpleado() + [
+            'nacionalidad' => 'Peruana', 'grado_instruccion' => 'Superior completo', 'lugar_nacimiento' => 'Lima', 'tipo_sangre' => 'O+',
+            'domicilio_alterno' => 'Jr. Cusco 456', 'referencia_domiciliaria' => 'Frente al parque', 'jefe_contrata' => 'Piero Rojas',
+            'centro_costos' => 'CC-VENTAS', 'periodo_prueba' => '3 meses', 'tipo_remuneracion' => 'empleado', 'modalidad_pago' => 'tiempo_completo',
+            'local_trabajo' => 'san_isidro', 'calificacion' => 'control_asistencia', 'codigo_huellero' => '35',
+            'puesto_solicitado' => 'Diseñadora de iluminación', 'sueldo_minimo' => 1700, 'viajaria_provincias' => '1', 'trabajo_antes_kyrios' => '0',
+            'educacion' => [
+                ['nivel' => 'Superior', 'centro' => 'PUCP', 'inicio' => '2013', 'fin' => '2018'],
+                ['nivel' => 'Técnico', 'centro' => '', 'inicio' => '', 'fin' => ''],
+                ['nivel' => 'Secundaria', 'centro' => 'Colegio Nacional', 'inicio' => '2007', 'fin' => '2012'],
+            ],
+            'profesion' => 'Arquitecta', 'profesion_condicion' => 'titulado',
+            'idiomas' => [['idioma' => 'Inglés', 'habla' => 'intermedio', 'lee' => 'avanzado', 'escribe' => 'intermedio'], ['idioma' => '', 'habla' => '', 'lee' => '', 'escribe' => '']],
+            'software' => [['nombre' => 'AutoCAD', 'nivel' => 'avanzado'], ['nombre' => 'Dialux', 'nivel' => 'intermedio']],
+            'otros_estudios' => ['Curso de iluminación LED', ''],
+            'experiencia' => [['empresa' => 'Luminotecnia SAC', 'telefono' => '999', 'cargo' => 'Diseñadora', 'jefe' => 'Ana', 'ingreso' => '01/2019', 'salida' => '12/2025', 'remuneracion' => '1600', 'funciones' => 'Proyectos', 'motivo_cese' => 'Mejor oferta', 'consultar' => '1']],
+            'dependientes' => [['nombres' => 'Luis Quispe', 'parentesco' => 'Hijo', 'dni' => '70000001', 'nacimiento' => '2020-02-02', 'centro' => 'Nido', 'ocupacion' => 'Estudiante']],
+            'referencias' => [['nombres' => 'Rosa Díaz', 'empresa' => 'Estudio RD', 'cargo' => 'Gerente', 'telefono' => '988', 'tiempo' => '5 años']],
+            'posee_cuenta_sueldo' => '1', 'banco' => 'BBVA', 'numero_cuenta' => '0011-0000-1234', 'moneda_pago' => 'PEN',
+            'pension_situacion' => 'afiliado_afp', 'sistema_pension' => 'AFP', 'afp_nombre' => 'Integra',
+            'declaraciones' => ['ficha' => '2026-01-05', 'antecedentes' => '2026-01-05', 'salud' => ''],
+            'vida_ley_extrabajador' => '0', 'sin_enfermedades' => '1',
+        ];
+    }
+
+    public function test_se_registra_la_ficha_completa_y_se_descartan_las_filas_vacias(): void
+    {
+        $this->actingAs($this->admin);
+        $this->post(route('rrhh.empleados.store'), $this->datosFicha())->assertSessionHasNoErrors();
+
+        $e = Empleado::where('dni', '87654321')->firstOrFail();
+        $this->assertSame('Peruana', $e->nacionalidad);
+        $this->assertSame('O+', $e->tipo_sangre);
+        $this->assertSame('35', $e->codigo_huellero);
+        $this->assertTrue($e->viajaria_provincias);
+        $this->assertFalse($e->trabajo_antes_kyrios);
+        $this->assertCount(2, $e->educacion, 'el nivel Técnico sin datos no se guarda');
+        $this->assertSame('Superior', $e->educacion[0]['nivel']);
+        $this->assertCount(1, $e->idiomas);
+        $this->assertCount(2, $e->software);
+        $this->assertSame(['Curso de iluminación LED'], $e->otros_estudios);
+        $this->assertSame('Luminotecnia SAC', $e->experiencia[0]['empresa']);
+        $this->assertSame(['ficha' => '2026-01-05', 'antecedentes' => '2026-01-05'], $e->declaraciones);
+        $this->assertContains('Declaración de salud', $e->declaraciones_pendientes);
+        $this->assertGreaterThan(60, $e->ficha_completa);
+    }
+
+    public function test_el_codigo_del_huellero_no_se_repite(): void
+    {
+        $this->actingAs($this->admin);
+        $this->empleado(['codigo_huellero' => '35']);
+
+        $this->post(route('rrhh.empleados.store'), $this->datosFicha())->assertSessionHasErrors('codigo_huellero');
+    }
+
+    public function test_la_ficha_se_ve_se_edita_y_sale_en_pdf(): void
+    {
+        $this->actingAs($this->admin);
+        $this->post(route('rrhh.empleados.store'), $this->datosFicha());
+        $e = Empleado::where('dni', '87654321')->firstOrFail();
+
+        $this->get(route('rrhh.empleados.show', $e))->assertOk()->assertSee('Ficha del colaborador')->assertSee('PUCP')->assertSee('Luminotecnia SAC')->assertSee('CC-VENTAS');
+        $this->get(route('rrhh.empleados.edit', $e))->assertOk()->assertSee('Declaraciones')->assertSee('Código en el huellero');
+        $this->get(route('rrhh.empleados.create'))->assertOk();
+
+        $r = $this->get(route('rrhh.empleados.ficha-pdf', $e))->assertOk();
+        $this->assertStringStartsWith('%PDF', $r->getContent());
+
+        // Editar sin tocar la ficha no pierde nada
+        $this->put(route('rrhh.empleados.update', $e), $this->datosFicha())->assertSessionHasNoErrors();
+        $this->assertSame('Superior', $e->fresh()->educacion[0]['nivel']);
+    }
+
+    public function test_la_foto_se_reduce_y_solo_la_ve_administracion(): void
+    {
+        $this->actingAs($this->admin);
+        $this->post(route('rrhh.empleados.store'), $this->datosFicha() + ['foto' => UploadedFile::fake()->image('foto.jpg', 1600, 1200)])->assertSessionHasNoErrors();
+        $e = Empleado::where('dni', '87654321')->firstOrFail();
+
+        $this->assertNotNull($e->foto);
+        Storage::disk('local')->assertExists($e->foto);
+        $this->get(route('rrhh.empleados.foto', $e))->assertOk();
+        $this->get(route('rrhh.empleados.ficha-pdf', $e))->assertOk();
+
+        $this->actingAs($this->usuario('Logística'));
+        $this->get(route('rrhh.empleados.foto', $e))->assertForbidden();
+        $this->get(route('rrhh.empleados.ficha-pdf', $e))->assertForbidden();
+    }
 }

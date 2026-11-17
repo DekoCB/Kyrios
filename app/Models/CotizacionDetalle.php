@@ -11,7 +11,7 @@ class CotizacionDetalle extends Model
 
     protected $fillable = [
         'cotizacion_id', 'producto_id', 'variante_id',
-        'codigo', 'descripcion',
+        'codigo', 'descripcion', 'piso', 'ambiente',
         'cantidad', 'precio_unitario', 'precio_con_igv', 'subtotal', 'subtotal_con_igv',
     ];
 

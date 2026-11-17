@@ -223,9 +223,13 @@ class Venta extends Model
                 return $actual->proforma_numero;
             }
 
-            $inicio = (int) config('kyrios.proforma.inicio', 1);
-            $siguiente = max((int) self::max('proforma_correlativo') + 1, $inicio);
-            $numero = sprintf('IL-%05d/%s', $siguiente, now()->format('y'));
+            // Una venta que viene de una cotización con proforma conserva el mismo número
+            $origen = \App\Models\Cotizacion::where('venta_id', $actual->id)->whereNotNull('proforma_numero')->orderBy('id')->first();
+            if ($origen) {
+                [$siguiente, $numero] = [(int) $origen->proforma_correlativo, $origen->proforma_numero];
+            } else {
+                [$siguiente, $numero] = \App\Support\NumeroProforma::siguiente();
+            }
             $actual->update(['proforma_correlativo' => $siguiente, 'proforma_numero' => $numero]);
             $this->setRawAttributes($actual->fresh()->getAttributes(), true);
 

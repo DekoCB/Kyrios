@@ -98,6 +98,8 @@
                 </ul>
             </section>
 
+            @include('rrhh.empleados._ficha')
+
             <section class="bg-white rounded-xl shadow-sm overflow-hidden">
                 <h2 class="font-semibold text-gray-900 px-5 py-3 border-b border-gray-100"><i class="fas fa-folder-open text-gray-400 mr-1"></i> Legajo (documentos)</h2>
                 <ul class="divide-y divide-gray-100 text-sm">

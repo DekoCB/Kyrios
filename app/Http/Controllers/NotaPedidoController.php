@@ -57,10 +57,18 @@ class NotaPedidoController extends Controller
         $datos = $request->validate([
             'fecha_entrega' => 'nullable|date|after_or_equal:today',
             'observaciones' => 'nullable|string|max:1000',
+            'moneda'           => 'nullable|in:USD,PEN',
+            'forma_pago'       => 'nullable|string|max:80',
+            'condicion'        => 'nullable|string|max:80',
+            'tipo_comprobante' => 'nullable|string|max:30',
+            'transporte'       => 'nullable|string|max:120',
+            'lugar_entrega'    => 'nullable|string|max:255',
+            'referencia'       => 'nullable|string|max:160',
+            'contacto'         => 'nullable|string|max:120',
         ]);
 
         try {
-            $nota = $this->servicio->crearDesdeCotizacion($cotizacion, $request->user(), $datos['fecha_entrega'] ?? null, $datos['observaciones'] ?? null);
+            $nota = $this->servicio->crearDesdeCotizacion($cotizacion, $request->user(), $datos['fecha_entrega'] ?? null, $datos['observaciones'] ?? null, \Illuminate\Support\Arr::only($datos, NotaPedido::CAMPOS_COMERCIALES));
         } catch (DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -99,7 +107,7 @@ class NotaPedidoController extends Controller
     /** Hoja de preparación para imprimir y llevar al almacén. */
     public function pdf(NotaPedido $nota)
     {
-        $nota->load(['cliente', 'almacen', 'cotizacion', 'creador', 'detalles.producto', 'detalles.variante']);
+        $nota->load(['cliente', 'almacen', 'cotizacion.vendedor', 'creador', 'detalles.producto.unidadMedida', 'detalles.variante']);
         $empresa = Empresa::first() ?? new Empresa();
         foreach (['razon_social' => 'KYRIOS LUCES S.A.C', 'ruc' => '20606247746'] as $campo => $valor) {
             $empresa->{$campo} = $empresa->{$campo} ?: $valor;

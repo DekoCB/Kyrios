@@ -42,6 +42,9 @@ return [
     'rrhh' => [
         'tolerancia_min'   => (int) env('RRHH_TOLERANCIA_MIN', 10),
         'dias_laborables'  => [1, 2, 3, 4, 5], // 1 = lunes … 7 = domingo
+        // Huellero (reloj biométrico). Con token se activa la recepción de marcaciones desde un puente en la red del cliente.
+        'huellero_token'          => env('HUELLERO_TOKEN'),
+        'huellero_minutos_salida' => (int) env('HUELLERO_MINUTOS_SALIDA', 60),
     ],
 
     'cotizacion' => [

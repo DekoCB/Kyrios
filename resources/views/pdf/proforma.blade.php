@@ -29,6 +29,7 @@ table.items { width: 100%; border-collapse: collapse; border: 1.5px solid #4a4a4
 table.items th { background: #f2c80f; color: #3f3d37; font-size: 9pt; padding: 3px 4px; border: 1px solid #4a4a45; text-align: center; }
 table.items td { font-size: 8pt; padding: 4px 5px; border-left: 1px solid #4a4a45; border-right: 1px solid #4a4a45; border-bottom: 1px solid #d9d6cc; vertical-align: top; }
 .c { text-align: center; } .r { text-align: right; }
+table.items tr.sec td { font-weight: bold; font-size: 8.5pt; padding-top: 5px; }
 
 table.tot { margin-left: auto; margin-top: 1mm; border-collapse: collapse; }
 table.tot td { padding: 2px 6px; font-size: 9pt; text-align: right; }
@@ -73,15 +74,16 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
     $m = fn ($n) => $moneda . number_format((float) $n, 2);
     // Los importes se guardan en soles: en dólares se convierten con el tipo de cambio del día de la venta
     $conv = fn ($soles) => $enDolares ? round((float) $soles / $tc, 2) : round((float) $soles, 2);
-    $fecha = \Carbon\Carbon::parse($venta->fecha);
+    $fecha = \Carbon\Carbon::parse($doc->fecha);
     $fechaTexto = 'Lima, ' . $fecha->day . ' de ' . ucfirst($fecha->translatedFormat('F')) . ' del ' . $fecha->year;
-    $cliente = $venta->cliente;
+    $cliente = $doc->cliente;
     $logo = \App\Models\Empresa::logoDocumentoDataUri($empresa ?? null);
-    $numeroProforma = $venta->proforma_numero;
-    $nombreAsesor = $venta->vendedor?->name;
+    $numeroProforma = $doc->numero;
+    $nombreAsesor = $doc->asesor;
     $web = preg_replace('#^https?://#', '', $empresa->web ?: 'www.kyrios.com.pe');
 
-    $items = $venta->detalles->values()->map(function ($d, $i) {
+    $formato = $doc->formato ?? 'simple';
+    $items = \App\Support\SeccionesProforma::ordenar($doc->detalles, $formato)->map(function ($d, $i) use ($formato) {
         $p = $d->producto;
         $v = $d->variante;
         $nombre = $p ? \App\Support\EtiquetaProducto::documento($p, $v) : 'Producto';
@@ -109,6 +111,7 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
             $imagenes = $p->imagenes()->limit(2)->get();
         }
         return (object) [
+            'seccion' => \App\Support\SeccionesProforma::titulo($formato, $d->piso ?? null, $d->ambiente ?? null),
             'cod' => 'L' . str_pad($i + 1, 2, '0', STR_PAD_LEFT),
             'n' => $i + 1,
             'd' => $d,
@@ -141,7 +144,7 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
 <h1 class="titulo">PROFORMA {{ $numeroProforma }}</h1>
 <div class="fecha">{{ $fechaTexto }}</div>
 <div class="cli">{{ mb_strtoupper($cliente?->nombre ?? 'SIN CLIENTE') }}</div>
-<div class="ref">Referencia: <b>COTIZACIÓN {{ $venta->observaciones ? mb_strtoupper($venta->observaciones) : 'VENTA ' . $venta->codigo }}</b></div>
+<div class="ref">Referencia: <b>COTIZACIÓN {{ $doc->referencia }}</b></div>
 
 <div class="intro">De acuerdo a lo solicitado por Ud. le hacemos llegar el costo por los siguientes items</div>
 <table class="items">
@@ -149,7 +152,12 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
         <tr><th style="width:11mm">ITEM</th><th style="width:11mm">CANT</th><th>DESCRIPCION</th><th style="width:15mm">IMAGEN</th><th style="width:24mm">P.UNIT</th><th style="width:26mm">P.TOTAL</th></tr>
     </thead>
     <tbody>
+        @php $seccionActual = null; @endphp
         @foreach($items as $it)
+            @if($it->seccion !== null && $it->seccion !== $seccionActual)
+                @php $seccionActual = $it->seccion; @endphp
+                <tr class="sec"><td></td><td></td><td>{{ $it->seccion }}</td><td></td><td></td><td></td></tr>
+            @endif
             <tr>
                 <td class="c">{{ $it->n }}</td>
                 <td class="r">{{ $it->d->cantidad }}</td>
@@ -178,7 +186,7 @@ h2.anexo { font-size: 10pt; margin-bottom: 3mm; }
     <tr><td class="e">Forma de Pago:</td><td>100% Con la orden de compra. Depósito o transferencia a Cta Cte del banco INTERBANK US$ 2003007861610 / CCI: US$ 003-200-003007861610-36 a nombre de la empresa KYRIOS LUCES Y ENTORNO S.A.C.</td></tr>
     <tr><td class="e">Tiempo de Entrega:</td><td>A coordinar / vigencia a partir del conocimiento de realizado el depósito y/o transferencia en cta.</td></tr>
 </table>
-<p class="notas"><b>Notas:</b><br>GARANTIA LUMINARIAS: 01 Año (En caso realicemos la instalación), Lámpara 75% vida útil de lámpara</p>
+<p class="notas"><b>Notas:</b><br>GARANTIA LUMINARIAS: 01 Año (En caso realicemos la instalación), Lámpara 75% vida útil de lámpara @if(filled($doc->notas ?? null))<br>{!! nl2br(e($doc->notas)) !!}@endif</p>
 
 {{-- Anexo de imágenes --}}
 <div class="salto"></div>

@@ -7,6 +7,7 @@ use App\Models\NotaPedido;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\AvisoSistema;
+use App\Support\SeccionesProforma;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -17,11 +18,16 @@ class NotaPedidoService
     {
     }
 
-    /** Genera la nota de pedido de una cotización aceptada y avisa a almacén. */
-    public function crearDesdeCotizacion(Cotizacion $cotizacion, User $por, ?string $fechaEntrega = null, ?string $observaciones = null): NotaPedido
+    /**
+     * Genera la nota de pedido de una cotización aceptada y avisa a almacén.
+     *
+     * @param array $comerciales datos del formato comercial: moneda, forma_pago, condicion, tipo_comprobante, transporte,
+     *                           lugar_entrega, referencia, contacto. Lo que falte se completa con la cotización y el cliente.
+     */
+    public function crearDesdeCotizacion(Cotizacion $cotizacion, User $por, ?string $fechaEntrega = null, ?string $observaciones = null, array $comerciales = []): NotaPedido
     {
-        $nota = DB::transaction(function () use ($cotizacion, $por, $fechaEntrega, $observaciones) {
-            $cot = Cotizacion::lockForUpdate()->with('detalles')->findOrFail($cotizacion->id);
+        $nota = DB::transaction(function () use ($cotizacion, $por, $fechaEntrega, $observaciones, $comerciales) {
+            $cot = Cotizacion::lockForUpdate()->with(['detalles.producto.unidadMedida', 'detalles.variante', 'cliente'])->findOrFail($cotizacion->id);
 
             if ($cot->estado !== 'aceptada') {
                 throw new DomainException('Solo una cotización aceptada (confirmada por el cliente) puede generar una nota de pedido.');
@@ -39,12 +45,15 @@ class NotaPedidoService
                 'user_id'       => $por->id,
                 'fecha_entrega' => $fechaEntrega,
                 'observaciones' => $observaciones,
-            ]);
+            ] + $this->datosComerciales($cot, $comerciales));
 
-            foreach ($cot->detalles as $d) {
+            foreach (SeccionesProforma::ordenar($cot->detalles, $cot->formato) as $d) {
                 $nota->detalles()->create([
                     'producto_id' => $d->producto_id, 'variante_id' => $d->variante_id,
-                    'descripcion' => $d->descripcion ?: 'Producto', 'cantidad' => $d->cantidad,
+                    'codigo' => $d->variante?->codigo_kyrios ?: ($d->producto?->codigo ?: $d->codigo),
+                    'descripcion' => $d->descripcion ?: 'Producto',
+                    'unidad' => $d->producto?->unidadMedida?->abreviatura ?: 'UND',
+                    'cantidad' => $d->cantidad,
                 ]);
             }
 
@@ -60,6 +69,23 @@ class NotaPedidoService
         ));
 
         return $nota;
+    }
+
+    /** Datos del formato comercial: lo que escribió la persona o, si lo dejó vacío, lo que ya se sabe de la cotización y el cliente. */
+    private function datosComerciales(Cotizacion $cot, array $c): array
+    {
+        $limpio = fn ($v, $max) => filled($v) ? mb_substr(trim((string) $v), 0, $max) : null;
+
+        return [
+            'moneda'           => in_array($c['moneda'] ?? null, ['USD', 'PEN'], true) ? $c['moneda'] : 'USD',
+            'forma_pago'       => $limpio($c['forma_pago'] ?? null, 80),
+            'condicion'        => $limpio($c['condicion'] ?? null, 80),
+            'tipo_comprobante' => $limpio($c['tipo_comprobante'] ?? null, 30),
+            'transporte'       => $limpio($c['transporte'] ?? null, 120),
+            'lugar_entrega'    => $limpio($c['lugar_entrega'] ?? null, 255) ?? $limpio($cot->cliente?->direccion, 255),
+            'referencia'       => $limpio($c['referencia'] ?? null, 160) ?? $limpio($cot->referencia, 160),
+            'contacto'         => $limpio($c['contacto'] ?? null, 120) ?? $limpio($cot->cliente?->contacto, 120),
+        ];
     }
 
     /** Cuántas unidades de cada línea ya están separadas; con todas completas la nota queda lista. */

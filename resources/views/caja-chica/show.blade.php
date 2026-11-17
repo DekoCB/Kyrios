@@ -134,7 +134,7 @@
                                     <div class="flex flex-wrap gap-1 mt-1">
                                         @foreach(($m->adjuntos->isNotEmpty() || !$m->grupo) ? $m->adjuntos : ($adjuntosGrupo[$m->grupo] ?? collect()) as $a)
                                             <a href="{{ route('caja-chica.adjunto', $a) }}" target="_blank" title="{{ $a->nombre_original }}" class="block">
-                                                @if($a->es_imagen)<img src="{{ route('caja-chica.adjunto', $a) }}" alt="Comprobante" loading="lazy" class="h-12 w-12 object-cover rounded border">
+                                                @if($a->es_imagen)<img src="{{ route('caja-chica.adjunto', [$a, 'mini' => 1]) }}" alt="Comprobante" loading="lazy" decoding="async" class="h-12 w-12 object-cover rounded border">
                                                 @else<span class="flex h-12 w-12 items-center justify-center rounded border bg-red-50 text-red-500"><i class="fas fa-file-pdf text-xl"></i></span>@endif
                                             </a>
                                         @endforeach

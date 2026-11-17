@@ -9,7 +9,7 @@ class NotaPedidoDetalle extends Model
 {
     protected $table = 'nota_pedido_detalles';
 
-    protected $fillable = ['nota_pedido_id', 'producto_id', 'variante_id', 'descripcion', 'cantidad', 'preparado'];
+    protected $fillable = ['nota_pedido_id', 'producto_id', 'variante_id', 'codigo', 'descripcion', 'unidad', 'cantidad', 'preparado'];
 
     protected $casts = ['cantidad' => 'integer', 'preparado' => 'integer'];
 
