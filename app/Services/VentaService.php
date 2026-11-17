@@ -154,10 +154,14 @@ class VentaService
             $guiaData = $datosVenta['guia_data'] ?? null;
             unset($datosVenta['guia_data']);
 
+            // Cotización de la que viene la venta: sus propias notas de pedido no cuentan como stock apartado para ella
+            $reservaDeCotizacion = isset($datosVenta['reserva_de_cotizacion_id']) ? (int) $datosVenta['reserva_de_cotizacion_id'] : null;
+            unset($datosVenta['reserva_de_cotizacion_id']);
+
             $esCredito = ($datosVenta['condicion_pago'] ?? 'contado') === 'credito' || !empty($creditoData);
 
             // Validar stock antes de procesar
-            $this->validarStockDisponible($detalles, $datosVenta['almacen_id']);
+            $this->validarStockDisponible($detalles, $datosVenta['almacen_id'], $reservaDeCotizacion);
 
             // Para ventas a crédito, el estado inicial es 'credito' (sin pago inmediato)
             if ($esCredito) {
@@ -956,7 +960,7 @@ class VentaService
     /**
      * Validar stock disponible antes de la venta
      */
-    private function validarStockDisponible(array $detalles, int $almacenId)
+    private function validarStockDisponible(array $detalles, int $almacenId, ?int $reservaDeCotizacion = null)
     {
         foreach ($detalles as $detalle) {
             $varianteId = !empty($detalle['variante_id']) ? (int) $detalle['variante_id'] : null;
@@ -965,11 +969,15 @@ class VentaService
                 ->deVariante($varianteId)
                 ->first();
 
-            if (!$stock || $stock->cantidad < $detalle['cantidad']) {
+            // Lo apartado por notas de pedido de otras cotizaciones no se puede vender
+            $apartado = $stock ? StockAlmacen::reservadoEn($detalle['producto_id'], $almacenId, $varianteId, $reservaDeCotizacion) : 0;
+            $disponible = max(0, ($stock->cantidad ?? 0) - $apartado);
+
+            if (!$stock || $disponible < $detalle['cantidad']) {
                 $producto = \App\Models\Producto::find($detalle['producto_id']);
                 $variante = $varianteId ? \App\Models\ProductoVariante::find($varianteId) : null;
                 $nombre = \App\Support\EtiquetaProducto::rotulo($producto) . ($variante ? ' (' . ($variante->codigo_kyrios ?? $variante->sku) . ')' : '');
-                throw new \Exception("Stock insuficiente para {$nombre} en este almacén. Disponible: " . ($stock->cantidad ?? 0));
+                throw new \Exception("Stock insuficiente para {$nombre} en este almacén. Disponible: {$disponible}" . ($apartado > 0 ? " ({$apartado} apartado(s) por notas de pedido)" : '') . '.');
             }
         }
     }

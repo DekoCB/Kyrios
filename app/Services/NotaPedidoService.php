@@ -128,6 +128,11 @@ class NotaPedidoService
             throw new DomainException("No se puede pasar una nota {$nota->estado_nombre} a «" . (NotaPedido::ESTADOS[$estado][0] ?? $estado) . '».');
         }
 
+        // La nota solo aparta stock; lo descuenta la venta. Entregar sin venta dejaría la mercadería fuera sin descontarse.
+        if ($estado === 'entregada' && $nota->cotizacion?->estado !== 'convertida') {
+            throw new DomainException('Antes de marcarla entregada, convierta la cotización ' . $nota->cotizacion?->codigo . ' en venta: de ahí se descuenta el stock.');
+        }
+
         $datos = ['estado' => $estado, 'atendido_por' => $por->id];
         if ($estado === 'lista') {
             $datos['lista_en'] = now();

@@ -43,6 +43,17 @@
             <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Entrega</p><p class="font-semibold text-gray-900">{{ $nota->fecha_entrega?->format('d/m/Y') ?? 'Por coordinar' }}</p></div>
         </div>
 
+        @if($nota->esta_abierta)
+            @if($nota->reserva_stock)
+                <p class="mb-4 text-sm bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-lg px-4 py-3"><i class="fas fa-lock mr-1"></i>
+                    <strong>Stock apartado:</strong> esta nota separa estas unidades para el cliente (no se pueden vender a otros), pero todavía <strong>no descuenta</strong> el stock.
+                    El descuento se hace una sola vez cuando la cotización {{ $nota->cotizacion?->codigo }} se convierte en venta.</p>
+            @elseif($nota->cotizacion?->estado === 'convertida')
+                <p class="mb-4 text-sm bg-green-50 border border-green-200 text-green-900 rounded-lg px-4 py-3"><i class="fas fa-circle-check mr-1"></i>
+                    <strong>Stock ya descontado</strong> con la venta de la cotización {{ $nota->cotizacion?->codigo }}. Esta nota solo guía la preparación y la entrega.</p>
+            @endif
+        @endif
+
         @php
             $comerciales = array_filter([
                 'Moneda' => $nota->moneda === 'PEN' ? 'Soles (S/)' : 'Dólares (US$)', 'Forma de pago' => $nota->forma_pago, 'Condición' => $nota->condicion,

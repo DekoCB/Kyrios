@@ -106,6 +106,37 @@ class StockAlmacen extends Model
     }
 
     /**
+     * Unidades apartadas por notas de pedido abiertas (pendiente, en preparación o lista) cuya cotización todavía no se
+     * convirtió en venta. La nota NO descuenta stock: lo aparta. Al convertirse la cotización, la venta descuenta una sola
+     * vez y la reserva se libera sola (la cotización deja de estar sin convertir).
+     *
+     * @param int|null $varianteId       variante; null = solo las líneas sin variante
+     * @param bool     $todasVariantes   true = todas las líneas del producto, tengan o no variante
+     * @param int|null $exceptoCotizacionId reservas de esa cotización no cuentan (para convertirla sin bloquearse a sí misma)
+     */
+    public static function reservadoEn($productoId, $almacenId, $varianteId = null, ?int $exceptoCotizacionId = null, bool $todasVariantes = false): int
+    {
+        return (int) NotaPedidoDetalle::where('producto_id', $productoId)
+            ->when(!$todasVariantes, fn ($q) => $varianteId ? $q->where('variante_id', $varianteId) : $q->whereNull('variante_id'))
+            ->whereHas('nota', fn ($n) => $n->where('almacen_id', $almacenId)->whereIn('estado', NotaPedido::ESTADOS_QUE_RESERVAN)
+                ->whereHas('cotizacion', fn ($c) => $c->where('estado', '!=', 'convertida')
+                    ->when($exceptoCotizacionId, fn ($x) => $x->where('id', '!=', $exceptoCotizacionId))))
+            ->sum('cantidad');
+    }
+
+    /** Lo que realmente se puede vender: stock físico menos lo apartado por notas de pedido. */
+    public static function disponibleEn($productoId, $almacenId, $varianteId = null, ?int $exceptoCotizacionId = null): int
+    {
+        return max(0, self::cantidadEn($productoId, $almacenId, $varianteId) - self::reservadoEn($productoId, $almacenId, $varianteId, $exceptoCotizacionId));
+    }
+
+    /** Igual, pero para un producto sin elegir variante (suma de todas). */
+    public static function disponibleTotalEn($productoId, $almacenId, ?int $exceptoCotizacionId = null): int
+    {
+        return max(0, self::totalEn($productoId, $almacenId) - self::reservadoEn($productoId, $almacenId, null, $exceptoCotizacionId, true));
+    }
+
+    /**
      * Total de un producto en un almacén (suma de todas sus variantes).
      */
     public static function totalEn($productoId, $almacenId): int

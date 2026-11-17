@@ -271,6 +271,7 @@ class CotizacionService
                 'igv'              => 0,
                 'total'            => (float) $cotizacion->total,
                 'observaciones'    => 'Cotización ' . $cotizacion->codigo,
+                'reserva_de_cotizacion_id' => $cotizacion->id,
                 'tipo_comprobante' => $comprobante,
                 'condicion_pago'   => 'contado',
             ];

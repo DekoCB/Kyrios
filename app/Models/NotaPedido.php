@@ -19,6 +19,9 @@ class NotaPedido extends Model
         'anulada'        => ['Anulada', 'bg-red-100 text-red-700'],
     ];
 
+    /** Estados en que la nota aparta stock (no lo descuenta). */
+    public const ESTADOS_QUE_RESERVAN = ['pendiente', 'en_preparacion', 'lista'];
+
     /** Campos del formato comercial que se piden al generar la nota (todos opcionales). */
     public const CAMPOS_COMERCIALES = ['moneda', 'forma_pago', 'condicion', 'tipo_comprobante', 'transporte', 'lugar_entrega', 'referencia', 'contacto'];
 
@@ -60,6 +63,12 @@ class NotaPedido extends Model
     public function getEstadoNombreAttribute(): string
     {
         return self::ESTADOS[$this->estado][0] ?? $this->estado;
+    }
+
+    /** ¿Esta nota está apartando stock ahora mismo? (abierta y su cotización aún no se convirtió en venta) */
+    public function getReservaStockAttribute(): bool
+    {
+        return in_array($this->estado, self::ESTADOS_QUE_RESERVAN, true) && $this->cotizacion?->estado !== 'convertida';
     }
 
     /** Solo se puede cambiar mientras no esté entregada ni anulada. */

@@ -198,8 +198,8 @@ class CotizacionController extends Controller
         // Stock disponible por línea en el almacén de la cotización (aviso antes de convertir)
         $stock = $cotizacion->detalles->mapWithKeys(fn ($d) => [
             $d->id => $d->variante_id
-                ? StockAlmacen::cantidadEn($d->producto_id, $cotizacion->almacen_id, $d->variante_id)
-                : StockAlmacen::totalEn($d->producto_id, $cotizacion->almacen_id),
+                ? StockAlmacen::disponibleEn($d->producto_id, $cotizacion->almacen_id, $d->variante_id, $cotizacion->id)
+                : StockAlmacen::disponibleTotalEn($d->producto_id, $cotizacion->almacen_id, $cotizacion->id),
         ]);
 
         $esVendedor = false;
@@ -376,7 +376,7 @@ class CotizacionController extends Controller
             'marca'       => $v->producto->marca?->nombre,
             'imagen'      => $v->imagenPrincipal?->url,
             'precio'      => $precioDe($v->producto_id, $v->id),
-            'stock'       => $almacenId ? StockAlmacen::cantidadEn($v->producto_id, $almacenId, $v->id) : (int) $v->stock_actual,
+            'stock'       => $almacenId ? StockAlmacen::disponibleEn($v->producto_id, $almacenId, $v->id) : (int) $v->stock_actual,
             'dano'        => $v->estado_dano !== 'ninguno' ? $v->estado_dano : null,
         ]);
 
@@ -389,7 +389,7 @@ class CotizacionController extends Controller
             'marca'       => $p->marca?->nombre,
             'imagen'      => $p->imagen_url,
             'precio'      => $precioDe($p->id, null),
-            'stock'       => $almacenId ? StockAlmacen::totalEn($p->id, $almacenId) : (int) $p->stock_actual,
+            'stock'       => $almacenId ? StockAlmacen::disponibleTotalEn($p->id, $almacenId) : (int) $p->stock_actual,
             'dano'        => null,
         ]));
 

@@ -93,6 +93,9 @@ class NotaPedidoTest extends TestCase
         $this->assertSame('lista', $nota->fresh()->estado);
         $this->assertSame(1, $this->admin->unreadNotifications()->where('data->clave', "nota-pedido-lista:{$nota->id}")->count(), 'quien la generó recibe el aviso');
 
+        // Entregar exige que la venta ya haya descontado el stock (la nota solo lo aparta)
+        $this->post(route('notas-pedido.estado', $nota), ['estado' => 'entregada'])->assertSessionHas('error');
+        $this->cotizacion->update(['estado' => 'convertida']);
         $this->post(route('notas-pedido.estado', $nota), ['estado' => 'entregada'])->assertSessionHas('success');
         $this->assertSame('entregada', $nota->fresh()->estado);
         $this->post(route('notas-pedido.estado', $nota), ['estado' => 'anulada'])->assertSessionHas('error');
