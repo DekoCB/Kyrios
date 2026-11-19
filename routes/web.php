@@ -69,6 +69,7 @@ Route::get('/dashboard', function () {
         \App\Models\Role::CONTADOR       => redirect()->route('contador.dashboard'),
         \App\Models\Role::LOGISTICA      => redirect()->route('logistica.dashboard'),
         \App\Models\Role::OPERACIONES    => redirect()->route('operaciones.dashboard'),
+        \App\Models\Role::MARKETING      => redirect()->route('marketing.dashboard'),
         \App\Models\Role::CLIENTE        => redirect()->route('cliente.dashboard'),
         default                            => redirect()->route('login'),
     };
@@ -130,7 +131,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{aprobacion}/rechazar', [\App\Http\Controllers\AprobacionController::class, 'rechazar'])->name('rechazar');
     });
 
-    Route::middleware('role:Administración,Contador,Logística,Operaciones')->group(function () {
+    Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () {
         Route::get('/aprobaciones/mias', [\App\Http\Controllers\AprobacionController::class, 'mias'])->name('aprobaciones.mias');
         Route::get('/notificaciones', [\App\Http\Controllers\NotificacionController::class, 'index'])->name('notificaciones.index');
         Route::post('/notificaciones/leer-todas', [\App\Http\Controllers\NotificacionController::class, 'leerTodas'])->name('notificaciones.leer-todas');
@@ -156,6 +157,90 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:Operaciones')->prefix('operaciones')->name('operaciones.')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'operaciones'])->name('dashboard');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | MARKETING Y MEDIOS: redes, calendario, publicaciones, biblioteca, interacciones, estadísticas, competencia, campañas y reportes
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('role:Administración,Marketing')->prefix('marketing')->name('marketing.')->group(function () {
+        $mk = 'App\\Http\\Controllers\\Marketing\\';
+
+        Route::get('/', [$mk . 'PanelController', 'index'])->name('dashboard');
+
+        Route::prefix('cuentas')->name('cuentas.')->group(function () use ($mk) {
+            Route::get('/', [$mk . 'CuentaController', 'index'])->name('index');
+            Route::post('/', [$mk . 'CuentaController', 'store'])->name('store');
+            Route::get('/{cuenta}', [$mk . 'CuentaController', 'show'])->whereNumber('cuenta')->name('show');
+            Route::put('/{cuenta}', [$mk . 'CuentaController', 'update'])->whereNumber('cuenta')->name('update');
+            Route::delete('/{cuenta}', [$mk . 'CuentaController', 'destroy'])->whereNumber('cuenta')->name('destroy');
+            Route::post('/{cuenta}/metricas', [$mk . 'CuentaController', 'guardarMetrica'])->whereNumber('cuenta')->name('metricas.store');
+            Route::delete('/{cuenta}/metricas/{metrica}', [$mk . 'CuentaController', 'eliminarMetrica'])->whereNumber(['cuenta', 'metrica'])->name('metricas.destroy');
+            Route::post('/{cuenta}/importar', [$mk . 'CuentaController', 'importar'])->whereNumber('cuenta')->name('importar');
+        });
+
+        Route::prefix('publicaciones')->name('publicaciones.')->group(function () use ($mk) {
+            $c = $mk . 'PublicacionController';
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::get('/calendario', [$c, 'calendario'])->name('calendario');
+            Route::get('/nueva', [$c, 'create'])->name('create');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::get('/{publicacion}/editar', [$c, 'edit'])->whereNumber('publicacion')->name('edit');
+            Route::put('/{publicacion}', [$c, 'update'])->whereNumber('publicacion')->name('update');
+            Route::post('/{publicacion}/estado', [$c, 'cambiarEstado'])->whereNumber('publicacion')->name('estado');
+            Route::post('/{publicacion}/duplicar', [$c, 'duplicar'])->whereNumber('publicacion')->name('duplicar');
+            Route::delete('/{publicacion}', [$c, 'destroy'])->whereNumber('publicacion')->name('destroy');
+        });
+
+        Route::prefix('biblioteca')->name('medios.')->group(function () use ($mk) {
+            $c = $mk . 'MedioController';
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::put('/{medio}', [$c, 'update'])->whereNumber('medio')->name('update');
+            Route::delete('/{medio}', [$c, 'destroy'])->whereNumber('medio')->name('destroy');
+        });
+
+        Route::prefix('interacciones')->name('interacciones.')->group(function () use ($mk) {
+            $c = $mk . 'InteraccionController';
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::get('/{interaccion}', [$c, 'show'])->whereNumber('interaccion')->name('show');
+            Route::post('/{interaccion}/asignar', [$c, 'asignar'])->whereNumber('interaccion')->name('asignar');
+            Route::post('/{interaccion}/responder', [$c, 'responder'])->whereNumber('interaccion')->name('responder');
+            Route::post('/{interaccion}/reabrir', [$c, 'reabrir'])->whereNumber('interaccion')->name('reabrir');
+            Route::delete('/{interaccion}', [$c, 'destroy'])->whereNumber('interaccion')->name('destroy');
+        });
+
+        Route::get('/estadisticas', [$mk . 'EstadisticaController', 'index'])->name('estadisticas.index');
+
+        Route::prefix('competencia')->name('competencia.')->group(function () use ($mk) {
+            $c = $mk . 'CompetenciaController';
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::get('/{competidor}', [$c, 'show'])->whereNumber('competidor')->name('show');
+            Route::put('/{competidor}', [$c, 'update'])->whereNumber('competidor')->name('update');
+            Route::delete('/{competidor}', [$c, 'destroy'])->whereNumber('competidor')->name('destroy');
+            Route::post('/{competidor}/metricas', [$c, 'guardarMetrica'])->whereNumber('competidor')->name('metricas.store');
+            Route::delete('/{competidor}/metricas/{metrica}', [$c, 'eliminarMetrica'])->whereNumber(['competidor', 'metrica'])->name('metricas.destroy');
+        });
+
+        Route::prefix('campanas')->name('campanas.')->group(function () use ($mk) {
+            $c = $mk . 'CampanaController';
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::get('/nueva', [$c, 'create'])->name('create');
+            Route::post('/', [$c, 'store'])->name('store');
+            Route::get('/{campana}/editar', [$c, 'edit'])->whereNumber('campana')->name('edit');
+            Route::put('/{campana}', [$c, 'update'])->whereNumber('campana')->name('update');
+            Route::delete('/{campana}', [$c, 'destroy'])->whereNumber('campana')->name('destroy');
+        });
+
+        Route::prefix('reportes')->name('reportes.')->group(function () use ($mk) {
+            $c = $mk . 'ReporteController';
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::get('/pdf', [$c, 'pdf'])->name('pdf');
+            Route::get('/excel', [$c, 'excel'])->name('excel');
+        });
     });
 
     Route::middleware('role:Cliente')->prefix('cliente')->name('cliente.')->group(function () {
@@ -228,9 +313,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('/productos/{producto}/proveedores', [ProductoController::class, 'asociarProveedor'])->name('productos.proveedores.asociar');
             });
 
-            Route::get('/productos/sugerencias', [ProductoController::class, 'sugerencias'])->middleware('role:Administración,Logística,Operaciones,Contador')->name('productos.sugerencias');
+            Route::get('/productos/sugerencias', [ProductoController::class, 'sugerencias'])->middleware('role:Administración,Logística,Operaciones,Contador,Marketing')->name('productos.sugerencias');
 
-            Route::middleware('role:Administración,Logística,Operaciones')->group(function () {
+            Route::middleware('role:Administración,Logística,Operaciones,Marketing')->group(function () {
                 Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
                 Route::get('/productos/buscar', [ProductoController::class, 'buscarAjax'])->name('productos.buscar-ajax');
                 Route::get('/productos/consulta-tienda', [ProductoController::class, 'consultaTienda'])->middleware('role:Administración,Logística')->name('productos.consulta-tienda');
@@ -309,11 +394,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/consultar-documento', [ClienteController::class, 'consultarDocumento'])->name('consultar-documento');
         Route::get('/duplicados', [ClienteController::class, 'duplicados'])->name('duplicados');
     });
-    // Lectura: Administración y Contador (el listado, la exportación y la ficha)
-    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Contador')->group(function () {
+    // Lectura: Administración, Contador y Marketing (el listado y la ficha)
+    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Contador,Marketing')->group(function () {
         Route::get('/', [ClienteController::class, 'index'])->name('index');
-        Route::get('/exportar', [ClienteController::class, 'exportar'])->name('exportar');
         Route::get('/{cliente}', [ClienteController::class, 'show'])->whereNumber('cliente')->name('show');
+    });
+    // Exportar y eliminar: Administración y Contador
+    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Contador')->group(function () {
+        Route::get('/exportar', [ClienteController::class, 'exportar'])->name('exportar');
         // Administración elimina directo; el Contador deja una solicitud que el administrador aprueba
         Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->whereNumber('cliente')->middleware('aprobacion:cliente_eliminacion')->name('destroy');
     });
@@ -438,7 +526,7 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // CAJA CHICA (general y asignadas al personal, con foto o escaneo de comprobantes)
     // ========================================
-    Route::prefix('caja-chica')->name('caja-chica.')->middleware('role:Administración,Contador,Logística,Operaciones')->group(function () {
+    Route::prefix('caja-chica')->name('caja-chica.')->middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () {
         $c = \App\Http\Controllers\CajaChicaController::class;
         Route::get('/', [$c, 'index'])->name('index');
         Route::get('/nueva', [$c, 'create'])->name('create');
@@ -498,7 +586,7 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // TABLERO DE TAREAS DIARIAS DEL EQUIPO
     // ========================================
-    Route::prefix('tareas')->name('tareas.')->middleware('role:Administración,Contador,Logística,Operaciones')->group(function () {
+    Route::prefix('tareas')->name('tareas.')->middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () {
         $c = \App\Http\Controllers\TareaController::class;
         Route::get('/', [$c, 'index'])->name('index');
         Route::post('/', [$c, 'store'])->name('store');
@@ -520,7 +608,7 @@ Route::middleware('auth')->group(function () {
         $doc = \App\Http\Controllers\Rrhh\EmpleadoDocumentoController::class;
 
         // Cada persona del equipo: marcar su asistencia y pedir permisos o vacaciones
-        Route::middleware('role:Administración,Contador,Logística,Operaciones')->group(function () use ($asi, $sol) {
+        Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () use ($asi, $sol) {
             Route::get('/mi-asistencia', [$asi, 'mi'])->name('mi-asistencia');
             Route::post('/mi-asistencia/marcar', [$asi, 'marcar'])->name('marcar');
             Route::get('/mis-solicitudes', [$sol, 'mias'])->name('mis-solicitudes');

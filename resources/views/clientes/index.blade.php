@@ -97,12 +97,14 @@
                 <a href="{{ route('clientes.index') }}" class="text-sm text-gray-500 hover:text-gray-800"><i class="fas fa-redo mr-1"></i>Limpiar</a>
                 <div class="flex flex-wrap gap-2">
                     <button class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-search mr-1"></i>Buscar</button>
+                    @if(auth()->user()->role->nombre !== 'Marketing')
                     <a href="{{ route('clientes.exportar', request()->query()) }}" class="border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-4 py-2 rounded-lg">
                         <i class="fas fa-file-csv mr-1"></i>Exportar
                     </a>
                     <button type="button" onclick="window.dispatchEvent(new CustomEvent('abrir-difusion'))" class="border border-emerald-300 text-emerald-800 hover:bg-emerald-50 text-sm font-semibold px-4 py-2 rounded-lg">
                         <i class="fab fa-whatsapp mr-1"></i>Exportar lista de difusión
                     </button>
+                    @endif
                     @if($canCreate)
                         <a href="{{ route('clientes.opciones.index') }}" class="border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-4 py-2 rounded-lg">
                             <i class="fas fa-sliders-h mr-1"></i>Opciones de los filtros
@@ -204,6 +206,7 @@
 
         <div class="mt-4">{{ $clientes->links() }}</div>
 
+        @if(auth()->user()->role->nombre !== 'Marketing')
         {{-- Exportar una lista de difusión para WhatsApp: muestra cuántos entran antes de descargar --}}
         <div x-data="difusion()" @abrir-difusion.window="abrir()" x-show="visible" style="display:none" @keydown.escape.window="visible = false"
              class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="difusionTitulo">
@@ -260,6 +263,7 @@
             };
         }
         </script>
+        @endif
     </div>
 </body>
 </html>

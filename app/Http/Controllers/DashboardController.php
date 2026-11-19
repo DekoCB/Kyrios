@@ -38,6 +38,7 @@ class DashboardController extends Controller
             Role::CONTADOR       => redirect()->route('contador.dashboard'),
             Role::LOGISTICA      => redirect()->route('logistica.dashboard'),
             Role::OPERACIONES    => redirect()->route('operaciones.dashboard'),
+            \App\Models\Role::MARKETING      => redirect()->route('marketing.dashboard'),
             Role::CLIENTE        => redirect()->route('cliente.dashboard'),
             default              => abort(403, 'Rol no autorizado'),
         };

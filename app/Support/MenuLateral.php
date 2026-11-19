@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Aprobacion;
 use App\Models\CajaChica;
 use App\Models\CuentaPorCobrar;
+use App\Models\Marketing\Interaccion;
 use App\Models\Role;
 use App\Models\SolicitudRrhh;
 
@@ -69,6 +70,7 @@ class MenuLateral
             Role::CONTADOR       => self::contador($userId),
             Role::LOGISTICA      => self::logistica($userId),
             Role::OPERACIONES    => self::operaciones($userId),
+            Role::MARKETING      => self::marketing($userId),
             default              => [
                 self::enlace('Mis pedidos', 'fa-box-open', 'cliente.dashboard'),
                 self::enlace('Mi perfil', 'fa-user', 'profile.edit', ['profile.*']),
@@ -181,6 +183,8 @@ class MenuLateral
                 self::enlace('Órdenes de compra', 'fa-clipboard-list', 'pedidos.index', ['pedidos.*']),
                 self::enlace('Cuentas por pagar', 'fa-credit-card', 'cuentas-por-pagar.index', ['cuentas-por-pagar.*']),
             ]),
+
+            ...self::seccionMarketing(),
 
             self::titulo('Finanzas'),
             self::grupo('caja', 'Caja', 'fa-cash-register', [
@@ -318,6 +322,46 @@ class MenuLateral
                 self::enlace('Cronograma', 'fa-calendar-days', 'cronograma.index', ['cronograma.*']),
                 self::enlace('Herramientas', 'fa-screwdriver-wrench', 'herramientas.index', ['herramientas.*']),
             ]),
+            self::asistencias(false),
+            ...self::cajaChicaPropia($userId),
+        ];
+    }
+
+    // ── Marketing ────────────────────────────────────────────────────────────
+
+    /** Las secciones de Marketing que también ve Administración. */
+    public static function seccionMarketing(): array
+    {
+        return [
+            self::titulo('Marketing y medios'),
+            self::enlace('Panel de Marketing', 'fa-bullhorn', 'marketing.dashboard'),
+            self::grupo('mkt-contenido', 'Contenido', 'fa-calendar-check', [
+                self::enlace('Calendario', 'fa-calendar-days', 'marketing.publicaciones.calendario'),
+                self::enlace('Publicaciones', 'fa-pen-to-square', 'marketing.publicaciones.index', ['marketing.publicaciones.index', 'marketing.publicaciones.create', 'marketing.publicaciones.edit']),
+                self::enlace('Biblioteca multimedia', 'fa-photo-film', 'marketing.medios.index', ['marketing.medios.*']),
+            ]),
+            self::enlace('Bandeja de entrada', 'fa-inbox', 'marketing.interacciones.index', ['marketing.interacciones.*'], Interaccion::where('estado', 'pendiente')->count()),
+            self::grupo('mkt-analitica', 'Analítica', 'fa-chart-line', [
+                self::enlace('Estadísticas', 'fa-chart-column', 'marketing.estadisticas.index', ['marketing.estadisticas.*']),
+                self::enlace('Competencia', 'fa-binoculars', 'marketing.competencia.index', ['marketing.competencia.*']),
+                self::enlace('Campañas publicitarias', 'fa-rectangle-ad', 'marketing.campanas.index', ['marketing.campanas.*']),
+                self::enlace('Reportes', 'fa-file-lines', 'marketing.reportes.index', ['marketing.reportes.*']),
+            ]),
+            self::enlace('Cuentas de redes', 'fa-share-nodes', 'marketing.cuentas.index', ['marketing.cuentas.*']),
+        ];
+    }
+
+    private static function marketing(?int $userId): array
+    {
+        return [
+            ...self::seccionMarketing(),
+
+            self::titulo('Consulta'),
+            self::enlace('Clientes', 'fa-users', 'clientes.index', ['clientes.*']),
+            self::enlace('Catálogo de productos', 'fa-boxes', 'inventario.productos.index', ['inventario.productos.*']),
+
+            self::titulo('Equipo'),
+            self::enlace('Tareas del día', 'fa-list-check', 'tareas.index', ['tareas.*']),
             self::asistencias(false),
             ...self::cajaChicaPropia($userId),
         ];

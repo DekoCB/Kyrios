@@ -67,6 +67,7 @@
                             'Logística'    => 'bg-blue-100 text-blue-800 border-blue-200',
                             'Contador'        => 'bg-orange-100 text-orange-800 border-orange-200',
                             'Operaciones'     => 'bg-teal-100 text-teal-800 border-teal-200',
+                            'Marketing'       => 'bg-pink-100 text-pink-800 border-pink-200',
                             'Cliente'        => 'bg-emerald-100 text-emerald-800 border-emerald-200',
                         ];
                         $roleIcon = [
@@ -74,6 +75,7 @@
                             'Logística'    => 'fa-warehouse',
                             'Contador'        => 'fa-calculator',
                             'Operaciones'     => 'fa-tools',
+                            'Marketing'       => 'fa-bullhorn',
                             'Cliente'        => 'fa-user-tag',
                         ];
                         $rn  = $user->role?->nombre ?? '';
@@ -264,6 +266,7 @@
                                         'Logística'    => ['icon'=>'fa-warehouse',     'border'=>'hover:border-blue-400',  'checked'=>'peer-checked:border-blue-500 peer-checked:bg-blue-50',  'badge'=>'bg-blue-500',  'text'=>'text-blue-700'],
                                         'Contador'        => ['icon'=>'fa-calculator', 'border'=>'hover:border-orange-400','checked'=>'peer-checked:border-orange-500 peer-checked:bg-orange-50','badge'=>'bg-orange-500','text'=>'text-orange-700'],
                                         'Operaciones'     => ['icon'=>'fa-tools',         'border'=>'hover:border-teal-400',  'checked'=>'peer-checked:border-teal-500 peer-checked:bg-teal-50',  'badge'=>'bg-teal-500',  'text'=>'text-teal-700'],
+                                        'Marketing'       => ['icon'=>'fa-bullhorn',      'border'=>'hover:border-pink-400',  'checked'=>'peer-checked:border-pink-500 peer-checked:bg-pink-50',  'badge'=>'bg-pink-500',  'text'=>'text-pink-700'],
                                         'Cliente'        => ['icon'=>'fa-user-tag',         'border'=>'hover:border-emerald-400','checked'=>'peer-checked:border-emerald-500 peer-checked:bg-emerald-50','badge'=>'bg-emerald-500','text'=>'text-emerald-700'],
                                     ][$role->nombre] ?? ['icon'=>'fa-user','border'=>'hover:border-gray-400','checked'=>'peer-checked:border-gray-500 peer-checked:bg-gray-50','badge'=>'bg-gray-500','text'=>'text-gray-700'];
                                 @endphp
@@ -443,6 +446,7 @@
                                         'Logística'    => ['icon'=>'fa-warehouse',     'border'=>'hover:border-blue-400',  'checked'=>'peer-checked:border-blue-500 peer-checked:bg-blue-50',  'badge'=>'bg-blue-500',  'text'=>'text-blue-700'],
                                         'Contador'        => ['icon'=>'fa-calculator', 'border'=>'hover:border-orange-400','checked'=>'peer-checked:border-orange-500 peer-checked:bg-orange-50','badge'=>'bg-orange-500','text'=>'text-orange-700'],
                                         'Operaciones'     => ['icon'=>'fa-tools',         'border'=>'hover:border-teal-400',  'checked'=>'peer-checked:border-teal-500 peer-checked:bg-teal-50',  'badge'=>'bg-teal-500',  'text'=>'text-teal-700'],
+                                        'Marketing'       => ['icon'=>'fa-bullhorn',      'border'=>'hover:border-pink-400',  'checked'=>'peer-checked:border-pink-500 peer-checked:bg-pink-50',  'badge'=>'bg-pink-500',  'text'=>'text-pink-700'],
                                         'Cliente'        => ['icon'=>'fa-user-tag',         'border'=>'hover:border-emerald-400','checked'=>'peer-checked:border-emerald-500 peer-checked:bg-emerald-50','badge'=>'bg-emerald-500','text'=>'text-emerald-700'],
                                     ][$role->nombre] ?? ['icon'=>'fa-user','border'=>'hover:border-gray-400','checked'=>'peer-checked:border-gray-500 peer-checked:bg-gray-50','badge'=>'bg-gray-500','text'=>'text-gray-700'];
                                 @endphp

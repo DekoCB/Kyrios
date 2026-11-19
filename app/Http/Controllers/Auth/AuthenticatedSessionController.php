@@ -54,6 +54,7 @@ class AuthenticatedSessionController extends Controller
             \App\Models\Role::CONTADOR       => redirect()->route('contador.dashboard'),
             \App\Models\Role::LOGISTICA      => redirect()->route('logistica.dashboard'),
             \App\Models\Role::OPERACIONES    => redirect()->route('operaciones.dashboard'),
+            \App\Models\Role::MARKETING      => redirect()->route('marketing.dashboard'),
             \App\Models\Role::CLIENTE        => redirect()->route('cliente.dashboard'),
             default                            => redirect()->route('dashboard'),
         };
