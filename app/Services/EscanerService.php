@@ -178,6 +178,8 @@ class EscanerService
                     throw new \RuntimeException("Stock insuficiente de {$variante->codigo_kyrios}: hay {$anterior} y se intenta sacar {$cantidad}.");
                 }
 
+                StockAlmacen::exigirLibre($producto->id, $almacenId, $variante->id, $cantidad, $variante->codigo_kyrios);
+
                 $stock->decrement('cantidad', $cantidad);
                 $variante->decrement('stock_actual', $cantidad);
                 $producto->update(['stock_actual' => StockAlmacen::where('producto_id', $producto->id)->sum('cantidad')]);

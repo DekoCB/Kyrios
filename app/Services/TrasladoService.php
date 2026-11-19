@@ -90,6 +90,8 @@ class TrasladoService
             );
         }
 
+        StockAlmacen::exigirLibre($producto->id, $origenId, $varianteId, $cantidad, "Producto «" . \App\Support\EtiquetaProducto::rotulo($producto) . "»");
+
         MovimientoInventario::create([
             'producto_id'        => $producto->id,
             'almacen_id'         => $origenId,
@@ -145,6 +147,7 @@ class TrasladoService
                     ->where('numero_guia', $representante->numero_guia)
                     ->where('tipo_movimiento', 'transferencia')
                     ->where('estado', 'pendiente')
+                    ->lockForUpdate()
                     ->get()
                 : collect([$representante]);
 
@@ -189,6 +192,7 @@ class TrasladoService
                     ->where('numero_guia', $representante->numero_guia)
                     ->where('tipo_movimiento', 'transferencia')
                     ->where('estado', 'pendiente')
+                    ->lockForUpdate()
                     ->get()
                 : collect([$representante]);
 

@@ -360,6 +360,9 @@ public static function registrarMovimiento($datos)
         if ($stockNuevo < 0) {
             throw new \Exception('No hay suficiente stock para realizar este movimiento.');
         }
+        if (in_array($datos['tipo_movimiento'], ['salida', 'merma', 'transferencia'], true)) {
+            \App\Models\StockAlmacen::exigirLibre($datos['producto_id'], $datos['almacen_id'], $varianteId, (int) $cantidad);
+        }
 
         $stockAlmacen->update(['cantidad' => $stockNuevo]);
 

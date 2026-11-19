@@ -124,6 +124,22 @@ class StockAlmacen extends Model
             ->sum('cantidad');
     }
 
+    /**
+     * Una salida, merma o traslado no puede llevarse lo que una nota de pedido tiene apartado para un cliente.
+     * Lanza si lo libre (físico − apartado) no alcanza para la cantidad pedida.
+     */
+    public static function exigirLibre($productoId, $almacenId, $varianteId, int $cantidad, string $rotulo = ''): void
+    {
+        $apartado = self::reservadoEn($productoId, $almacenId, $varianteId);
+        if ($apartado < 1) {
+            return;
+        }
+        $libre = max(0, self::cantidadEn($productoId, $almacenId, $varianteId) - $apartado);
+        if ($libre < $cantidad) {
+            throw new \Exception(($rotulo !== '' ? "{$rotulo}: " : '') . "hay {$apartado} unidad(es) apartada(s) por notas de pedido; solo {$libre} están libres para mover o retirar.");
+        }
+    }
+
     /** Lo que realmente se puede vender: stock físico menos lo apartado por notas de pedido. */
     public static function disponibleEn($productoId, $almacenId, $varianteId = null, ?int $exceptoCotizacionId = null): int
     {
