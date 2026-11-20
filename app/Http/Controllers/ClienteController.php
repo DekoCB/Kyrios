@@ -19,9 +19,16 @@ class ClienteController extends Controller
         return auth()->user()->role->nombre ?? '';
     }
 
+    /** Base que se está viendo: «comercial» (por defecto) o «completa». Filtrar por lista de difusión siempre mira la completa. */
+    private function base(Request $request): string
+    {
+        return $request->input('base') === 'completa' || $this->listasPedidas($request) ? 'completa' : 'comercial';
+    }
+
     private function consulta(Request $request)
     {
         return Cliente::query()
+            ->when($this->base($request) === 'comercial', fn ($q) => $q->baseComercial())
             ->buscar($request->q)
             ->when($request->tipo_documento === 'SIN', fn ($q) => $q->whereNull('numero_documento'))
             ->when($request->filled('tipo_documento') && $request->tipo_documento !== 'SIN', fn ($q) => $q->where('tipo_documento', $request->tipo_documento))
@@ -87,13 +94,16 @@ class ClienteController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $base = $this->base($request);
+        $alcance = fn () => $base === 'comercial' ? Cliente::baseComercial() : Cliente::query();
         $stats = [
-            'total'    => Cliente::count(),
-            'activos'  => Cliente::where('estado', 'activo')->count(),
-            'empresas' => Cliente::where('tipo_documento', 'RUC')->count(),
-            'personas' => Cliente::whereIn('tipo_documento', ['DNI', 'CE'])->count(),
-            'prospectos' => Cliente::prospectos()->count(),
+            'total'    => $alcance()->count(),
+            'activos'  => $alcance()->where('estado', 'activo')->count(),
+            'empresas' => $alcance()->where('tipo_documento', 'RUC')->count(),
+            'personas' => $alcance()->whereIn('tipo_documento', ['DNI', 'CE'])->count(),
+            'prospectos' => $alcance()->prospectos()->count(),
         ];
+        $conteoBase = ['comercial' => Cliente::baseComercial()->count(), 'completa' => Cliente::count()];
 
         $canCreate = $this->rol() === 'Administración';
         $canEdit   = $canCreate;
@@ -101,7 +111,7 @@ class ClienteController extends Controller
 
         $conteoListas = $this->conteoListas();
 
-        return view('clientes.index', compact('clientes', 'stats', 'canCreate', 'canEdit', 'canDelete', 'conteoListas'));
+        return view('clientes.index', compact('clientes', 'stats', 'canCreate', 'canEdit', 'canDelete', 'conteoListas', 'base', 'conteoBase'));
     }
 
     public function create()

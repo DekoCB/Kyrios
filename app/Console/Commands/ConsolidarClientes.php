@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * Consolida la base de clientes con el Excel «Base de datos - Consolidado»:
  *  1. fusiona los duplicados evidentes,
- *  2. pone a cada cliente el ID que tiene en el Excel (KYR1 → KYR001) y crea los que falten,
+ *  2. pone a cada cliente el ID que tiene en el Excel (KYR1 → KYR001); quien no lo tenía queda sin ID; crea los que falten,
  *  3. importa el seguimiento comercial y los proyectos de cada fila,
  *  4. traduce los códigos numéricos del medio de contacto (6, 2…) a su significado.
  * Es repetible: el seguimiento y los proyectos importados se reemplazan; las fusiones ya hechas no se repiten.
@@ -494,29 +494,25 @@ class ConsolidarClientes extends Command
 
     // ------------------------------------------------------------------ IDs
 
+    /**
+     * El ID existe solo para quien lo tiene en el Excel (KYR001…KYR912). Quien no lo tenía (filas de 2026, lista de difusión,
+     * creados al importar) queda sin ID. Además se marca qué clientes pertenecen a la base comercial.
+     */
     private function asignarCodigos(array $filas, array $asignaciones): void
     {
         $codigos = [];   // cliente_id => número
         $alternos = [];  // cliente_id => [números repetidos]
-        $maxExcel = 0;
-        foreach ($filas as $f) {
-            $maxExcel = max($maxExcel, (int) ($f['id'] ?? 0));
-        }
-
-        $siguiente = $maxExcel + 1;
         foreach ($filas as $f) {
             $cid = $asignaciones[$f['fila']];
             $num = $f['id'] ?? null;
+            if (!$num) {
+                continue;
+            }
             if (!isset($codigos[$cid])) {
-                $codigos[$cid] = $num ?: $siguiente++;
-            } elseif ($num && $num != $codigos[$cid]) {
+                $codigos[$cid] = $num;
+            } elseif ($num != $codigos[$cid]) {
                 $alternos[$cid][] = $num;
             }
-        }
-        // clientes sin fila en el Excel (p. ej. lista de difusión): a continuación, en orden de alta
-        $sinFila = DB::table('clientes')->whereNotIn('id', array_keys($codigos))->orderBy('id')->pluck('id');
-        foreach ($sinFila as $cid) {
-            $codigos[$cid] = $siguiente++;
         }
 
         DB::table('clientes')->update(['codigo' => null]);
@@ -528,6 +524,18 @@ class ConsolidarClientes extends Command
             $notas = (string) DB::table('clientes')->where('id', $cid)->value('notas');
             if (!str_contains($notas, $txt)) {
                 DB::table('clientes')->where('id', $cid)->update(['notas' => trim($notas . "\n" . $txt)]);
+            }
+        }
+
+        // Base comercial: todo menos los contactos que solo existen en la lista de difusión
+        $enExcel = array_values(array_unique(array_values($asignaciones)));
+        foreach (array_chunk($enExcel, 500) as $lote) {
+            DB::table('clientes')->whereIn('id', $lote)->update(['en_base_comercial' => true]);
+        }
+        foreach (DB::table('clientes')->whereNotNull('listas_difusion')->whereNull('telefono')->whereNull('email')->whereNull('numero_documento')
+            ->where('created_at', '>=', '2026-10-29 00:00:00')->where('created_at', '<', '2026-10-30 00:00:00')->pluck('id') as $id) {
+            if (!in_array($id, $enExcel, true)) {
+                DB::table('clientes')->where('id', $id)->update(['en_base_comercial' => false]);
             }
         }
     }

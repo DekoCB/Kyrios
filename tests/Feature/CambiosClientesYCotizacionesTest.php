@@ -184,4 +184,58 @@ class CambiosClientesYCotizacionesTest extends TestCase
         $this->assertSame(0, ClienteProyecto::count());
         $this->assertNotSame('KYR007', Cliente::first()->codigo);
     }
+
+    // ---------------------------------------------------------------- base comercial / base completa
+
+    private function difusion(string $nombre): Cliente
+    {
+        return Cliente::create(['nombre' => $nombre, 'estado' => 'activo', 'listas_difusion' => ['mujer'], 'origen' => 'Lista de difusión', 'en_base_comercial' => false]);
+    }
+
+    public function test_el_listado_muestra_por_defecto_solo_la_base_comercial(): void
+    {
+        Cliente::create(['nombre' => 'Comercial Uno', 'estado' => 'activo']);
+        $this->difusion('Contacto Difusion');
+
+        $this->get(route('clientes.index'))->assertOk()->assertSee('Comercial Uno')->assertDontSee('Contacto Difusion')->assertSee('Base comercial')->assertSee('Base completa');
+        $this->get(route('clientes.index', ['base' => 'completa']))->assertOk()->assertSee('Comercial Uno')->assertSee('Contacto Difusion');
+    }
+
+    public function test_filtrar_por_lista_de_difusion_mira_la_base_completa(): void
+    {
+        $this->difusion('Contacto Difusion');
+
+        $this->get(route('clientes.index', ['lista' => 'mujer']))->assertOk()->assertSee('Contacto Difusion');
+    }
+
+    public function test_solo_la_base_comercial_lleva_id_correlativo(): void
+    {
+        Cliente::create(['nombre' => 'Con ID', 'estado' => 'activo'])->forceFill(['codigo' => 'KYR912'])->save();
+        $nuevo = Cliente::create(['nombre' => 'Registrado en el sistema', 'estado' => 'activo']);
+        $difusion = $this->difusion('Solo difusion');
+
+        $this->assertSame('KYR913', $nuevo->codigo, 'sigue la correlación del Excel');
+        $this->assertNull($difusion->codigo, 'la lista de difusión no lleva ID');
+    }
+
+    public function test_quien_no_tenia_id_en_el_excel_queda_sin_id_pero_en_la_base_comercial(): void
+    {
+        $sin = Cliente::create(['nombre' => 'Sandra Valderrama', 'estado' => 'activo', 'created_at' => '2013-06-26 00:00:00']);
+        $dif = $this->difusion('Contacto Aparte');
+        $this->consolidar([$this->fila(['id' => null])]);
+
+        $this->assertNull($sin->fresh()->codigo);
+        $this->assertTrue($sin->fresh()->en_base_comercial);
+        $this->assertFalse($dif->fresh()->en_base_comercial);
+        $this->assertNull($dif->fresh()->codigo);
+    }
+
+    public function test_el_listado_muestra_sin_id_cuando_no_hay_codigo(): void
+    {
+        $c = Cliente::create(['nombre' => 'Sin codigo', 'estado' => 'activo']);
+        $c->forceFill(['codigo' => null])->save();
+
+        $this->get(route('clientes.index'))->assertOk()->assertSee('Sin codigo')->assertSee('Sin ID');
+        $this->get(route('clientes.show', $c))->assertOk();
+    }
 }

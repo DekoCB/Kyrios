@@ -67,7 +67,7 @@
                 </div>
                 <dl class="space-y-2">
                     @if($cliente->es_prospecto)
-                        <div><dt class="text-xs text-gray-400 uppercase">ID de cliente</dt><dd class="font-mono font-semibold text-blue-700">{{ $cliente->codigo }}</dd></div>
+                        <div><dt class="text-xs text-gray-400 uppercase">ID de cliente</dt><dd class="font-mono font-semibold text-blue-700">{{ $cliente->codigo ?? '—' }}</dd></div>
                         <div><dt class="text-xs text-gray-400 uppercase">Documento</dt><dd><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700">Prospecto</span> <span class="text-xs text-gray-500">completar al editar</span></dd></div>
                     @else
                         @php $fuente = $cliente->tipo_documento === 'RUC' ? 'SUNAT' : 'RENIEC'; @endphp

@@ -22,6 +22,17 @@
             <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded"><i class="fas fa-exclamation-circle mr-2"></i>{{ session('error') }}</div>
         @endif
 
+        {{-- Base comercial / base completa --}}
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            @foreach(['comercial' => ['Base comercial', 'fa-address-book', 'Los contactos del Excel comercial y los que se registran en el sistema'], 'completa' => ['Base completa', 'fa-users', 'Incluye además los contactos de la lista de difusión (solo nombre)']] as $clave => [$titulo, $icono, $ayuda])
+                <a href="{{ route('clientes.index', array_merge(request()->except(['base', 'page']), ['base' => $clave])) }}" title="{{ $ayuda }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border {{ $base === $clave ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                    <i class="fas {{ $icono }}"></i>{{ $titulo }} <span class="{{ $base === $clave ? 'text-blue-100' : 'text-gray-400' }}">{{ number_format($conteoBase[$clave]) }}</span>
+                </a>
+            @endforeach
+            @if(request()->filled('lista') || request()->filled('listas'))<span class="text-xs text-gray-500">Al filtrar por lista de difusión se muestra la base completa.</span>@endif
+        </div>
+
         {{-- Resumen --}}
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             @foreach([
@@ -151,7 +162,7 @@
                     @forelse($clientes as $cliente)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 text-sm whitespace-nowrap">
-                                <div class="font-mono font-semibold text-blue-700">{{ $cliente->codigo }}</div>
+                                @if($cliente->codigo)<div class="font-mono font-semibold text-blue-700">{{ $cliente->codigo }}</div>@else<div class="text-xs text-gray-400">Sin ID</div>@endif
                                 @if($cliente->es_prospecto && !$cliente->dni && !$cliente->ruc)
                                     <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700" title="Aún sin documento">Prospecto</span>
                                 @else

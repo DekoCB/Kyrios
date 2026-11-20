@@ -10,6 +10,7 @@ class Cliente extends Model
     use HasFactory;
 
     protected $fillable = [
+        'en_base_comercial',
         'tipo_documento',
         'numero_documento',
         'dni_complementario',
@@ -50,6 +51,7 @@ class Cliente extends Model
     ];
 
     protected $casts = [
+        'en_base_comercial' => 'boolean',
         'fecha_cumpleanos' => 'date',
         'ultima_atencion_en' => 'date',
         'listas_difusion'  => 'array',
@@ -84,7 +86,8 @@ class Cliente extends Model
     protected static function booted(): void
     {
         static::creating(function (Cliente $cliente) {
-            if (blank($cliente->codigo)) {
+            // Solo la base comercial lleva ID correlativo; la lista de difusión no
+            if (blank($cliente->codigo) && $cliente->en_base_comercial !== false) {
                 $ultimo = (int) static::query()->max(\Illuminate\Support\Facades\DB::raw('CAST(SUBSTRING(codigo, 4) AS UNSIGNED)'));
                 $cliente->codigo = 'KYR' . str_pad((string) ($ultimo + 1), 3, '0', STR_PAD_LEFT);
             }
@@ -205,6 +208,12 @@ class Cliente extends Model
     public function getEsProspectoAttribute(): bool
     {
         return $this->numero_documento === null || $this->numero_documento === '';
+    }
+
+    /** Base comercial: los del Excel y los registrados en el sistema (sin los contactos que solo están en difusión). */
+    public function scopeBaseComercial($query)
+    {
+        return $query->where('en_base_comercial', true);
     }
 
     public function scopeProspectos($query)

@@ -80,6 +80,7 @@ class ImportarDifusionClientes extends Command
                     'estado'          => 'activo',
                     'listas_difusion' => $this->ordenar($dato['listas']),
                     'origen'          => 'Lista de difusión',
+                    'en_base_comercial' => false,
                 ]);
             }
         }
