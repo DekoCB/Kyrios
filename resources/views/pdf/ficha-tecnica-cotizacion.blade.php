@@ -3,35 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <style>
+<style>
+/* Carlito = clon libre de Calibri, la tipografía de la ficha original (se registra en FuentesPdf) */
 /* sin «*»: un margin:0 universal anula el margen de @page en dompdf */
 body, div, p, h1, h2, table, td, th, img, ul, li { margin: 0; padding: 0; box-sizing: border-box; }
-@page { margin: 34mm 18mm 22mm 18mm; }
-body { font-family: DejaVu Sans, sans-serif; font-size: 8pt; color: #1a1a1a; }
+@page { margin: 41mm 20mm 40mm 21mm; }
+body { font-family: Carlito, Calibri, sans-serif; font-size: 9.5pt; color: #000; }
 
 /* Banda gris con el logo y pie con la web, en cada hoja */
-.enc { position: fixed; top: -34mm; left: -18mm; right: -18mm; height: 27mm; background: #ededed; }
-.enc img { position: absolute; left: 18mm; top: 6mm; height: 15mm; }
-.pie { position: fixed; bottom: -17mm; left: 0; right: 0; border-top: 2px solid #000; padding-top: 2.5mm; text-align: right; font-size: 8pt; }
+.enc { position: fixed; top: -41mm; left: -21mm; width: 210mm; height: 36mm; }
+.enc .banda { position: absolute; top: 9.2mm; left: 0; width: 210mm; height: 19.5mm; background: #efefef; }
+.enc img { position: absolute; left: 13.5mm; top: 11.5mm; height: 15.5mm; }
+.pie { position: fixed; top: 233mm; left: 0; width: 171mm; border-top: 2px solid #000; padding-top: 2mm; text-align: right; font-size: 8.5pt; }
 
 .ficha { page-break-after: always; }
 .ficha:last-child { page-break-after: auto; }
-h1.titulo { font-size: 14pt; padding: 2mm 0 1.5mm; border-bottom: 2px solid #000; margin-bottom: 3mm; }
-.sellos { margin-bottom: 3mm; }
-.sello { display: inline-block; border: 1px solid #555; padding: 1mm 2.5mm; font-size: 8pt; margin-right: 2mm; color: #333; }
+h1.titulo { font-size: 14.5pt; padding: 0 0 0.8mm; border-bottom: 2px solid #000; margin-bottom: 1.2mm; }
+.sellos { text-align: left; margin: 1.5mm 0 0 1mm; height: 8mm; }
+.sellos img { height: 6.5mm; margin-right: 1.2mm; }
+.sellos img { max-width: none; max-height: none; margin: 0 1.2mm 0 0; }
 
 table.cuerpo { width: 100%; border-collapse: collapse; }
 table.cuerpo > tbody > tr > td { vertical-align: top; }
-td.izq { width: 38%; padding-right: 6mm; text-align: center; }
-td.izq img { max-width: 64mm; max-height: 72mm; margin-bottom: 4mm; }
-.sin-foto { border: 1px dashed #bbb; color: #999; padding: 22mm 0; font-size: 8pt; margin-bottom: 4mm; }
+td.izq { width: 65mm; padding-right: 4mm; text-align: center; }
+td.izq img.foto { max-width: 36mm; max-height: 38mm; margin: 4mm 0 0; }
+.sin-foto { border: 1px dashed #bbb; color: #999; padding: 18mm 0; font-size: 8.5pt; }
 
-.barra { background: #ececec; font-weight: bold; font-size: 7.5pt; padding: 1.2mm 2mm; margin-bottom: 2mm; }
-.aplic { font-size: 7.5pt; line-height: 1.4; text-align: justify; margin-bottom: 8mm; padding: 0 1mm; }
-table.spec { width: 100%; border-collapse: collapse; margin-bottom: 4mm; border-bottom: 1.5px solid #000; padding-bottom: 2mm; }
-table.spec td { font-size: 8pt; padding: 1.7mm 2mm; border-bottom: 1px solid #e3e3e3; vertical-align: top; }
-table.spec td.e { width: 38%; font-weight: bold; }
-.cant { font-size: 8pt; color: #444; margin-bottom: 2mm; text-align: right; }
-.codigos { font-size: 7pt; color: #666; margin-top: -1mm; margin-bottom: 3mm; }
+.barra { background: #dedede; font-weight: bold; font-size: 8.5pt; padding: 0.9mm 2mm; margin-bottom: 1.5mm; }
+.aplic { font-size: 8.5pt; line-height: 1.32; text-align: justify; height: 31mm; padding: 0 1mm; border-bottom: 1px solid #000; margin-bottom: 1.5mm; }
+.espec { height: 122mm; border-bottom: 1px solid #000; }
+table.spec { width: 100%; border-collapse: collapse; }
+table.spec td { font-size: 9pt; padding: 0.7mm 2mm; border-bottom: 1px solid #e3e3e3; vertical-align: top; }
+table.spec td.e { width: 30mm; font-weight: bold; }
+.sin-datos { font-size: 8.5pt; color: #777; padding: 2mm; }
 </style>
 </head>
 <body>
@@ -45,7 +49,7 @@ table.spec td.e { width: 38%; font-weight: bold; }
         ->unique(fn ($d) => $d->producto_id . '-' . ($d->variante_id ?? 0))->values();
 @endphp
 
-<div class="enc">@if($logo)<img src="{{ $logo }}" alt="Kyrios">@endif</div>
+<div class="enc"><div class="banda"></div>@if($logo)<img src="{{ $logo }}" alt="Kyrios">@endif</div>
 <div class="pie">Website: {{ $web }}</div>
 
 @foreach($detalles as $d)
@@ -89,19 +93,19 @@ table.spec td.e { width: 38%; font-weight: bold; }
     @endphp
     <div class="ficha">
         <h1 class="titulo">{{ $d->nombre_mostrar }}</h1>
-        <div class="cant">Cantidad cotizada: {{ $d->cantidad }}</div>
-        @if($sello)<div class="sellos"><span class="sello">LED</span></div>@endif
 
         <table class="cuerpo">
             <tr>
                 <td class="izq">
-                    @forelse($fotos as $f)<img src="{{ $f }}" alt="">@empty<div class="sin-foto">Sin foto</div>@endforelse
+                    <div class="sellos">@if($sello)<img src="{{ public_path('img/proforma/sello-led.png') }}" alt="LED">@endif</div>
+                    @forelse($fotos as $f)<img class="foto" src="{{ $f }}" alt="">@empty<div class="sin-foto">Sin foto</div>@endforelse
                 </td>
                 <td>
                     <div class="barra">Aplicaciones</div>
                     <div class="aplic">{{ $aplicaciones ?: '—' }}</div>
 
                     <div class="barra">Especificaciones técnicas</div>
+                    <div class="espec">
                     @if($filas)
                         <table class="spec">
                             @foreach($filas as $etiqueta => $valor)
@@ -109,8 +113,9 @@ table.spec td.e { width: 38%; font-weight: bold; }
                             @endforeach
                         </table>
                     @else
-                        <p style="font-size:7.5pt;color:#777;padding:2mm">Sin características técnicas registradas.</p>
+                        <p class="sin-datos">Sin características técnicas registradas.</p>
                     @endif
+                    </div>
                 </td>
             </tr>
         </table>

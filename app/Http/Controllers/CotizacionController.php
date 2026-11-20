@@ -245,8 +245,10 @@ class CotizacionController extends Controller
 
         $empresa = Empresa::first() ?? new Empresa(['razon_social' => config('app.name'), 'ruc' => '']);
 
-        return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
-            ->loadView('pdf.ficha-tecnica-cotizacion', compact('cotizacion', 'empresa'))
+        $pdf = Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()]);
+        \App\Support\FuentesPdf::carlito($pdf->getDomPDF());
+
+        return $pdf->loadView('pdf.ficha-tecnica-cotizacion', compact('cotizacion', 'empresa'))
             ->setPaper('A4', 'portrait')
             ->stream('ficha-tecnica-' . $cotizacion->codigo . '.pdf');
     }
