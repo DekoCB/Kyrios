@@ -32,6 +32,7 @@
                     <tr>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nota</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emitida por</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Almacén</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entrega</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Líneas</th>
@@ -44,6 +45,7 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3 font-semibold text-gray-900">{{ $n->codigo }}<p class="text-xs font-normal text-gray-400">Cotización {{ $n->cotizacion?->codigo }}</p></td>
                             <td class="px-4 py-3 text-gray-700">{{ $n->cliente?->nombre ?? '—' }}</td>
+                            <td class="px-4 py-3 text-gray-700">{{ $n->creador?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-700">{{ $n->almacen?->nombre ?? '—' }}</td>
                             <td class="px-4 py-3 text-gray-700 whitespace-nowrap">{{ $n->fecha_entrega?->format('d/m/Y') ?? 'Por coordinar' }}</td>
                             <td class="px-4 py-3 text-center text-gray-600">{{ $n->detalles_count }}</td>
@@ -51,7 +53,7 @@
                             <td class="px-4 py-3 text-right"><a href="{{ route('notas-pedido.show', $n) }}" class="text-blue-600 hover:text-blue-800" title="Ver"><i class="fas fa-eye"></i></a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-6 py-12 text-center text-gray-500">No hay notas de pedido en esta vista. Se generan desde una cotización aceptada.</td></tr>
+                        <tr><td colspan="8" class="px-6 py-12 text-center text-gray-500">No hay notas de pedido en esta vista. Se generan desde una cotización aceptada.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -24,7 +24,7 @@ class NotaPedidoController extends Controller
     {
         $estado = array_key_exists($request->query('estado'), NotaPedido::ESTADOS) || $request->query('estado') === 'abiertas' ? $request->query('estado') : 'abiertas';
 
-        $notas = NotaPedido::with(['cliente', 'almacen', 'cotizacion'])->withCount('detalles')
+        $notas = NotaPedido::with(['cliente', 'almacen', 'cotizacion', 'creador'])->withCount('detalles')
             ->when($estado === 'abiertas', fn ($q) => $q->whereIn('estado', ['pendiente', 'en_preparacion', 'lista']))
             ->when($estado !== 'abiertas', fn ($q) => $q->where('estado', $estado))
             ->orderByRaw('fecha_entrega is null')->orderBy('fecha_entrega')->orderByDesc('id')

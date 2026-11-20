@@ -42,6 +42,8 @@ class Cliente extends Model
         'comision',
         'preferencias',
         'asesor',
+        'ultima_atencion_por',
+        'ultima_atencion_en',
         'origen',
         'verificacion',
         'verificado_at',
@@ -49,6 +51,7 @@ class Cliente extends Model
 
     protected $casts = [
         'fecha_cumpleanos' => 'date',
+        'ultima_atencion_en' => 'date',
         'listas_difusion'  => 'array',
         'verificado_at'    => 'datetime',
         'comision'         => 'decimal:2',
@@ -108,6 +111,16 @@ class Cliente extends Model
     public function cotizaciones()
     {
         return $this->hasMany(Cotizacion::class);
+    }
+
+    public function seguimientos()
+    {
+        return $this->hasMany(ClienteSeguimiento::class)->orderByDesc('fecha')->orderByDesc('id');
+    }
+
+    public function proyectos()
+    {
+        return $this->hasMany(ClienteProyecto::class)->orderByDesc('fecha_recepcion')->orderByDesc('id');
     }
 
     public function cuentasPorCobrar()

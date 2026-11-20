@@ -289,11 +289,14 @@ class ClienteController extends Controller
         ];
         $resumen['ticket_promedio'] = $resumen['ventas'] > 0 ? $resumen['total_comprado'] / $resumen['ventas'] : 0.0;
 
+        $seguimientos = $cliente->seguimientos()->get();
+        $proyectos = $cliente->proyectos()->get();
+
         $canEdit = $this->rol() === 'Administración';
         $canDelete = in_array($this->rol(), ['Administración', 'Contador'], true);
         $soloSolicita = $this->rol() !== 'Administración';
 
-        return view('clientes.show', compact('cliente', 'ventas', 'cotizaciones', 'resumen', 'canEdit', 'canDelete', 'soloSolicita'));
+        return view('clientes.show', compact('cliente', 'ventas', 'cotizaciones', 'resumen', 'seguimientos', 'proyectos', 'canEdit', 'canDelete', 'soloSolicita'));
     }
 
     public function edit(Cliente $cliente)

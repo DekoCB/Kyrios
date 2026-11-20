@@ -553,6 +553,12 @@ Route::middleware('auth')->group(function () {
     // ========================================
     Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administración')->group(function () {
         $c = \App\Http\Controllers\CotizacionController::class;
+        // Opciones de piso y ambiente (antes del comodín /{cotizacion})
+        $u = \App\Http\Controllers\OpcionUbicacionController::class;
+        Route::get('/ubicaciones', [$u, 'index'])->name('ubicaciones.index');
+        Route::post('/ubicaciones', [$u, 'store'])->name('ubicaciones.store');
+        Route::put('/ubicaciones/{opcion}', [$u, 'update'])->name('ubicaciones.update');
+        Route::delete('/ubicaciones/{opcion}', [$u, 'destroy'])->name('ubicaciones.destroy');
         Route::get('/create', [$c, 'create'])->name('create');
         Route::post('/', [$c, 'store'])->name('store');
         // Plantilla de homologación (antes del comodín /{cotizacion})

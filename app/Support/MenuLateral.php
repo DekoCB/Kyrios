@@ -139,12 +139,13 @@ class MenuLateral
             self::grupo('cotizaciones', 'Cotizaciones', 'fa-file-contract', [
                 self::enlace('Cotizaciones', 'fa-file-contract', 'cotizaciones.index', ['cotizaciones.*']),
                 self::enlace('Notas de pedido', 'fa-clipboard-list', 'notas-pedido.index', ['notas-pedido.*']),
+                self::enlace('Pisos y ambientes', 'fa-building', 'cotizaciones.ubicaciones.index', ['cotizaciones.ubicaciones.*']),
                 self::enlace('Pedidos internos', 'fa-dolly', 'pedidos-internos.index', ['pedidos-internos.*']),
             ]),
             self::enlace('Clientes', 'fa-users', 'clientes.index', ['clientes.*']),
             self::grupo('ventas', 'Ventas', 'fa-cash-register', [
                 self::enlace('Registrar ventas', 'fa-receipt', 'ventas.index', ['ventas.index', 'ventas.create', 'ventas.show', 'ventas.edit']),
-                self::enlace('Cola de cobro', 'fa-list-ol', 'cajero.cola', ['cajero.cola*']),
+                self::enlace('Cola de cobros', 'fa-list-ol', 'cajero.cola', ['cajero.cola*']),
                 self::enlace('Cuentas por cobrar', 'fa-hand-holding-usd', 'cuentas-por-cobrar.index', ['cuentas-por-cobrar.*'], self::cuentasPorCobrarVencidas()),
                 self::enlace('Devoluciones', 'fa-undo-alt', 'devoluciones.index', ['devoluciones.*']),
                 self::enlace('Comisiones', 'fa-percentage', 'comisiones.index', ['comisiones.*']),

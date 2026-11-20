@@ -67,6 +67,7 @@
                 </div>
                 <dl class="space-y-2">
                     @if($cliente->es_prospecto)
+                        <div><dt class="text-xs text-gray-400 uppercase">ID de cliente</dt><dd class="font-mono font-semibold text-blue-700">{{ $cliente->codigo }}</dd></div>
                         <div><dt class="text-xs text-gray-400 uppercase">Documento</dt><dd><span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700">Prospecto</span> <span class="text-xs text-gray-500">completar al editar</span></dd></div>
                     @else
                         @php $fuente = $cliente->tipo_documento === 'RUC' ? 'SUNAT' : 'RENIEC'; @endphp
@@ -162,6 +163,63 @@
                         </table>
                     </div>
                 </div>
+
+                {{-- Proyectos --}}
+                @if($proyectos->isNotEmpty())
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b flex items-center justify-between"><h3 class="font-semibold text-gray-900">Proyectos</h3><span class="text-xs text-gray-400">{{ $proyectos->count() }}</span></div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50 text-xs text-gray-500 uppercase"><tr>
+                                <th class="px-4 py-2 text-left">Proyecto</th><th class="px-4 py-2 text-left">A cargo</th><th class="px-4 py-2 text-left">Recibido</th><th class="px-4 py-2 text-left">Entrega</th><th class="px-4 py-2 text-right">Presupuesto</th><th class="px-4 py-2 text-right">Vendido</th><th class="px-4 py-2 text-left">Resultado</th>
+                            </tr></thead>
+                            <tbody class="divide-y divide-gray-100">
+                                @foreach($proyectos as $p)
+                                    <tr class="hover:bg-gray-50 align-top">
+                                        <td class="px-4 py-2"><span class="font-medium text-gray-900">{{ $p->nombre ?? 'Sin nombre' }}</span>@if($p->codigo)<span class="block text-xs font-mono text-gray-400">{{ $p->codigo }}</span>@endif @if($p->seguimiento)<span class="block text-xs text-gray-500 mt-0.5">{{ $p->seguimiento }}</span>@endif</td>
+                                        <td class="px-4 py-2 text-gray-600">{{ $p->persona_a_cargo ?? '—' }}@if($p->prioridad)<span class="block text-xs text-gray-400">Prioridad {{ strtolower($p->prioridad) }}</span>@endif</td>
+                                        <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{{ $p->fecha_recepcion?->format('d/m/Y') ?? '—' }}</td>
+                                        <td class="px-4 py-2 text-gray-500 whitespace-nowrap">{{ ($p->fecha_entrega_real ?? $p->fecha_entrega_aprox)?->format('d/m/Y') ?? '—' }}@if(!$p->fecha_entrega_real && $p->fecha_entrega_aprox)<span class="block text-xs text-gray-400">aprox.</span>@endif</td>
+                                        <td class="px-4 py-2 text-right whitespace-nowrap">{{ $p->monto_presupuestado !== null ? $p->simbolo . ' ' . number_format($p->monto_presupuestado, 2) : '—' }}</td>
+                                        <td class="px-4 py-2 text-right whitespace-nowrap font-semibold">{{ $p->monto_vendido !== null ? $p->simbolo . ' ' . number_format($p->monto_vendido, 2) : '—' }}</td>
+                                        <td class="px-4 py-2">@if($p->resultado)<span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ \App\Models\ClienteProyecto::RESULTADOS[$p->resultado] ?? 'bg-gray-100 text-gray-700' }}">{{ $p->resultado }}</span>@else — @endif</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Seguimiento comercial --}}
+                @if($seguimientos->isNotEmpty())
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b flex items-center justify-between"><h3 class="font-semibold text-gray-900">Seguimiento comercial</h3><span class="text-xs text-gray-400">{{ $seguimientos->count() }}</span></div>
+                    <div class="divide-y divide-gray-100 text-sm">
+                        @foreach($seguimientos as $s)
+                            <div class="px-5 py-3">
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    @if($s->tipo)<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">{{ $s->tipo }}</span>@endif
+                                    @if($s->situacion)<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">{{ $s->situacion }}</span>@endif
+                                    @if($s->busca)<span class="text-gray-800">{{ $s->busca }}</span>@endif
+                                    <span class="ml-auto text-xs text-gray-400">{{ collect([$s->atendido_por ? 'Atendió ' . $s->atendido_por : null, $s->fecha?->format('d/m/Y')])->filter()->implode(' · ') }}</span>
+                                </div>
+                                @if($s->ultimo_estado)<p class="text-gray-600 mt-1">{{ $s->ultimo_estado }}</p>@endif
+                                <p class="text-xs text-gray-500 mt-1">
+                                    {{ collect([
+                                        $s->monto_presupuestado !== null ? 'Presupuestado ' . $s->simbolo . ' ' . number_format($s->monto_presupuestado, 2) : null,
+                                        $s->monto_comprado !== null ? 'Comprado ' . $s->simbolo . ' ' . number_format($s->monto_comprado, 2) : null,
+                                        $s->probabilidad !== null ? 'Probabilidad de venta ' . $s->probabilidad . '%' : null,
+                                        $s->resumen_visita ? 'Visita: ' . $s->resumen_visita : null,
+                                        $s->medio_contacto ? 'Llegó por: ' . $s->medio_contacto : null,
+                                    ])->filter()->implode(' · ') }}
+                                </p>
+                                @if($s->observaciones)<p class="text-xs text-gray-400 mt-0.5">{{ $s->observaciones }}</p>@endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
     </div>

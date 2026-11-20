@@ -61,8 +61,8 @@ class MenuLateralTest extends TestCase
         $grupos = collect($menu)->where('tipo', 'grupo')->keyBy('id');
         $rutas = fn (string $id) => collect($grupos[$id]['hijos'])->pluck('ruta')->all();
 
-        // Cotizaciones engloba las notas de pedido y los pedidos internos
-        $this->assertEqualsCanonicalizing(['cotizaciones.index', 'notas-pedido.index', 'pedidos-internos.index'], $rutas('cotizaciones'));
+        // Cotizaciones engloba las notas de pedido, los pisos y ambientes y los pedidos internos
+        $this->assertEqualsCanonicalizing(['cotizaciones.index', 'notas-pedido.index', 'cotizaciones.ubicaciones.index', 'pedidos-internos.index'], $rutas('cotizaciones'));
         // Asistencias: Mi asistencia y Control
         $this->assertContains('rrhh.mi-asistencia', $rutas('asistencias'));
         $this->assertContains('rrhh.asistencia.control', $rutas('asistencias'));

@@ -28,10 +28,36 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('adjuntosCampo', () => ({
         lista: [], aviso: '',
-        async agregar(ev) {
+        agregar(ev) {
             const input = ev.target;
             const nuevos = Array.from(input.files);
             input.value = '';
+            return this.procesar(nuevos);
+        },
+        /* Ctrl+V sobre el campo: toma las imágenes del portapapeles (un texto pegado no se toca). */
+        pegar(ev) {
+            const imgs = Array.from(ev.clipboardData?.items || []).filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
+            if (!imgs.length) return;
+            ev.preventDefault();
+            return this.procesar(imgs.map((f, n) => new File([f], 'captura-' + Date.now() + (n ? '-' + n : '') + '.' + (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg'), { type: f.type })));
+        },
+        /* Botón «Pegar imagen»: lee el portapapeles con permiso del navegador. */
+        async pegarPortapapeles() {
+            this.aviso = '';
+            try {
+                const items = await navigator.clipboard.read();
+                const archivos = [];
+                for (const it of items) {
+                    const tipo = it.types.find(t => t.startsWith('image/'));
+                    if (tipo) { const b = await it.getType(tipo); archivos.push(new File([b], 'captura-' + Date.now() + '-' + archivos.length + '.' + tipo.split('/')[1], { type: tipo })); }
+                }
+                if (!archivos.length) { this.aviso = 'No hay ninguna imagen copiada en el portapapeles.'; return; }
+                await this.procesar(archivos);
+            } catch (e) {
+                this.aviso = 'El navegador no dejó leer el portapapeles. Haz clic en esta zona y presiona Ctrl+V.';
+            }
+        },
+        async procesar(nuevos) {
             if (!nuevos.length) return;
             this.aviso = '';
             this.$dispatch('adjuntos-ocupado', 1);

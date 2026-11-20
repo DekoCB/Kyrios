@@ -36,9 +36,10 @@
             @endif
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Estado</p><p class="mt-1"><span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ \App\Models\NotaPedido::ESTADOS[$nota->estado][1] }}">{{ $nota->estado_nombre }}</span></p></div>
             <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Cliente</p><p class="font-semibold text-gray-900">{{ $nota->cliente?->nombre ?? '—' }}</p></div>
+            <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Emitida por</p><p class="font-semibold text-gray-900">{{ $nota->creador?->name ?? '—' }}</p><p class="text-xs text-gray-400">{{ $nota->created_at?->format('d/m/Y H:i') }}</p></div>
             <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Almacén</p><p class="font-semibold text-gray-900">{{ $nota->almacen?->nombre ?? '—' }}</p></div>
             <div class="bg-white rounded-xl shadow-sm p-4"><p class="text-xs text-gray-500 uppercase">Entrega</p><p class="font-semibold text-gray-900">{{ $nota->fecha_entrega?->format('d/m/Y') ?? 'Por coordinar' }}</p></div>
         </div>

@@ -191,8 +191,8 @@
                                     </template>
                                 </tbody>
                             </table>
-                            <datalist id="lista-pisos">@foreach(\App\Support\SeccionesProforma::PISOS as $p)<option value="{{ $p }}">@endforeach</datalist>
-                            <datalist id="lista-ambientes">@foreach(\App\Support\SeccionesProforma::AMBIENTES as $a)<option value="{{ $a }}">@endforeach</datalist>
+                            <datalist id="lista-pisos">@foreach(\App\Models\OpcionUbicacion::nombres('piso') as $p)<option value="{{ $p }}">@endforeach</datalist>
+                            <datalist id="lista-ambientes">@foreach(\App\Models\OpcionUbicacion::nombres('ambiente') as $a)<option value="{{ $a }}">@endforeach</datalist>
                             <p x-show="sinUbicacion > 0" x-cloak class="text-xs text-amber-700 mt-2">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <span x-text="sinUbicacion"></span> producto(s) sin <span x-text="formato === 'piso' ? 'piso' : 'ambiente'"></span>: saldrán bajo el título «SIN <span x-text="formato === 'piso' ? 'PISO' : 'AMBIENTE'"></span>».

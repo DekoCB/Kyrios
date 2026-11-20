@@ -1,7 +1,7 @@
 {{-- Fotos o escaneos de un comprobante. Se pueden tomar o elegir varias, una por una; cada foto se reduce en el
      dispositivo antes de enviarse (un celular entrega fotos de 5 a 10 MB y la subida es lo que hace "colgar" el guardado).
      Variables: $nombre = expresión Alpine con el nombre del campo, ej. "'adjuntos[]'" o "'conceptos[' + i + '][adjuntos][]'" --}}
-<div x-data="adjuntosCampo()" class="space-y-1">
+<div x-data="adjuntosCampo()" class="space-y-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300" tabindex="0" @paste="pegar($event)">
     <div class="flex flex-wrap gap-2">
         <label class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer">
             <i class="fas fa-camera"></i> Tomar foto
@@ -11,7 +11,11 @@
             <i class="fas fa-file-upload"></i> Subir archivo / escaneo
             <input type="file" accept="image/*,application/pdf" multiple class="hidden" @change="agregar($event)">
         </label>
+        <button type="button" @click="pegarPortapapeles()" class="inline-flex items-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-3 py-2 rounded-lg" title="Pega la imagen copiada (también funciona con Ctrl+V sobre esta zona)">
+            <i class="fas fa-paste"></i> Pegar imagen
+        </button>
     </div>
+    <p class="text-xs text-gray-400">Con una imagen copiada, pulsa «Pegar imagen» o haz clic aquí y presiona Ctrl+V.</p>
     {{-- Aquí viajan los archivos reducidos --}}
     <input type="file" multiple class="hidden" x-ref="salida" :name="{{ $nombre }}">
     <ul class="flex flex-wrap gap-1 text-xs" x-show="lista.length" x-cloak>

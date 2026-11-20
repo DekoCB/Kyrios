@@ -166,4 +166,12 @@ class ReservaStockNotaPedidoTest extends TestCase
         $otra = $this->cotizacion(5);
         $this->get(route('cotizaciones.show', $otra))->assertOk();
     }
+
+    public function test_la_nota_muestra_que_usuario_la_emitio(): void
+    {
+        [, $nota] = $this->conNota(2);
+
+        $this->get(route('notas-pedido.index'))->assertOk()->assertSee('Emitida por')->assertSee($this->admin->name);
+        $this->get(route('notas-pedido.show', $nota))->assertOk()->assertSee('Emitida por')->assertSee($this->admin->name);
+    }
 }
