@@ -24,6 +24,7 @@ class User extends Authenticatable
         'almacen_id',
         'telefono',
         'dni',
+        'fecha_nacimiento',
         'estado',
     ];
 
@@ -46,6 +47,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'fecha_nacimiento' => 'date',
             'password' => 'hashed',
         ];
     }

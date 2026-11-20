@@ -91,7 +91,7 @@ class ClientesLogosTest extends TestCase
         $this->como('Administración');
         Cliente::create($this->datos());
 
-        $r = $this->get(route('clientes.exportar'))->assertOk();
+        $r = $this->get(route('clientes.exportar', ['formato' => 'csv']))->assertOk();
         $this->assertStringContainsString('text/csv', $r->headers->get('Content-Type'));
         $csv = $r->streamedContent();
         $this->assertStringContainsString('Juan Pérez', $csv);

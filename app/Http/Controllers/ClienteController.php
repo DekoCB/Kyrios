@@ -347,8 +347,23 @@ class ClienteController extends Controller
     }
 
     /** Descarga la lista filtrada en CSV (abre directo en Excel). */
+    /** Exporta la lista actual: Excel con la estructura de la base comercial (por defecto) o el CSV plano con ?formato=csv. */
     public function exportar(Request $request): StreamedResponse
     {
+        if ($request->input('formato') !== 'csv') {
+            $clientes = $this->consulta($request)->conTotalComprado()
+                ->withCount(['ventas' => fn ($q) => $q->whereNotIn('tipo_comprobante', Cliente::TIPOS_NOTA)])
+                ->with(['seguimientos', 'proyectos'])
+                ->orderByRaw('codigo IS NULL')->orderByRaw('CAST(SUBSTRING(codigo, 4) AS UNSIGNED)')->orderBy('nombre')
+                ->get();
+            $libro = \App\Support\ExportadorClientes::libro($clientes);
+
+            return response()->streamDownload(function () use ($libro) {
+                (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro))->save('php://output');
+            }, 'clientes-' . ($this->base($request) === 'comercial' ? 'base-comercial-' : 'base-completa-') . now()->format('Y-m-d') . '.xlsx',
+                ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+        }
+
         $clientes = $this->consulta($request)->conTotalComprado()->withCount(['ventas' => fn ($q) => $q->whereNotIn('tipo_comprobante', Cliente::TIPOS_NOTA)])->orderBy('nombre');
 
         return response()->streamDownload(function () use ($clientes) {

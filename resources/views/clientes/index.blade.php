@@ -109,8 +109,11 @@
                 <div class="flex flex-wrap gap-2">
                     <button class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-search mr-1"></i>Buscar</button>
                     @if(auth()->user()->role->nombre !== 'Marketing')
-                    <a href="{{ route('clientes.exportar', request()->query()) }}" class="border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-4 py-2 rounded-lg">
-                        <i class="fas fa-file-csv mr-1"></i>Exportar
+                    <a href="{{ route('clientes.exportar', request()->query()) }}" class="border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-4 py-2 rounded-lg" title="Excel con la misma estructura de la base comercial: datos, seguimiento y proyectos">
+                        <i class="fas fa-file-excel mr-1"></i>Exportar Excel
+                    </a>
+                    <a href="{{ route('clientes.exportar', array_merge(request()->query(), ['formato' => 'csv'])) }}" class="border border-gray-300 text-gray-500 hover:bg-gray-100 text-sm px-3 py-2 rounded-lg" title="Archivo plano (CSV)">
+                        <i class="fas fa-file-csv mr-1"></i>CSV
                     </a>
                     <button type="button" onclick="window.dispatchEvent(new CustomEvent('abrir-difusion'))" class="border border-emerald-300 text-emerald-800 hover:bg-emerald-50 text-sm font-semibold px-4 py-2 rounded-lg">
                         <i class="fab fa-whatsapp mr-1"></i>Exportar lista de difusión

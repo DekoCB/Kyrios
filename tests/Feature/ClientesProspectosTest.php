@@ -102,7 +102,7 @@ class ClientesProspectosTest extends TestCase
     {
         $this->alta(['nombre' => 'Prospecto Uno']);
 
-        $csv = $this->get(route('clientes.exportar'))->assertOk()->streamedContent();
+        $csv = $this->get(route('clientes.exportar', ['formato' => 'csv']))->assertOk()->streamedContent();
         $this->assertStringContainsString('Prospecto Uno', $csv);
         $this->assertStringContainsString('SIN DOC.', $csv);
     }

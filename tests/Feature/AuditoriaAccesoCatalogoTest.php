@@ -73,7 +73,7 @@ class AuditoriaAccesoCatalogoTest extends TestCase
     {
         $this->como('Administración');
         $rol = Role::firstOrCreate(['nombre' => 'Administración'])->id;
-        $datos = ['name' => 'Ana', 'email' => 'ana@x.com', 'password' => 'Clave1234', 'password_confirmation' => 'Clave1234', 'role_id' => $rol, 'estado' => 'activo'];
+        $datos = ['name' => 'Ana', 'email' => 'ana@x.com', 'password' => 'Clave1234', 'password_confirmation' => 'Clave1234', 'role_id' => $rol, 'estado' => 'activo', 'fecha_nacimiento' => '1990-01-01'];
 
         $this->post(route('users.store'), $datos + ['dni' => '123456789012'])->assertSessionHasErrors('dni');
         $this->post(route('users.store'), $datos + ['telefono' => '1234567890123456'])->assertSessionHasErrors('telefono');

@@ -60,6 +60,10 @@
                             <p class="font-semibold">{{ $user->dni ?? 'No registrado' }}</p>
                         </div>
                         <div>
+                            <p class="text-sm text-gray-500">Fecha de nacimiento</p>
+                            <p class="font-semibold">{{ $user->fecha_nacimiento?->format('d/m/Y') ?? 'No registrada' }}</p>
+                        </div>
+                        <div>
                             <p class="text-sm text-gray-500">Teléfono</p>
                             <p class="font-semibold">{{ $user->telefono ?? 'No registrado' }}</p>
                         </div>

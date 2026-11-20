@@ -69,7 +69,7 @@ class ClientesCodigoYDocumentosTest extends TestCase
     public function test_exportacion_y_ficha_incluyen_el_id(): void
     {
         $c = Cliente::create(['nombre' => 'Ana', 'estado' => 'activo', 'tipo_documento' => 'DNI', 'numero_documento' => '41234567', 'ruc_complementario' => '10412345678']);
-        $csv = $this->get(route('clientes.exportar'))->streamedContent();
+        $csv = $this->get(route('clientes.exportar', ['formato' => 'csv']))->streamedContent();
         $this->assertStringContainsString('ID cliente', $csv);
         $this->assertStringContainsString('KYR001', $csv);
         $this->get(route('clientes.show', $c))->assertOk()->assertSee('KYR001')->assertSee('10412345678');

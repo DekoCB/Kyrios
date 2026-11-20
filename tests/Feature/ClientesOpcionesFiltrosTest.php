@@ -97,7 +97,7 @@ class ClientesOpcionesFiltrosTest extends TestCase
     public function test_la_exportacion_incluye_las_columnas_nuevas(): void
     {
         Cliente::create(['nombre' => 'Ana', 'estado' => 'activo', 'clasificacion' => 'GOLD', 'como_ingreso' => 'Evento']);
-        $csv = $this->get(route('clientes.exportar', ['clasificacion' => 'GOLD']))->streamedContent();
+        $csv = $this->get(route('clientes.exportar', ['clasificacion' => 'GOLD', 'formato' => 'csv']))->streamedContent();
         $this->assertStringContainsString('Clasificación', $csv);
         $this->assertStringContainsString('GOLD', $csv);
         $this->assertStringContainsString('Evento', $csv);

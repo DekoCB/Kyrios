@@ -135,6 +135,14 @@
                             </select>
                         </div>
 
+                        {{-- Fecha de nacimiento --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento <span class="text-red-500">*</span></label>
+                            <input type="date" name="fecha_nacimiento" value="{{ old('fecha_nacimiento') }}" max="{{ now()->subDay()->toDateString() }}" required
+                                   class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Para el calendario y el aviso de cumpleaños.</p>
+                        </div>
+
                         {{-- Teléfono --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono (opcional)</label>

@@ -124,7 +124,7 @@ class ClientesDifusionDTest extends TestCase
             ->assertSee('Exportar lista de difusión')->assertSee('Arquitecto/a')->assertSee('Clientes finales');
 
         // El filtro se conserva en la exportación general
-        $csv = $this->get(route('clientes.exportar', ['lista' => 'hombre']))->assertOk()->streamedContent();
+        $csv = $this->get(route('clientes.exportar', ['lista' => 'hombre', 'formato' => 'csv']))->assertOk()->streamedContent();
         $this->assertStringContainsString('Beto Hombre', $csv);
         $this->assertStringNotContainsString('Ana Arquitecta', $csv);
         $this->assertStringContainsString('Listas de difusión', $csv);
