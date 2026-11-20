@@ -243,6 +243,7 @@
             @endif
 
             <x-tareas-hoy />
+        <x-cumpleanos />
 
             {{-- ──────────────────────────────────────────────────────── --}}
             {{-- FILA 1: KPIs Principales                                --}}

@@ -14,6 +14,7 @@ class RevisarFechas extends Command
     public function handle(AlertaService $alertas): int
     {
         $r = $alertas->revisarFechas();
+        $r['avisos'] += app(\App\Services\CumpleanosService::class)->avisar();
         $this->info("Avisos nuevos: {$r['avisos']}; avisos retirados por quedar sin vigencia: {$r['retirados']}.");
 
         return self::SUCCESS;

@@ -210,10 +210,10 @@ class Cliente extends Model
         return $this->numero_documento === null || $this->numero_documento === '';
     }
 
-    /** Base comercial: los del Excel y los registrados en el sistema (sin los contactos que solo están en difusión). */
+    /** Base comercial: solo los clientes con ID correlativo (KYR001…). Quien no tiene ID está únicamente en la base completa. */
     public function scopeBaseComercial($query)
     {
-        return $query->where('en_base_comercial', true);
+        return $query->whereNotNull('codigo');
     }
 
     public function scopeProspectos($query)

@@ -4,6 +4,7 @@
 
 @section('contenido')
 @php use App\Support\Marketing; @endphp
+<x-cumpleanos />
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <a href="{{ route('marketing.cuentas.index') }}" class="bg-white rounded-xl shadow-sm border-l-4 border-blue-500 p-5 hover:shadow-md transition">
         <p class="text-sm text-gray-500">Redes conectadas</p>

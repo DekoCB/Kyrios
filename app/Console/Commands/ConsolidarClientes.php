@@ -51,6 +51,9 @@ class ConsolidarClientes extends Command
             [$asignaciones, $creados, $adicionales] = $this->emparejar($filas);
             $this->info('Filas emparejadas: ' . count($asignaciones) . ' · clientes nuevos creados: ' . $creados . ' · IDs repetidos en el Excel: ' . $adicionales);
 
+            $unidos = $this->unirEmpresas($filas, $asignaciones);
+            $this->info("Empresas unidas a su contacto (un solo cliente): {$unidos}");
+
             $this->asignarCodigos($filas, $asignaciones);
             [$seg, $proy] = $this->importarSeguimientoYProyectos($filas, $asignaciones);
             $this->info("Seguimientos importados: {$seg} · proyectos importados: {$proy}");
@@ -302,7 +305,7 @@ class ConsolidarClientes extends Command
     }
 
     /** Pasa todo lo del cliente $pierde al cliente $sobrevive y lo elimina. */
-    private function fusionarDos(int $sobrevive, int $pierde): void
+    private function fusionarDos(int $sobrevive, int $pierde, bool $conservarNombre = false): void
     {
         $s = DB::table('clientes')->find($sobrevive);
         $p = DB::table('clientes')->find($pierde);
@@ -315,7 +318,7 @@ class ConsolidarClientes extends Command
         }
 
         $cambios = [];
-        if (mb_strtoupper($s->nombre) === $s->nombre && mb_strtoupper($p->nombre) !== $p->nombre && count($this->tokens($p->nombre)) >= count($this->tokens($s->nombre))) {
+        if (!$conservarNombre && mb_strtoupper($s->nombre) === $s->nombre && mb_strtoupper($p->nombre) !== $p->nombre && count($this->tokens($p->nombre)) >= count($this->tokens($s->nombre))) {
             $cambios['nombre'] = $p->nombre;
         }
         foreach ((array) $p as $campo => $valor) {
@@ -451,6 +454,19 @@ class ConsolidarClientes extends Command
                 }
             }
 
+            // ya unido a su empresa: el contacto figura en «contacto» del cliente-empresa o la fila trae el RUC de uno
+            if (!$id) {
+                foreach ($clientes as $c) {
+                    if (($c->contacto && $this->norm($c->contacto) === $nn) || ($c->notas && stripos($c->notas, 'Contacto unido: ' . $nombreCompleto . '.') !== false)) {
+                        $id = $c->id;
+                        break;
+                    }
+                }
+            }
+            if (!$id && !empty($f['ruc']) && isset($indiceDoc[ltrim((string) $f['ruc'], '0')])) {
+                $id = $indiceDoc[ltrim((string) $f['ruc'], '0')][0];
+            }
+
             if (!$id) {
                 $id = $this->crearDesdeFila($f, $nombreCompleto);
                 $creados++;
@@ -492,6 +508,80 @@ class ConsolidarClientes extends Command
         ]);
     }
 
+    // ------------------------------------------------------------------ empresa + contacto = un solo cliente
+
+    /**
+     * Cada fila del Excel es un contacto con su empresa (RUC): van juntos en un solo cliente. Si el sistema tiene la empresa
+     * como un cliente y a la persona como otro, se fusionan en el cliente-empresa (nombre y RUC de la empresa, la persona en
+     * «contacto»), igual que el resto de empresas ya importadas.
+     */
+    private function unirEmpresas(array $filas, array &$asignaciones): int
+    {
+        $n = 0;
+        foreach ($filas as $f) {
+            $ruc = ltrim((string) ($f['ruc'] ?? ''), '0');
+            if ($ruc === '' || strlen($ruc) < 11) {
+                continue;
+            }
+            $persona = $asignaciones[$f['fila']] ?? null;
+            $empresa = DB::table('clientes')->where('tipo_documento', 'RUC')->where('numero_documento', $ruc)->first();
+            if (!$persona || !$empresa || $persona === $empresa->id) {
+                continue;
+            }
+            $p = DB::table('clientes')->find($persona);
+            if (!$p) {
+                continue;
+            }
+            $nombrePersona = trim(implode(' ', array_filter([$f['nombres'] ?? null, $f['ap1'] ?? null, $f['ap2'] ?? null]))) ?: $p->nombre;
+            $this->reporte[] = "UNIDA: «{$p->nombre}» + empresa «{$empresa->nombre}» ({$ruc}) = un solo cliente";
+
+            // la persona aporta sus datos (teléfono, segmento, asesor…) y su documento personal pasa a «complementario»
+            if ($p->tipo_documento === 'DNI' && $p->numero_documento && !$empresa->dni_complementario) {
+                DB::table('clientes')->where('id', $empresa->id)->update(['dni_complementario' => $p->numero_documento]);
+            }
+            $this->fusionarDos($empresa->id, $p->id, true);
+            $extra = [];
+            if (blank($empresa->contacto)) {
+                $extra['contacto'] = mb_substr($nombrePersona, 0, 120);
+            }
+            // se anota quién es cada contacto unido, para reconocerlo si se vuelve a ejecutar
+            $notas = (string) DB::table('clientes')->where('id', $empresa->id)->value('notas');
+            $marca = 'Contacto unido: ' . $nombrePersona . '.';
+            if (!str_contains($notas, $marca)) {
+                $extra['notas'] = trim($notas . "
+" . $marca);
+            }
+            if ($extra) {
+                DB::table('clientes')->where('id', $empresa->id)->update($extra);
+            }
+            foreach ($asignaciones as $fila => $cid) {
+                if ($cid === $p->id) {
+                    $asignaciones[$fila] = $empresa->id;
+                }
+            }
+            $asignaciones[$f['fila']] = $empresa->id;
+            $n++;
+        }
+
+        // cada contacto del Excel cuyo cliente es una empresa queda anotado, para reconocerlo en una nueva ejecución
+        $empresas = DB::table('clientes')->where('tipo_documento', 'RUC')->whereIn('id', array_values($asignaciones))->get()->keyBy('id');
+        foreach ($filas as $f) {
+            $e = $empresas[$asignaciones[$f['fila']] ?? 0] ?? null;
+            $nombre = trim(implode(' ', array_filter([$f['nombres'] ?? null, $f['ap1'] ?? null, $f['ap2'] ?? null])));
+            if (!$e || $nombre === '' || $this->norm($nombre) === $this->norm($e->nombre)) {
+                continue;
+            }
+            $marca = 'Contacto unido: ' . $nombre . '.';
+            $notas = (string) DB::table('clientes')->where('id', $e->id)->value('notas');
+            if (!str_contains($notas, $marca)) {
+                DB::table('clientes')->where('id', $e->id)->update(['notas' => trim($notas . "
+" . $marca)]);
+            }
+        }
+
+        return $n;
+    }
+
     // ------------------------------------------------------------------ IDs
 
     /**
@@ -527,23 +617,9 @@ class ConsolidarClientes extends Command
             }
         }
 
-        // Base comercial = las personas del Excel (con ID o no). Las empresas que salen de la columna RUC, la lista de
-        // difusión y demás quedan en la base completa. Se conservan en la comercial quienes ya tienen operaciones
-        // (ventas, cotizaciones…). Es un comando de una sola vez: no volver a correrlo sobre clientes registrados a mano.
-        $enExcel = array_values(array_unique(array_values($asignaciones)));
-        $conOperaciones = [];
-        $tablas = DB::table('information_schema.COLUMNS')->where('TABLE_SCHEMA', DB::getDatabaseName())->where('COLUMN_NAME', 'cliente_id')->pluck('TABLE_NAME');
-        foreach ($tablas as $t) {
-            if (!str_starts_with($t, 'cliente_')) {
-                $conOperaciones = array_merge($conOperaciones, DB::table($t)->whereNotNull('cliente_id')->distinct()->pluck('cliente_id')->all());
-            }
-        }
-        $conservar = array_values(array_unique(array_merge($enExcel, $conOperaciones)));
-
-        DB::table('clientes')->update(['en_base_comercial' => false]);
-        foreach (array_chunk($conservar, 500) as $lote) {
-            DB::table('clientes')->whereIn('id', $lote)->update(['en_base_comercial' => true]);
-        }
+        // Base comercial = solo quien tiene ID correlativo del Excel; el resto vive en la base completa
+        DB::table('clientes')->whereNotNull('codigo')->update(['en_base_comercial' => true]);
+        DB::table('clientes')->whereNull('codigo')->update(['en_base_comercial' => false]);
     }
 
     // ------------------------------------------------------------------ 3. seguimiento y proyectos

@@ -218,14 +218,14 @@ class CambiosClientesYCotizacionesTest extends TestCase
         $this->assertNull($difusion->codigo, 'la lista de difusión no lleva ID');
     }
 
-    public function test_quien_no_tenia_id_en_el_excel_queda_sin_id_pero_en_la_base_comercial(): void
+    public function test_quien_no_tenia_id_en_el_excel_queda_sin_id_y_solo_en_la_base_completa(): void
     {
         $sin = Cliente::create(['nombre' => 'Sandra Valderrama', 'estado' => 'activo', 'created_at' => '2013-06-26 00:00:00']);
         $dif = $this->difusion('Contacto Aparte');
         $this->consolidar([$this->fila(['id' => null])]);
 
         $this->assertNull($sin->fresh()->codigo);
-        $this->assertTrue($sin->fresh()->en_base_comercial);
+        $this->assertFalse($sin->fresh()->en_base_comercial, 'sin ID solo está en la base completa');
         $this->assertFalse($dif->fresh()->en_base_comercial);
         $this->assertNull($dif->fresh()->codigo);
     }
@@ -235,11 +235,12 @@ class CambiosClientesYCotizacionesTest extends TestCase
         $c = Cliente::create(['nombre' => 'Sin codigo', 'estado' => 'activo']);
         $c->forceFill(['codigo' => null])->save();
 
-        $this->get(route('clientes.index'))->assertOk()->assertSee('Sin codigo')->assertSee('Sin ID');
+        $this->get(route('clientes.index'))->assertOk()->assertDontSee('Sin codigo');
+        $this->get(route('clientes.index', ['base' => 'completa']))->assertOk()->assertSee('Sin codigo')->assertSee('Sin ID');
         $this->get(route('clientes.show', $c))->assertOk();
     }
 
-    public function test_la_base_comercial_es_el_excel_y_las_empresas_derivadas_quedan_en_la_completa(): void
+    public function test_la_base_comercial_es_solo_quien_tiene_id_y_las_empresas_derivadas_quedan_en_la_completa(): void
     {
         $persona = Cliente::create(['nombre' => 'Sandra Valderrama', 'estado' => 'activo', 'created_at' => '2013-06-26 00:00:00']);
         $empresa = Cliente::create(['nombre' => 'BOSCH ARQUITECTOS PERU S.R.L.', 'tipo_documento' => 'RUC', 'numero_documento' => '20547472765', 'estado' => 'activo', 'created_at' => '2026-10-23 11:57:41']);
@@ -250,6 +251,61 @@ class CambiosClientesYCotizacionesTest extends TestCase
 
         $this->assertTrue($persona->fresh()->en_base_comercial);
         $this->assertFalse($empresa->fresh()->en_base_comercial, 'la empresa viene de la columna RUC, no es una fila del Excel');
-        $this->assertTrue($conVenta->fresh()->en_base_comercial, 'quien tiene ventas no se esconde');
+    }
+
+    public function test_la_empresa_y_su_contacto_son_un_solo_cliente(): void
+    {
+        $persona = Cliente::create(['nombre' => 'Victor Vargas Miranda', 'telefono' => '987654321', 'estado' => 'activo', 'created_at' => '2013-06-26 00:00:00']);
+        $empresa = Cliente::create(['nombre' => 'BOSCH ARQUITECTOS PERU S.R.L.', 'tipo_documento' => 'RUC', 'numero_documento' => '20547472765', 'estado' => 'activo']);
+        $this->consolidar([$this->fila(['id' => 872, 'nombres' => 'Victor', 'ap1' => 'Vargas', 'ap2' => 'Miranda', 'ruc' => '20547472765'])]);
+
+        $this->assertSame(1, Cliente::count());
+        $c = Cliente::first();
+        $this->assertSame($empresa->id, $c->id);
+        $this->assertSame('BOSCH ARQUITECTOS PERU S.R.L.', $c->nombre);
+        $this->assertSame('Victor Vargas Miranda', $c->contacto);
+        $this->assertSame('KYR872', $c->codigo);
+        $this->assertSame('987654321', $c->telefono);
+
+        $this->consolidar([$this->fila(['id' => 872, 'nombres' => 'Victor', 'ap1' => 'Vargas', 'ap2' => 'Miranda', 'ruc' => '20547472765'])]);
+        $this->assertSame(1, Cliente::count(), 'repetible: no vuelve a separar ni a duplicar');
+    }
+
+    // ---------------------------------------------------------------- cumpleaños
+
+    private function empleado(array $extra): \App\Models\Empleado
+    {
+        return \App\Models\Empleado::create($extra + ['codigo' => 'EMP' . random_int(1000, 9999), 'nombres' => 'Lucia', 'apellidos' => 'Rojas', 'dni' => (string) random_int(10000000, 99999999), 'estado' => 'activo', 'fecha_ingreso' => '2024-01-01', 'cargo' => 'Asistente', 'tipo_contrato' => 'indefinido']);
+    }
+
+    public function test_el_dashboard_muestra_el_calendario_de_cumpleanos(): void
+    {
+        $this->empleado(['nombres' => 'Marisol', 'fecha_nacimiento' => today()->subYears(30)->addDays(1)->toDateString()]);
+
+        $this->get(route('admin.dashboard'))->assertOk()->assertSee('Cumpleaños del equipo')->assertSee('Marisol');
+    }
+
+    public function test_avisa_dos_dias_antes_una_sola_vez_y_no_a_quien_cumple(): void
+    {
+        $cumple = User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Operaciones'])->id, 'estado' => 'activo']);
+        $e = $this->empleado(['user_id' => $cumple->id, 'nombres' => 'Marisol', 'fecha_nacimiento' => today()->subYears(30)->addDays(2)->toDateString()]);
+        $lejano = $this->empleado(['nombres' => 'Lejana', 'fecha_nacimiento' => today()->subYears(25)->addDays(10)->toDateString()]);
+
+        $svc = app(\App\Services\CumpleanosService::class);
+        $this->assertSame(1, $svc->avisar() > 0 ? 1 : 0);
+        $this->assertSame(0, $svc->avisar(), 'no se repite');
+
+        $this->assertSame(1, $this->admin->notifications()->where('data->clave', 'cumple:' . $e->id . ':' . today()->addDays(2)->year)->count());
+        $this->assertSame(0, $cumple->notifications()->count(), 'el cumpleañero no recibe su propio aviso');
+        $this->assertSame(0, $this->admin->notifications()->where('data->clave', 'like', 'cumple:' . $lejano->id . ':%')->count());
+        $this->assertStringContainsString('en 2 días', $this->admin->notifications()->first()->data['mensaje']);
+    }
+
+    public function test_el_29_de_febrero_se_celebra_el_28_en_anos_no_bisiestos(): void
+    {
+        $e = $this->empleado(['fecha_nacimiento' => '2000-02-29']);
+        $f = app(\App\Services\CumpleanosService::class)->enAnio($e, 2027);
+
+        $this->assertSame('2027-02-28', $f->toDateString());
     }
 }
