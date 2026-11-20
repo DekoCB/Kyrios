@@ -527,16 +527,22 @@ class ConsolidarClientes extends Command
             }
         }
 
-        // Base comercial: todo menos los contactos que solo existen en la lista de difusión
+        // Base comercial = las personas del Excel (con ID o no). Las empresas que salen de la columna RUC, la lista de
+        // difusión y demás quedan en la base completa. Se conservan en la comercial quienes ya tienen operaciones
+        // (ventas, cotizaciones…). Es un comando de una sola vez: no volver a correrlo sobre clientes registrados a mano.
         $enExcel = array_values(array_unique(array_values($asignaciones)));
-        foreach (array_chunk($enExcel, 500) as $lote) {
-            DB::table('clientes')->whereIn('id', $lote)->update(['en_base_comercial' => true]);
-        }
-        foreach (DB::table('clientes')->whereNotNull('listas_difusion')->whereNull('telefono')->whereNull('email')->whereNull('numero_documento')
-            ->where('created_at', '>=', '2026-10-29 00:00:00')->where('created_at', '<', '2026-10-30 00:00:00')->pluck('id') as $id) {
-            if (!in_array($id, $enExcel, true)) {
-                DB::table('clientes')->where('id', $id)->update(['en_base_comercial' => false]);
+        $conOperaciones = [];
+        $tablas = DB::table('information_schema.COLUMNS')->where('TABLE_SCHEMA', DB::getDatabaseName())->where('COLUMN_NAME', 'cliente_id')->pluck('TABLE_NAME');
+        foreach ($tablas as $t) {
+            if (!str_starts_with($t, 'cliente_')) {
+                $conOperaciones = array_merge($conOperaciones, DB::table($t)->whereNotNull('cliente_id')->distinct()->pluck('cliente_id')->all());
             }
+        }
+        $conservar = array_values(array_unique(array_merge($enExcel, $conOperaciones)));
+
+        DB::table('clientes')->update(['en_base_comercial' => false]);
+        foreach (array_chunk($conservar, 500) as $lote) {
+            DB::table('clientes')->whereIn('id', $lote)->update(['en_base_comercial' => true]);
         }
     }
 

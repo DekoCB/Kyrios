@@ -238,4 +238,18 @@ class CambiosClientesYCotizacionesTest extends TestCase
         $this->get(route('clientes.index'))->assertOk()->assertSee('Sin codigo')->assertSee('Sin ID');
         $this->get(route('clientes.show', $c))->assertOk();
     }
+
+    public function test_la_base_comercial_es_el_excel_y_las_empresas_derivadas_quedan_en_la_completa(): void
+    {
+        $persona = Cliente::create(['nombre' => 'Sandra Valderrama', 'estado' => 'activo', 'created_at' => '2013-06-26 00:00:00']);
+        $empresa = Cliente::create(['nombre' => 'BOSCH ARQUITECTOS PERU S.R.L.', 'tipo_documento' => 'RUC', 'numero_documento' => '20547472765', 'estado' => 'activo', 'created_at' => '2026-10-23 11:57:41']);
+        $conVenta = Cliente::create(['nombre' => 'Empresa con ventas', 'tipo_documento' => 'RUC', 'numero_documento' => '20100000001', 'estado' => 'activo', 'created_at' => '2026-10-23 11:57:41']);
+        $almacen = Almacen::create(['codigo' => 'ALM-A', 'nombre' => 'Local A', 'tipo' => 'tienda', 'estado' => 'activo']);
+        Venta::forceCreate(['codigo' => 'VEN-Y', 'cliente_id' => $conVenta->id, 'user_id' => $this->admin->id, 'almacen_id' => $almacen->id, 'fecha' => now()->toDateString(), 'subtotal' => 10, 'total' => 10, 'estado_pago' => 'pagado', 'tipo_comprobante' => 'nota_venta']);
+        $this->consolidar([$this->fila([])]);
+
+        $this->assertTrue($persona->fresh()->en_base_comercial);
+        $this->assertFalse($empresa->fresh()->en_base_comercial, 'la empresa viene de la columna RUC, no es una fila del Excel');
+        $this->assertTrue($conVenta->fresh()->en_base_comercial, 'quien tiene ventas no se esconde');
+    }
 }
