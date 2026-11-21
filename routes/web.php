@@ -391,6 +391,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ClienteController::class, 'store'])->name('store');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update');
+        // Proyectos y seguimiento comercial cargados a mano desde la ficha
+        Route::post('/{cliente}/proyectos', [App\Http\Controllers\ClienteComercialController::class, 'proyectoStore'])->whereNumber('cliente')->name('proyectos.store');
+        Route::put('/{cliente}/proyectos/{proyecto}', [App\Http\Controllers\ClienteComercialController::class, 'proyectoUpdate'])->whereNumber('cliente')->name('proyectos.update');
+        Route::delete('/{cliente}/proyectos/{proyecto}', [App\Http\Controllers\ClienteComercialController::class, 'proyectoDestroy'])->whereNumber('cliente')->name('proyectos.destroy');
+        Route::post('/{cliente}/seguimientos', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoStore'])->whereNumber('cliente')->name('seguimientos.store');
+        Route::put('/{cliente}/seguimientos/{seguimiento}', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoUpdate'])->whereNumber('cliente')->name('seguimientos.update');
+        Route::delete('/{cliente}/seguimientos/{seguimiento}', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoDestroy'])->whereNumber('cliente')->name('seguimientos.destroy');
         Route::post('/consultar-documento', [ClienteController::class, 'consultarDocumento'])->name('consultar-documento');
         Route::get('/duplicados', [ClienteController::class, 'duplicados'])->name('duplicados');
     });

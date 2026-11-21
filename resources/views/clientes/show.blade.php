@@ -7,6 +7,7 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     @include('partials.tema-head')
+    <style>[x-cloak] { display: none !important; }</style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-gray-50">
@@ -165,13 +166,61 @@
                 </div>
 
                 {{-- Proyectos --}}
-                @if($proyectos->isNotEmpty())
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b flex items-center justify-between"><h3 class="font-semibold text-gray-900">Proyectos</h3><span class="text-xs text-gray-400">{{ $proyectos->count() }}</span></div>
+                @php
+                    $inp = 'w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-yellow-500 focus:ring-yellow-500';
+                    $proyectosJs = $proyectos->mapWithKeys(fn ($p) => [$p->id => [
+                        'codigo' => $p->codigo, 'nombre' => $p->nombre, 'persona_a_cargo' => $p->persona_a_cargo, 'prioridad' => $p->prioridad,
+                        'fecha_recepcion' => $p->fecha_recepcion?->toDateString(), 'fecha_entrega_aprox' => $p->fecha_entrega_aprox?->toDateString(), 'fecha_entrega_real' => $p->fecha_entrega_real?->toDateString(),
+                        'moneda' => $p->moneda ?: 'USD', 'monto_presupuestado' => $p->monto_presupuestado, 'monto_vendido' => $p->monto_vendido, 'resultado' => $p->resultado, 'seguimiento' => $p->seguimiento,
+                    ]]);
+                    $seguimientosJs = $seguimientos->mapWithKeys(fn ($x) => [$x->id => [
+                        'fecha' => $x->fecha?->toDateString(), 'atendido_por' => $x->atendido_por, 'tipo' => $x->tipo, 'situacion' => $x->situacion, 'busca' => $x->busca,
+                        'ultimo_estado' => $x->ultimo_estado, 'moneda' => $x->moneda ?: 'USD', 'monto_presupuestado' => $x->monto_presupuestado, 'monto_comprado' => $x->monto_comprado,
+                        'probabilidad' => $x->probabilidad, 'medio_contacto' => $x->medio_contacto, 'observaciones' => $x->observaciones,
+                    ]]);
+                @endphp
+                <div id="proyectos" class="bg-white rounded-xl shadow-sm overflow-hidden" x-data="{
+                    abierto: false, editando: null, proyectos: @js($proyectosJs),
+                    vacio: { codigo: '', nombre: '', persona_a_cargo: '', prioridad: '', fecha_recepcion: '', fecha_entrega_aprox: '', fecha_entrega_real: '', moneda: 'USD', monto_presupuestado: '', monto_vendido: '', resultado: '', seguimiento: '' },
+                    f: {},
+                    nuevo() { this.editando = null; this.f = { ...this.vacio }; this.abierto = true; },
+                    editar(id) { this.editando = id; this.f = { ...this.vacio, ...Object.fromEntries(Object.entries(this.proyectos[id]).map(([k, v]) => [k, v ?? ''])) }; this.abierto = true; $nextTick(() => $refs.formProyecto.scrollIntoView({ behavior: 'smooth', block: 'center' })); }
+                }">
+                    <div class="px-5 py-4 border-b flex items-center justify-between gap-3">
+                        <h3 class="font-semibold text-gray-900">Proyectos <span class="ml-1 text-xs font-normal text-gray-400">{{ $proyectos->count() }}</span></h3>
+                        @if($canEdit)<button type="button" @click="nuevo()" class="text-sm font-semibold text-yellow-700 hover:text-yellow-800"><i class="fas fa-plus mr-1"></i>Agregar proyecto</button>@endif
+                    </div>
+
+                    @if($canEdit)
+                    <form x-ref="formProyecto" x-show="abierto" x-cloak method="POST" :action="editando ? '{{ url('clientes/' . $cliente->id . '/proyectos') }}/' + editando : '{{ route('clientes.proyectos.store', $cliente) }}'" class="px-5 py-4 border-b bg-gray-50 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        @csrf
+                        <template x-if="editando"><input type="hidden" name="_method" value="PUT"></template>
+                        <div class="md:col-span-2"><label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del proyecto *</label><input name="nombre" x-model="f.nombre" required maxlength="190" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Código (IL-…)</label><input name="codigo" x-model="f.codigo" maxlength="40" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Persona a cargo</label><input name="persona_a_cargo" x-model="f.persona_a_cargo" maxlength="80" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Prioridad</label><select name="prioridad" x-model="f.prioridad" class="{{ $inp }}"><option value="">—</option><option>Alta</option><option>Media</option><option>Baja</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Resultado</label><select name="resultado" x-model="f.resultado" class="{{ $inp }}"><option value="">—</option>@foreach(array_keys(\App\Models\ClienteProyecto::RESULTADOS) as $r)<option>{{ $r }}</option>@endforeach</select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Recepción</label><input type="date" name="fecha_recepcion" x-model="f.fecha_recepcion" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Entrega aprox.</label><input type="date" name="fecha_entrega_aprox" x-model="f.fecha_entrega_aprox" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Entrega real</label><input type="date" name="fecha_entrega_real" x-model="f.fecha_entrega_real" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Moneda</label><select name="moneda" x-model="f.moneda" class="{{ $inp }}"><option value="USD">Dólares (US$)</option><option value="PEN">Soles (S/)</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Monto presupuestado</label><input type="number" step="0.01" min="0" name="monto_presupuestado" x-model="f.monto_presupuestado" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Monto vendido</label><input type="number" step="0.01" min="0" name="monto_vendido" x-model="f.monto_vendido" class="{{ $inp }}"></div>
+                        <div class="md:col-span-3"><label class="block text-xs font-semibold text-gray-600 mb-1">Seguimiento / observaciones</label><textarea name="seguimiento" x-model="f.seguimiento" rows="2" maxlength="2000" class="{{ $inp }}"></textarea></div>
+                        <div class="md:col-span-3 flex gap-2 justify-end">
+                            <button type="button" @click="abierto = false" class="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+                            <button class="px-4 py-2 text-sm font-semibold rounded-lg bg-yellow-400 hover:bg-yellow-500 text-gray-900" x-text="editando ? 'Guardar cambios' : 'Agregar proyecto'"></button>
+                        </div>
+                    </form>
+                    @endif
+
+                    @if($proyectos->isEmpty())
+                        <p class="px-4 py-8 text-center text-sm text-gray-400">Sin proyectos</p>
+                    @else
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead class="bg-gray-50 text-xs text-gray-500 uppercase"><tr>
-                                <th class="px-4 py-2 text-left">Proyecto</th><th class="px-4 py-2 text-left">A cargo</th><th class="px-4 py-2 text-left">Recibido</th><th class="px-4 py-2 text-left">Entrega</th><th class="px-4 py-2 text-right">Presupuesto</th><th class="px-4 py-2 text-right">Vendido</th><th class="px-4 py-2 text-left">Resultado</th>
+                                <th class="px-4 py-2 text-left">Proyecto</th><th class="px-4 py-2 text-left">A cargo</th><th class="px-4 py-2 text-left">Recibido</th><th class="px-4 py-2 text-left">Entrega</th><th class="px-4 py-2 text-right">Presupuesto</th><th class="px-4 py-2 text-right">Vendido</th><th class="px-4 py-2 text-left">Resultado</th>@if($canEdit)<th class="px-4 py-2"></th>@endif
                             </tr></thead>
                             <tbody class="divide-y divide-gray-100">
                                 @foreach($proyectos as $p)
@@ -183,18 +232,59 @@
                                         <td class="px-4 py-2 text-right whitespace-nowrap">{{ $p->monto_presupuestado !== null ? $p->simbolo . ' ' . number_format($p->monto_presupuestado, 2) : '—' }}</td>
                                         <td class="px-4 py-2 text-right whitespace-nowrap font-semibold">{{ $p->monto_vendido !== null ? $p->simbolo . ' ' . number_format($p->monto_vendido, 2) : '—' }}</td>
                                         <td class="px-4 py-2">@if($p->resultado)<span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full {{ \App\Models\ClienteProyecto::RESULTADOS[$p->resultado] ?? 'bg-gray-100 text-gray-700' }}">{{ $p->resultado }}</span>@else — @endif</td>
+                                        @if($canEdit)
+                                        <td class="px-4 py-2 whitespace-nowrap text-right">
+                                            <button type="button" @click="editar({{ $p->id }})" class="text-gray-400 hover:text-yellow-600" title="Editar"><i class="fas fa-pen"></i></button>
+                                            <form method="POST" action="{{ route('clientes.proyectos.destroy', [$cliente, $p]) }}" class="inline ml-2" data-confirm="¿Eliminar este proyecto?">@csrf @method('DELETE')<button class="text-gray-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button></form>
+                                        </td>
+                                        @endif
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
+                    @endif
                 </div>
-                @endif
 
                 {{-- Seguimiento comercial --}}
-                @if($seguimientos->isNotEmpty())
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b flex items-center justify-between"><h3 class="font-semibold text-gray-900">Seguimiento comercial</h3><span class="text-xs text-gray-400">{{ $seguimientos->count() }}</span></div>
+                <div id="seguimiento" class="bg-white rounded-xl shadow-sm overflow-hidden" x-data="{
+                    abierto: false, editando: null, seguimientos: @js($seguimientosJs),
+                    vacio: { fecha: '{{ now()->toDateString() }}', tipo: '', situacion: '', busca: '', ultimo_estado: '', moneda: 'USD', monto_presupuestado: '', monto_comprado: '', probabilidad: '', medio_contacto: '', atendido_por: @js(auth()->user()->name), observaciones: '' },
+                    f: {},
+                    nuevo() { this.editando = null; this.f = { ...this.vacio }; this.abierto = true; },
+                    editar(id) { this.editando = id; this.f = { ...this.vacio, ...Object.fromEntries(Object.entries(this.seguimientos[id]).map(([k, v]) => [k, v ?? ''])) }; this.abierto = true; $nextTick(() => $refs.formSeguimiento.scrollIntoView({ behavior: 'smooth', block: 'center' })); }
+                }">
+                    <div class="px-5 py-4 border-b flex items-center justify-between gap-3">
+                        <h3 class="font-semibold text-gray-900">Seguimiento comercial <span class="ml-1 text-xs font-normal text-gray-400">{{ $seguimientos->count() }}</span></h3>
+                        @if($canEdit)<button type="button" @click="nuevo()" class="text-sm font-semibold text-yellow-700 hover:text-yellow-800"><i class="fas fa-plus mr-1"></i>Agregar seguimiento</button>@endif
+                    </div>
+
+                    @if($canEdit)
+                    <form x-ref="formSeguimiento" x-show="abierto" x-cloak method="POST" :action="editando ? '{{ url('clientes/' . $cliente->id . '/seguimientos') }}/' + editando : '{{ route('clientes.seguimientos.store', $cliente) }}'" class="px-5 py-4 border-b bg-gray-50 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        @csrf
+                        <template x-if="editando"><input type="hidden" name="_method" value="PUT"></template>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Fecha</label><input type="date" name="fecha" x-model="f.fecha" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Tipo</label><input name="tipo" x-model="f.tipo" list="seg-tipos" maxlength="40" class="{{ $inp }}" placeholder="Proyecto, Puntual - Decorativa…"><datalist id="seg-tipos"><option value="Proyecto"><option value="Puntual - Decorativa"><option value="Puntual - Técnica"><option value="Casacor"></datalist></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Situación</label><input name="situacion" x-model="f.situacion" list="seg-situaciones" maxlength="60" class="{{ $inp }}" placeholder="En seguimiento…"><datalist id="seg-situaciones"><option value="En seguimiento"><option value="En proceso"><option value="Ganado"><option value="Perdido"></datalist></div>
+                        <div class="md:col-span-3"><label class="block text-xs font-semibold text-gray-600 mb-1">Qué busca</label><input name="busca" x-model="f.busca" maxlength="255" class="{{ $inp }}" placeholder="Luminarias decorativas, cinta LED…"></div>
+                        <div class="md:col-span-3"><label class="block text-xs font-semibold text-gray-600 mb-1">Último estado (qué pasó)</label><textarea name="ultimo_estado" x-model="f.ultimo_estado" rows="2" maxlength="2000" class="{{ $inp }}"></textarea></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Moneda</label><select name="moneda" x-model="f.moneda" class="{{ $inp }}"><option value="USD">Dólares (US$)</option><option value="PEN">Soles (S/)</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Monto presupuestado</label><input type="number" step="0.01" min="0" name="monto_presupuestado" x-model="f.monto_presupuestado" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Monto comprado</label><input type="number" step="0.01" min="0" name="monto_comprado" x-model="f.monto_comprado" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Probabilidad de venta (%)</label><input type="number" min="0" max="100" name="probabilidad" x-model="f.probabilidad" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Llegó por / referido por</label><input name="medio_contacto" x-model="f.medio_contacto" maxlength="120" class="{{ $inp }}"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Atendió</label><input name="atendido_por" x-model="f.atendido_por" maxlength="80" class="{{ $inp }}"></div>
+                        <div class="md:col-span-3"><label class="block text-xs font-semibold text-gray-600 mb-1">Observaciones</label><textarea name="observaciones" x-model="f.observaciones" rows="2" maxlength="2000" class="{{ $inp }}"></textarea></div>
+                        <div class="md:col-span-3 flex gap-2 justify-end">
+                            <button type="button" @click="abierto = false" class="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+                            <button class="px-4 py-2 text-sm font-semibold rounded-lg bg-yellow-400 hover:bg-yellow-500 text-gray-900" x-text="editando ? 'Guardar cambios' : 'Agregar seguimiento'"></button>
+                        </div>
+                    </form>
+                    @endif
+
+                    @if($seguimientos->isEmpty())
+                        <p class="px-4 py-8 text-center text-sm text-gray-400">Sin seguimiento comercial</p>
+                    @else
                     <div class="divide-y divide-gray-100 text-sm">
                         @foreach($seguimientos as $s)
                             <div class="px-5 py-3">
@@ -203,6 +293,7 @@
                                     @if($s->situacion)<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">{{ $s->situacion }}</span>@endif
                                     @if($s->busca)<span class="text-gray-800">{{ $s->busca }}</span>@endif
                                     <span class="ml-auto text-xs text-gray-400">{{ collect([$s->atendido_por ? 'Atendió ' . $s->atendido_por : null, $s->fecha?->format('d/m/Y')])->filter()->implode(' · ') }}</span>
+                                    @if($canEdit)<button type="button" @click="editar({{ $s->id }})" class="text-gray-300 hover:text-yellow-600" title="Editar"><i class="fas fa-pen text-xs"></i></button><form method="POST" action="{{ route('clientes.seguimientos.destroy', [$cliente, $s]) }}" class="inline" data-confirm="¿Eliminar este seguimiento?">@csrf @method('DELETE')<button class="text-gray-300 hover:text-red-600" title="Eliminar"><i class="fas fa-trash text-xs"></i></button></form>@endif
                                 </div>
                                 @if($s->ultimo_estado)<p class="text-gray-600 mt-1">{{ $s->ultimo_estado }}</p>@endif
                                 <p class="text-xs text-gray-500 mt-1">
@@ -218,8 +309,8 @@
                             </div>
                         @endforeach
                     </div>
+                    @endif
                 </div>
-                @endif
             </div>
         </div>
     </div>

@@ -442,4 +442,89 @@ class CambiosClientesYCotizacionesTest extends TestCase
         $this->assertSame(['Ana', 'Rojas', ''], $p('Ana Rojas'));
         $this->assertSame(['Carlos', '', ''], $p('Carlos'));
     }
+
+    // ---------------------------------------------------------------- proyectos y seguimiento a mano
+
+    public function test_la_ficha_muestra_proyectos_y_seguimiento_aunque_esten_vacios(): void
+    {
+        $c = Cliente::create(['nombre' => 'Sin Proyectos', 'estado' => 'activo']);
+
+        $this->get(route('clientes.show', $c))->assertOk()
+            ->assertSee('Sin proyectos')->assertSee('Sin seguimiento comercial')
+            ->assertSee('Agregar proyecto')->assertSee('Agregar seguimiento');
+    }
+
+    public function test_se_agrega_edita_y_elimina_un_proyecto_a_mano(): void
+    {
+        $c = Cliente::create(['nombre' => 'Con Proyecto', 'estado' => 'activo']);
+
+        $this->post(route('clientes.proyectos.store', $c), ['nombre' => 'HOTEL CENTRO', 'codigo' => 'IL-70001', 'moneda' => 'USD', 'monto_presupuestado' => '1500.50', 'resultado' => 'En proceso'])
+            ->assertSessionHasNoErrors()->assertRedirect();
+        $p = ClienteProyecto::first();
+        $this->assertSame($c->id, $p->cliente_id);
+        $this->assertSame('1500.50', $p->monto_presupuestado);
+        $this->get(route('clientes.show', $c))->assertSee('HOTEL CENTRO')->assertSee('IL-70001');
+
+        $this->put(route('clientes.proyectos.update', [$c, $p]), ['nombre' => 'HOTEL CENTRO II', 'moneda' => 'PEN', 'monto_vendido' => '900', 'resultado' => 'Ganado'])->assertSessionHasNoErrors();
+        $this->assertSame('HOTEL CENTRO II', $p->fresh()->nombre);
+        $this->assertSame('PEN', $p->fresh()->moneda);
+
+        $this->delete(route('clientes.proyectos.destroy', [$c, $p]));
+        $this->assertSame(0, ClienteProyecto::count());
+    }
+
+    public function test_el_proyecto_pide_nombre_y_valida_resultado(): void
+    {
+        $c = Cliente::create(['nombre' => 'Valida', 'estado' => 'activo']);
+
+        $this->post(route('clientes.proyectos.store', $c), ['moneda' => 'USD'])->assertSessionHasErrors('nombre');
+        $this->post(route('clientes.proyectos.store', $c), ['nombre' => 'X', 'moneda' => 'USD', 'resultado' => 'Inventado'])->assertSessionHasErrors('resultado');
+        $this->assertSame(0, ClienteProyecto::count());
+    }
+
+    public function test_no_se_toca_el_proyecto_de_otro_cliente(): void
+    {
+        $a = Cliente::create(['nombre' => 'Cliente A', 'estado' => 'activo']);
+        $b = Cliente::create(['nombre' => 'Cliente B', 'estado' => 'activo']);
+        $p = ClienteProyecto::create(['cliente_id' => $a->id, 'nombre' => 'De A', 'moneda' => 'USD']);
+
+        $this->put(route('clientes.proyectos.update', [$b, $p]), ['nombre' => 'Robado', 'moneda' => 'USD'])->assertNotFound();
+        $this->delete(route('clientes.proyectos.destroy', [$b, $p]))->assertNotFound();
+        $this->assertSame('De A', $p->fresh()->nombre);
+    }
+
+    public function test_se_agrega_y_elimina_un_seguimiento_a_mano(): void
+    {
+        $c = Cliente::create(['nombre' => 'Con Seguimiento', 'estado' => 'activo']);
+
+        $this->post(route('clientes.seguimientos.store', $c), ['tipo' => 'Proyecto', 'situacion' => 'En seguimiento', 'busca' => 'Cinta LED', 'moneda' => 'USD', 'probabilidad' => 40])
+            ->assertSessionHasNoErrors();
+        $s = ClienteSeguimiento::first();
+        $this->assertSame($this->admin->name, $s->atendido_por, 'sin indicar, atiende quien lo registra');
+        $this->assertSame(today()->toDateString(), $s->fecha->toDateString());
+        $this->get(route('clientes.show', $c))->assertSee('Cinta LED');
+
+        $this->post(route('clientes.seguimientos.store', $c), ['moneda' => 'USD', 'probabilidad' => 150])->assertSessionHasErrors('probabilidad');
+
+        $this->put(route('clientes.seguimientos.update', [$c, $s]), ['tipo' => 'Casacor', 'situacion' => 'Ganado', 'busca' => 'Cinta LED 24V', 'moneda' => 'PEN', 'monto_comprado' => '350', 'atendido_por' => 'Angelica', 'fecha' => '2026-11-01'])
+            ->assertSessionHasNoErrors();
+        $s->refresh();
+        $this->assertSame(['Casacor', 'Ganado', 'Cinta LED 24V', 'PEN', 'Angelica', '2026-11-01'], [$s->tipo, $s->situacion, $s->busca, $s->moneda, $s->atendido_por, $s->fecha->toDateString()]);
+        $this->assertSame('350.00', $s->monto_comprado);
+        $otro = Cliente::create(['nombre' => 'Otro cliente', 'estado' => 'activo']);
+        $this->put(route('clientes.seguimientos.update', [$otro, $s]), ['moneda' => 'USD'])->assertNotFound();
+
+        $this->delete(route('clientes.seguimientos.destroy', [$c, $s]));
+        $this->assertSame(0, ClienteSeguimiento::count());
+    }
+
+    public function test_solo_administracion_carga_proyectos(): void
+    {
+        $c = Cliente::create(['nombre' => 'Reservado', 'estado' => 'activo']);
+        $this->actingAs(User::factory()->create(['role_id' => Role::firstOrCreate(['nombre' => 'Marketing'])->id, 'estado' => 'activo']));
+
+        $this->post(route('clientes.proyectos.store', $c), ['nombre' => 'No debe', 'moneda' => 'USD'])->assertForbidden();
+        $this->get(route('clientes.show', $c))->assertOk()->assertSee('Sin proyectos')->assertDontSee('Agregar proyecto');
+        $this->assertSame(0, ClienteProyecto::count());
+    }
 }
