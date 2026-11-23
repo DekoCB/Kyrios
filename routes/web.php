@@ -3,6 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
+// Catálogo de temporada compartido con un enlace público (sin iniciar sesión)
+Route::get('/c/{token}', [\App\Http\Controllers\CatalogoPublicoController::class, 'show'])
+    ->where('token', '[a-z0-9]{8}')->middleware('throttle:60,1')->name('catalogos.publico');
+
 // ===================== AUTH =====================
 use App\Http\Controllers\Auth\MasterPasswordController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -878,6 +882,29 @@ Route::middleware('auth')->group(function () {
         Route::post('/gasto', [CajaController::class, 'registrarGasto'])->name('gasto');
         Route::get('/movimientos', [CajaController::class, 'movimientos'])->name('movimientos');
         Route::get('/{caja}', [CajaController::class, 'show'])->name('show');
+    });
+
+    // ========================================
+    // CATÁLOGOS DE TEMPORADA (libro 3D)
+    // ========================================
+    // Ver, imprimir y compartir: Administración, Marketing y Logística. Crear y editar: Administración y Marketing.
+    Route::prefix('catalogos')->name('catalogos.')->middleware('role:Administración,Marketing,Logística')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CatalogoLibroController::class, 'index'])->name('index');
+        Route::get('/{catalogo}/pdf', [\App\Http\Controllers\CatalogoLibroController::class, 'pdf'])->whereNumber('catalogo')->name('pdf');
+    });
+    Route::prefix('catalogos')->name('catalogos.')->middleware('role:Administración,Marketing')->group(function () {
+        $c = \App\Http\Controllers\CatalogoLibroController::class;
+        Route::get('/productos', [$c, 'productos'])->name('productos');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::put('/{catalogo}', [$c, 'update'])->whereNumber('catalogo')->name('update');
+        Route::post('/{catalogo}/estado', [$c, 'estado'])->whereNumber('catalogo')->name('estado');
+        Route::post('/{catalogo}/duplicar', [$c, 'duplicar'])->whereNumber('catalogo')->name('duplicar');
+        Route::delete('/{catalogo}', [$c, 'destroy'])->whereNumber('catalogo')->name('destroy');
+        Route::post('/{catalogo}/paginas', [$c, 'paginaStore'])->whereNumber('catalogo')->name('paginas.store');
+        Route::post('/{catalogo}/paginas/armar', [$c, 'armar'])->whereNumber('catalogo')->name('paginas.armar');
+        Route::post('/{catalogo}/paginas/{pagina}/mover', [$c, 'paginaMover'])->whereNumber(['catalogo', 'pagina'])->name('paginas.mover');
+        Route::delete('/{catalogo}/paginas/{pagina}', [$c, 'paginaDestroy'])->whereNumber(['catalogo', 'pagina'])->name('paginas.destroy');
+        Route::put('/{catalogo}/enlace', [$c, 'enlace'])->whereNumber('catalogo')->name('enlace');
     });
 
     // ========================================

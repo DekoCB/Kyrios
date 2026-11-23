@@ -1,0 +1,90 @@
+/* Libro 3D de los catálogos de temporada. Las páginas son papel: sus colores no cambian con el tema de la pantalla. */
+.cl-escena {
+  --papel: #fbfaf5; --tinta: #22221e; --suave: #6a695f; --carbon: #3f3d37; --amarillo: #f2c80f;
+  perspective: 2600px; perspective-origin: 50% 35%;
+  background: radial-gradient(120% 90% at 50% 30%, #e6e8e1, #d7dad1);
+  border-radius: 12px; border: 1px solid #d9dad2; overflow: hidden; display: grid; place-items: center; padding: 34px 12px 40px;
+}
+.cl-libro { position: relative; width: calc(var(--w) * 2px); height: calc(var(--w) * 1.333px); transform-style: preserve-3d; transition: transform .9s cubic-bezier(.5, .1, .2, 1); margin-inline: auto; outline: none; }
+.cl-libro.sin-anim, .cl-libro.sin-anim * { transition: none !important; }
+.cl-base { position: absolute; top: 0; height: 100%; width: calc(var(--w) * 1px); background: var(--papel); transition: opacity .3s; transform: translateZ(-1px); }
+.cl-base.der { left: calc(var(--w) * 1px); box-shadow: 1px 1px 0 #e4e0d3, 2px 2px 0 #d3cebf, 3px 3px 0 #e4e0d3, 4px 4px 0 #cbc5b4, 5px 5px 0 #8f8a7a, 0 26px 30px rgba(0,0,0,.32); }
+.cl-base.izq { left: 0; box-shadow: -1px 1px 0 #e4e0d3, -2px 2px 0 #d3cebf, -3px 3px 0 #e4e0d3, -4px 4px 0 #cbc5b4, -5px 5px 0 #8f8a7a, 0 26px 30px rgba(0,0,0,.32); }
+.cl-hoja { position: absolute; top: 0; left: calc(var(--w) * 1px); width: calc(var(--w) * 1px); height: 100%; transform-origin: left center; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.5, .1, .2, 1), z-index 0s .45s; }
+.cl-cara { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; background: var(--papel); color: var(--tinta); }
+.cl-cara.atras { transform: rotateY(180deg); }
+.cl-cara.frente::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to right, rgba(0,0,0,.2), rgba(0,0,0,0) 9%, rgba(0,0,0,0) 94%, rgba(0,0,0,.05)); }
+.cl-cara.atras::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to left, rgba(0,0,0,.2), rgba(0,0,0,0) 9%, rgba(0,0,0,0) 94%, rgba(0,0,0,.05)); }
+.cl-cara.tapa { background: var(--carbon); color: #f5f3ea; }
+.cl-hoja[data-k="0"] .cl-cara.frente { border-radius: 2px 7px 7px 2px; }
+
+/* Páginas: todo en em, relativo al ancho de la página */
+.cl-pg { position: absolute; inset: 0; font-size: calc(var(--w) * 0.044px); display: flex; flex-direction: column; padding: 1.5em 1.6em 1.7em; line-height: 1.3; font-family: 'Archivo', system-ui, 'Segoe UI', sans-serif; }
+.cl-tope { display: flex; justify-content: space-between; font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 0.56em; letter-spacing: 0.1em; text-transform: uppercase; color: var(--suave); }
+.cl-pie { margin-top: auto; display: flex; justify-content: space-between; align-items: end; font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 0.56em; color: var(--suave); padding-top: .6em; }
+.cl-foto { background: #fff; border: 1px solid #e8e4d8; display: grid; place-items: center; overflow: hidden; }
+.cl-foto img { max-width: 92%; max-height: 92%; object-fit: contain; display: block; }
+.cl-nombre { font-weight: 800; letter-spacing: -0.01em; line-height: 1.05; }
+.cl-cod { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 0.62em; color: var(--suave); }
+.cl-precio { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-weight: 600; white-space: nowrap; }
+.cl-sub { color: var(--suave); text-transform: capitalize; }
+.cl-uno .cl-foto { margin-top: .9em; height: 52%; }
+.cl-uno .cl-nombre { font-size: 2em; margin-top: .55em; }
+.cl-uno .cl-sub { font-size: .72em; margin-top: .15em; }
+.cl-uno dl { display: grid; grid-template-columns: auto 1fr; gap: .25em 1em; margin: .8em 0 0; font-size: .7em; }
+.cl-uno dt { color: var(--suave); } .cl-uno dd { margin: 0; font-weight: 600; }
+.cl-uno .cl-precio { font-size: 1.5em; margin-top: .4em; text-align: right; }
+.cl-dos .fila { display: grid; grid-template-columns: 46% 1fr; gap: 1em; flex: 1; align-items: center; border-top: 1px solid #e3dfd2; padding: .8em 0; }
+.cl-dos .cl-tope + .fila { margin-top: .8em; }
+.cl-dos .cl-foto { aspect-ratio: 1; }
+.cl-dos .cl-nombre { font-size: 1.35em; }
+.cl-dos .cl-sub { font-size: .66em; margin: .15em 0 .5em; }
+.cl-dos .mini-specs { font-size: .64em; color: var(--suave); line-height: 1.5; }
+.cl-dos .cl-precio { font-size: 1.1em; margin-top: .5em; }
+.cl-cuatro .rejilla { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1em; flex: 1; margin-top: .9em; min-height: 0; }
+.cl-cuatro .celda { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: .5em; min-height: 0; }
+.cl-cuatro .cl-nombre { font-size: 1.05em; }
+.cl-cuatro .cl-precio { font-size: .85em; }
+.cl-seccion { padding: 0; background: var(--carbon); color: #f5f3ea; }
+.cl-seccion .fondo { position: absolute; inset: 0; display: grid; place-items: center; background: #fff; }
+.cl-seccion .fondo img { width: 86%; height: 86%; object-fit: contain; opacity: .9; }
+.cl-seccion .velo { position: absolute; inset: 0; background: linear-gradient(to top, rgba(37,36,31,.96) 18%, rgba(37,36,31,.55) 60%, rgba(37,36,31,.2)); }
+.cl-seccion .texto { position: absolute; left: 1.8em; right: 1.8em; bottom: 2.4em; }
+.cl-barra-am { width: 3.2em; height: .32em; background: var(--amarillo); margin-bottom: .9em; }
+.cl-seccion h3 { margin: 0; font-size: 2.5em; line-height: 1; letter-spacing: -0.02em; font-weight: 800; overflow-wrap: anywhere; }
+.cl-seccion small { display: block; margin-top: .8em; font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .62em; letter-spacing: .1em; text-transform: uppercase; color: #d4d1c4; }
+.cl-indice h3 { font-size: 1.9em; margin: .7em 0 .6em; letter-spacing: -0.02em; line-height: 1; }
+.cl-indice ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .7em; overflow: hidden; }
+.cl-indice li { display: flex; align-items: baseline; gap: .5em; font-size: .9em; font-weight: 600; cursor: pointer; }
+.cl-indice li::after { content: ""; order: 1; flex: 1; border-bottom: 1px dotted #b8b3a1; transform: translateY(-.25em); }
+.cl-indice li span:last-child { order: 2; font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .8em; color: var(--suave); }
+.cl-indice .vigencia { margin-top: 1.4em; font-size: .66em; color: var(--suave); }
+.cl-notas .renglones { flex: 1; margin-top: 1em; background: repeating-linear-gradient(to bottom, transparent 0, transparent 1.9em, #e3dfd2 1.9em, #e3dfd2 calc(1.9em + 1px)); }
+.cl-portada { align-items: center; justify-content: center; text-align: center; padding: 2em 1.6em; background: linear-gradient(to right, rgba(0,0,0,.28) 0, rgba(0,0,0,0) 7%), var(--carbon); }
+.cl-portada .logo { width: 70%; margin-top: 3em; }
+.cl-portada .cl-barra-am { width: 3.6em; height: .34em; margin: 2.4em auto 1.4em; }
+.cl-portada h3 { margin: 0; font-size: 1.65em; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; }
+.cl-portada .anio { font-family: ui-monospace, 'SF Mono', Consolas, monospace; letter-spacing: .3em; font-size: .8em; color: var(--amarillo); margin-top: .8em; }
+.cl-portada .lema { margin-top: auto; font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .55em; letter-spacing: .22em; text-transform: uppercase; color: #bdbaae; }
+.cl-contra { align-items: center; justify-content: center; text-align: center; gap: .6em; background: linear-gradient(to left, rgba(0,0,0,.28) 0, rgba(0,0,0,0) 7%), var(--carbon); }
+.cl-contra .logo { width: 46%; }
+.cl-contra p { font-size: .72em; color: #d4d1c4; margin: 0; }
+.cl-contra .qr { background: #fff; padding: .5em; border-radius: .3em; margin-top: 1em; line-height: 0; width: 9em; }
+.cl-contra .qr svg { width: 100%; height: auto; display: block; }
+.cl-contra .leyenda { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .52em; letter-spacing: .12em; text-transform: uppercase; color: #bdbaae; }
+
+/* Precios: se muestra solo el que corresponde al modo del libro */
+.cl-libro .cl-pr, .cl-libro .cl-igv { display: none; }
+.cl-libro[data-precios="pen"] .cl-pr .pen, .cl-libro[data-precios="usd"] .cl-pr .usd { display: inline; }
+.cl-libro .cl-pr .pen, .cl-libro .cl-pr .usd { display: none; }
+.cl-libro[data-precios="pen"] .cl-pr, .cl-libro[data-precios="usd"] .cl-pr { display: block; }
+.cl-libro[data-precios="pen"] .cl-igv, .cl-libro[data-precios="usd"] .cl-igv { display: inline; }
+
+/* Controles bajo el libro y selector de precios */
+.cl-controles { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; margin-top: 14px; }
+.cl-estado { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .8rem; color: #67665e; min-width: 150px; text-align: center; }
+.cl-seg { display: inline-flex; border: 1px solid #d9dad2; border-radius: 9px; overflow: hidden; background: #fff; }
+.cl-seg button { border: 0; background: transparent; padding: 7px 12px; font-size: .82rem; font-weight: 600; border-right: 1px solid #d9dad2; color: #22221e; cursor: pointer; }
+.cl-seg button:last-child { border-right: 0; }
+.cl-seg button[aria-pressed="true"] { background: #3f3d37; color: #f5f3ea; }
+@media (prefers-reduced-motion: reduce) { .cl-libro, .cl-hoja { transition: none; } }

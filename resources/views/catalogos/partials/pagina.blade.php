@@ -1,0 +1,55 @@
+{{-- Una página del libro. Recibe $q (la página armada por LibroCatalogoService), $idx, $catalogo, $libro y $qr. --}}
+@php
+    $t = $q['t'];
+    $lado = $idx % 2 === 0 ? 'izq' : 'der';
+    $logo = asset('img/logo-kyrios-fondo-oscuro.png');
+    $precio = function (array $it) {
+        $pen = $it['pen'] !== null ? 'S/ ' . number_format($it['pen'], 2) : 'Consultar';
+        $usd = $it['usd'] !== null ? 'US$ ' . number_format($it['usd'], 2) : 'Consultar';
+        return new \Illuminate\Support\HtmlString('<span class="cl-precio cl-pr"><span class="pen">' . e($pen) . '</span><span class="usd">' . e($usd) . '</span></span>');
+    };
+    $foto = fn (array $it) => $it['img'] ? new \Illuminate\Support\HtmlString('<img data-src="' . e($it['img']) . '" alt="' . e($it['nombre']) . '">') : new \Illuminate\Support\HtmlString('<span style="font-size:.6em;color:#999">Sin foto</span>');
+    $tope = new \Illuminate\Support\HtmlString('<div class="cl-tope"><span>' . ($lado === 'izq' ? 'Kyrios · Luces &amp; entorno' : e(mb_strtoupper($catalogo->etiquetaTemporada()))) . '</span><span>' . ($lado === 'izq' ? e(mb_strtoupper($catalogo->etiquetaTemporada())) : 'kyrios.com.pe') . '</span></div>');
+    $pie = new \Illuminate\Support\HtmlString($idx === 0 ? '' : '<div class="cl-pie">' . ($lado === 'izq' ? '<span>' . $idx . '</span><span class="cl-igv">Precios sin IGV</span>' : '<span class="cl-igv">Precios sin IGV</span><span>' . $idx . '</span>') . '</div>');
+    $lista = fn (array $it, array $claves) => collect($claves)->filter(fn ($k) => isset($it['specs'][$k]))->mapWithKeys(fn ($k) => [$k => $it['specs'][$k]]);
+@endphp
+@if($t === 'portada')
+    <div class="cl-pg cl-portada"><img class="logo" src="{{ $logo }}" alt="Kyrios"><div class="cl-barra-am"></div><h3>Catálogo<br>{{ $catalogo->temporada }}</h3><div class="anio">{{ $catalogo->anio }}</div><div class="lema">Luces &amp; entorno</div></div>
+@elseif($t === 'indice')
+    <div class="cl-pg cl-indice">{{ $tope }}<h3>Contenido</h3>
+        <ol>@forelse($libro['secciones'] as $s)<li data-ir="{{ $s['idx'] }}"><span>{{ $s['titulo'] }}</span><span>{{ $s['idx'] }}</span></li>@empty<li><span>Sin secciones todavía</span><span></span></li>@endforelse</ol>
+        <p class="vigencia">{{ $catalogo->etiquetaTemporada() }}@if($catalogo->vigencia) · vigente hasta el {{ $catalogo->vigencia->format('d/m/Y') }}@endif</p>
+        <div class="cl-pie"><span></span><span class="cl-igv">Precios sin IGV</span></div></div>
+@elseif($t === 'notas')
+    <div class="cl-pg cl-notas">{{ $tope }}<div class="renglones"></div>{{ $pie }}</div>
+@elseif($t === 'contra')
+    <div class="cl-pg cl-contra"><img class="logo" src="{{ $logo }}" alt="Kyrios"><p>administracion@kyrios.com.pe<br>www.kyrios.com.pe</p><div class="qr">{!! $qr !!}</div><span class="leyenda">Catálogo digital</span></div>
+@elseif($t === 'seccion')
+    @php($f = $q['items'][0] ?? null)
+    <div class="cl-pg cl-seccion"><div class="fondo">@if($f && $f['img'])<img data-src="{{ $f['img'] }}" alt="">@endif</div><div class="velo"></div>
+        <div class="texto"><div class="cl-barra-am"></div><h3>{{ $q['titulo'] }}</h3><small>{{ $catalogo->etiquetaTemporada() }}</small></div></div>
+@elseif($t === 'uno')
+    @php($a = $q['items'][0] ?? null)
+    <div class="cl-pg cl-uno">{{ $tope }}
+        @if($a)
+            <div class="cl-foto">{{ $foto($a) }}</div><div class="cl-nombre">{{ $a['nombre'] }}</div><div class="cl-sub">{{ $a['sub'] }}</div>
+            <dl>@foreach($a['specs'] as $k => $v)<dt>{{ $k }}</dt><dd>{{ $v }}</dd>@endforeach</dl>
+            <div class="cl-cod" style="margin-top:.8em">{{ $a['cod'] }}</div>
+            <div style="text-align:right;font-size:1.5em;margin-top:.4em">{{ $precio($a) }}</div>
+        @endif
+        {{ $pie }}</div>
+@elseif($t === 'dos')
+    <div class="cl-pg cl-dos">{{ $tope }}
+        @foreach($q['items'] as $a)
+            <div class="fila"><div class="cl-foto">{{ $foto($a) }}</div><div><div class="cl-nombre">{{ $a['nombre'] }}</div><div class="cl-sub">{{ $a['sub'] }}</div>
+                <div class="mini-specs">@foreach($lista($a, ['Acabado', 'Potencia', 'IP', 'Diámetro']) as $k => $v){{ $k }}: {{ $v }}<br>@endforeach</div>
+                <div class="cl-cod" style="margin-top:.6em">{{ $a['cod'] }}</div><div style="font-size:1.1em;margin-top:.5em">{{ $precio($a) }}</div></div></div>
+        @endforeach
+        {{ $pie }}</div>
+@else
+    <div class="cl-pg cl-cuatro">{{ $tope }}<div class="rejilla">
+        @foreach($q['items'] as $a)
+            <div class="celda"><div class="cl-foto">{{ $foto($a) }}</div><div><div class="cl-nombre">{{ $a['nombre'] }}</div><div class="cl-cod">{{ $a['cod'] }}</div><div style="font-size:.85em">{{ $precio($a) }}</div></div></div>
+        @endforeach
+    </div>{{ $pie }}</div>
+@endif

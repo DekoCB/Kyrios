@@ -217,6 +217,7 @@ class MenuLateral
 
             self::titulo('Sistema'),
             self::grupo('catalogo', 'Catálogo', 'fa-book', [
+                self::enlace('Catálogos de temporada', 'fa-book-open', 'catalogos.index', ['catalogos.*']),
                 self::enlace('Colores', 'fa-palette', 'catalogo.colores.index', ['catalogo.colores.*']),
                 self::enlace('Marcas', 'fa-trademark', 'catalogo.marcas.index', ['catalogo.marcas.*']),
                 self::enlace('Modelos', 'fa-lightbulb', 'catalogo.modelos.index', ['catalogo.modelos.*']),
@@ -313,6 +314,7 @@ class MenuLateral
                 self::enlace('Cuentas por pagar', 'fa-credit-card', 'cuentas-por-pagar.index', ['cuentas-por-pagar.*']),
             ]),
             self::grupo('catalogo', 'Consultar catálogo', 'fa-book', [
+                self::enlace('Catálogos de temporada', 'fa-book-open', 'catalogos.index', ['catalogos.*']),
                 self::enlace('Colores', 'fa-palette', 'catalogo.colores.index', ['catalogo.colores.*']),
                 self::enlace('Marcas', 'fa-trademark', 'catalogo.marcas.index', ['catalogo.marcas.*']),
                 self::enlace('Modelos', 'fa-lightbulb', 'catalogo.modelos.index', ['catalogo.modelos.*']),
@@ -360,6 +362,7 @@ class MenuLateral
             self::titulo('Consulta'),
             self::enlace('Clientes', 'fa-users', 'clientes.index', ['clientes.*']),
             self::enlace('Catálogo de productos', 'fa-boxes', 'inventario.productos.index', ['inventario.productos.*']),
+            self::enlace('Catálogos de temporada', 'fa-book-open', 'catalogos.index', ['catalogos.*']),
 
             self::titulo('Equipo'),
             self::enlace('Tareas del día', 'fa-list-check', 'tareas.index', ['tareas.*']),
