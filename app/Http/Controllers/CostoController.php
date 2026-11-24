@@ -26,6 +26,7 @@ class CostoController extends Controller
     public function index(Request $request)
     {
         $productos = Producto::where('estado', 'activo')
+            ->select('id', 'codigo', 'nombre', 'nombre_kyrios', 'nombre_fabrica', 'categoria_id', 'costo_promedio', 'ultimo_costo_compra', 'margen_minimo')
             ->with('categoria:id,nombre')
             ->when($request->filled('categoria_id'), fn ($q) => $q->where('categoria_id', $request->categoria_id))
             ->when($request->filled('buscar'), fn ($q) => $q->where(fn ($w) => $w
@@ -35,10 +36,11 @@ class CostoController extends Controller
 
         $general = CostoService::minimoGeneral();
         $ids = $productos->pluck('id')->all();
-        $precios = $this->costos->precios($ids);
-        $variantes = $this->costos->variantesDe($ids);
+        // Agrupados una vez por producto: evitar recorrer todos los precios y variantes por cada fila.
+        $precios = $this->costos->precios($ids)->groupBy('producto_id');
+        $variantes = $this->costos->variantesDe($ids)->groupBy('producto_id');
         $filas = $productos->map(function (Producto $p) use ($precios, $variantes, $general) {
-            $e = $this->costos->evaluar($p, $precios, $variantes, $general);
+            $e = $this->costos->evaluar($p, $precios->get($p->id, collect()), $variantes->get($p->id, collect()), $general);
 
             return (object) [
                 'producto' => $p,

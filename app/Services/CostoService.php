@@ -303,10 +303,10 @@ class CostoService
             ->orderBy('id')
             ->chunkById(300, function ($productos) use (&$bajos, $general) {
                 $ids = $productos->pluck('id')->all();
-                $precios = $this->precios($ids);
-                $variantes = $this->variantesDe($ids);
+                $precios = $this->precios($ids)->groupBy('producto_id');
+                $variantes = $this->variantesDe($ids)->groupBy('producto_id');
                 foreach ($productos as $p) {
-                    $e = $this->evaluar($p, $precios, $variantes, $general);
+                    $e = $this->evaluar($p, $precios->get($p->id, collect()), $variantes->get($p->id, collect()), $general);
                     if ($e->estado === 'bajo') {
                         $bajos->push((object) ['producto' => $p, 'e' => $e]);
                     }
