@@ -184,16 +184,20 @@ class EtiquetaProducto
         $productos = \App\Models\Producto::whereIn('id', $ids)->get(['id', 'codigo', 'nombre', 'nombre_fabrica', 'nombre_kyrios'])->keyBy('id');
         $variantes = \App\Models\ProductoVariante::whereIn('producto_id', $ids)->get(['id', 'producto_id', 'sku', 'codigo_kyrios', 'codigo_fabricante', 'nombre_fabrica', 'nombre_kyrios'])->keyBy('id');
 
-        return $items->map(function ($item) use ($productos, $variantes) {
+        // Agrupadas una vez: buscar las variantes de cada producto en la lista completa hacía el trabajo cuadrático.
+        $porProducto = $variantes->groupBy('producto_id');
+
+        return $items->map(function ($item) use ($productos, $variantes, $porProducto) {
             $producto = $productos[$item['id']] ?? null;
             if (!$producto) {
                 return $item;
             }
+            $propias = $porProducto->get($producto->id, collect());
             $item['nombre'] = self::nombre($producto);
-            $item['codigos'] = self::codigos($producto, $variantes->firstWhere('producto_id', $producto->id));
+            $item['codigos'] = self::codigos($producto, $propias->first());
             $item['texto_busqueda'] = mb_strtolower(implode(' ', array_filter(array_merge(
                 [$producto->nombre, $producto->nombre_kyrios, $producto->nombre_fabrica, $producto->codigo],
-                $variantes->where('producto_id', $producto->id)->flatMap(fn ($v) => [$v->codigo_kyrios, $v->codigo_fabricante, $v->sku, $v->nombre_kyrios, $v->nombre_fabrica])->all()
+                $propias->flatMap(fn ($v) => [$v->codigo_kyrios, $v->codigo_fabricante, $v->sku, $v->nombre_kyrios, $v->nombre_fabrica])->all()
             ))));
             $item['variantes'] = collect($item['variantes'] ?? [])->map(function ($v) use ($variantes, $producto) {
                 $fila = $variantes[$v['id']] ?? null;
