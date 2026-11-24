@@ -18,6 +18,10 @@ class AlertaService
     /** Con cuántos días de anticipación empiezan los avisos de una fecha. */
     public const DIAS_ANTES = 3;
 
+    /** Anticipación de los avisos de publicaciones de Marketing, y quién los recibe además de quien la creó. */
+    public const DIAS_ANTES_PUBLICACION = 3;
+    public const ROLES_PUBLICACIONES = [Role::ADMINISTRACION, Role::MARKETING];
+
     /**
      * Envía un aviso a cada usuario activo de los roles dados, salvo que ya tenga
      * uno sin leer con la misma clave. Devuelve cuántos avisos nuevos se crearon.
@@ -152,7 +156,29 @@ class AlertaService
             ), [$sa->tecnico], unaVez: true);
         }
 
-        return ['avisos' => $avisos, 'retirados' => $this->retirarObsoletos(['seg:', 'cron:', 'pi:', 'herr:'], $vigentes)];
+        // Publicaciones de Marketing: avisa unos días antes de la fecha programada y cuando se pasó sin publicarse
+        $publicaciones = \App\Models\Marketing\Publicacion::with('creador')
+            ->whereIn('estado', ['pendiente', 'aprobada', 'programada'])->whereNotNull('programada_para')->get();
+        foreach ($publicaciones as $pub) {
+            $d = (int) today()->diffInDays($pub->programada_para->copy()->startOfDay(), false);
+            if ($d > self::DIAS_ANTES_PUBLICACION) {
+                continue;
+            }
+            $sinAprobar = $pub->estado === 'pendiente';
+            $clave = "mkt:{$pub->id}:" . ($d < 0 ? "a{$d}" : "d{$d}");
+            $vigentes[] = $clave;
+            $hora = $pub->programada_para->format('H:i') !== '00:00' ? ' ' . $pub->programada_para->format('H:i') : '';
+            $avisos += $this->avisar(self::ROLES_PUBLICACIONES, new AvisoSistema(
+                $clave,
+                $d < 0 ? 'Publicación sin publicar' : ($sinAprobar ? 'Publicación próxima sin aprobar' : 'Publicación próxima'),
+                "«{$pub->titulo}» ({$pub->red_nombre}): " . $cuando($d) . ' (' . $pub->programada_para->format('d/m/Y') . "{$hora})"
+                    . ($sinAprobar ? ', aún sin aprobar.' : '.'),
+                route('marketing.publicaciones.edit', $pub->id, false),
+                $d < 0 || $sinAprobar ? 'alerta' : 'info'
+            ), [$pub->creador], unaVez: true);
+        }
+
+        return ['avisos' => $avisos, 'retirados' => $this->retirarObsoletos(['seg:', 'cron:', 'pi:', 'herr:', 'mkt:'], $vigentes)];
     }
 
     /** Variantes activas cuyo stock total llegó al mínimo indicado (mínimo mayor que cero). */
