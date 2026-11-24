@@ -173,6 +173,59 @@ class CostoService
         return $this->precioDe($this->precios([$productoId]), $productoId, $varianteId);
     }
 
+    /** Variantes activas (id, producto_id, costo_promedio) de los productos dados, para `evaluar()`. */
+    public function variantesDe(array $productoIds): Collection
+    {
+        return ProductoVariante::whereIn('producto_id', $productoIds)->where('estado', 'activo')->get(['id', 'producto_id', 'codigo_kyrios', 'costo_promedio']);
+    }
+
+    /**
+     * Evalúa un producto contra su margen mínimo. Los precios suelen estar cargados por variante, así que se mide el
+     * margen de cada precio vigente (costo de la variante o, si no tiene compras propias, el del producto) y el
+     * producto queda representado por el de peor margen.
+     *
+     * @return object{costo:?float, precio:?float, margen:?float, minimo:?float, estado:string, sugerido:?array, variante_id:?int, variante:?string, con_precio:int}
+     */
+    public function evaluar(Producto $p, Collection $precios, Collection $variantes, ?float $general): object
+    {
+        $minimo = self::minimoDe($p, $general);
+        $costoProducto = (float) $p->costo_promedio > 0 ? (float) $p->costo_promedio : null;
+        $activas = $variantes->where('producto_id', $p->id)->keyBy('id');
+
+        $candidatos = collect();
+        $vistos = [];
+        foreach ($precios->where('producto_id', $p->id) as $pr) {
+            $vid = $pr->variante_id;
+            if ($vid !== null && !$activas->has($vid)) {
+                continue;
+            }
+            if (isset($vistos[$vid ?? 0])) {
+                continue;
+            }
+            $vistos[$vid ?? 0] = true;
+            $costoVariante = $vid !== null && (float) $activas[$vid]->costo_promedio > 0 ? (float) $activas[$vid]->costo_promedio : null;
+            $costo = $costoVariante ?? $costoProducto;
+            $sin = round($pr->precio_soles / ($pr->incluye_igv ? self::IGV : 1), 2);
+            $candidatos->push((object) ['variante_id' => $vid, 'costo' => $costo, 'precio' => $sin, 'margen' => self::margen($sin, $costo)]);
+        }
+
+        $peor = $candidatos->whereNotNull('margen')->sortBy('margen')->first();
+        $costo = $peor?->costo ?? $costoProducto;
+        $precio = $peor?->precio ?? $candidatos->first()?->precio;
+
+        return (object) [
+            'costo' => $costo,
+            'precio' => $precio,
+            'margen' => $peor?->margen,
+            'minimo' => $minimo,
+            'estado' => self::estado($costo, $precio, $minimo),
+            'sugerido' => $minimo !== null ? self::precioSugerido($costo, $minimo) : null,
+            'variante_id' => $peor?->variante_id,
+            'variante' => $peor?->variante_id ? ($activas[$peor->variante_id]->codigo_kyrios ?? null) : null,
+            'con_precio' => $candidatos->count(),
+        ];
+    }
+
     /** Margen sobre costo en %: (precio sin IGV − costo) / costo. Null si no hay costo o precio. */
     public static function margen(?float $precioSinIgv, ?float $costo): ?float
     {
@@ -249,12 +302,13 @@ class CostoService
             ->when($general === null, fn ($q) => $q->whereNotNull('margen_minimo'))
             ->orderBy('id')
             ->chunkById(300, function ($productos) use (&$bajos, $general) {
-                $precios = $this->precios($productos->pluck('id')->all());
+                $ids = $productos->pluck('id')->all();
+                $precios = $this->precios($ids);
+                $variantes = $this->variantesDe($ids);
                 foreach ($productos as $p) {
-                    $minimo = self::minimoDe($p, $general);
-                    $precio = $this->precioDe($precios, $p->id);
-                    if (self::estado((float) $p->costo_promedio, $precio, $minimo) === 'bajo') {
-                        $bajos->push((object) ['producto' => $p, 'precio' => $precio, 'minimo' => $minimo]);
+                    $e = $this->evaluar($p, $precios, $variantes, $general);
+                    if ($e->estado === 'bajo') {
+                        $bajos->push((object) ['producto' => $p, 'e' => $e]);
                     }
                 }
             });
@@ -278,12 +332,11 @@ class CostoService
                 $p = $b->producto;
                 $clave = "margen:{$p->id}";
                 $vigentes[] = $clave;
-                $margen = self::margen($b->precio, (float) $p->costo_promedio);
-                $sug = self::precioSugerido((float) $p->costo_promedio, $b->minimo);
+                $e = $b->e;
                 $avisos += $alertas->avisar(self::ROLES_AVISO, new AvisoSistema(
                     $clave,
                     'Margen por debajo del mínimo',
-                    EtiquetaProducto::nombre($p) . ": margen {$margen}% (mínimo {$fmt($b->minimo)}%). Precio sugerido: S/ " . number_format($sug['sin_igv'], 2) . ' sin IGV.',
+                    EtiquetaProducto::nombre($p) . ($e->variante ? " · {$e->variante}" : '') . ": margen {$e->margen}% (mínimo {$fmt($e->minimo)}%). Precio sugerido: S/ " . number_format($e->sugerido['sin_igv'], 2) . ' sin IGV.',
                     route('precios.costos.show', $p->id, false),
                     'alerta'
                 ));

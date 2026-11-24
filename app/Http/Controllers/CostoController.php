@@ -34,22 +34,24 @@ class CostoController extends Controller
             ->orderBy('nombre')->get();
 
         $general = CostoService::minimoGeneral();
-        $precios = $this->costos->precios($productos->pluck('id')->all());
-        $filas = $productos->map(function (Producto $p) use ($precios, $general) {
-            $costo = $p->costo_promedio !== null ? (float) $p->costo_promedio : null;
-            $precio = $this->costos->precioDe($precios, $p->id);
-            $minimo = CostoService::minimoDe($p, $general);
+        $ids = $productos->pluck('id')->all();
+        $precios = $this->costos->precios($ids);
+        $variantes = $this->costos->variantesDe($ids);
+        $filas = $productos->map(function (Producto $p) use ($precios, $variantes, $general) {
+            $e = $this->costos->evaluar($p, $precios, $variantes, $general);
 
             return (object) [
                 'producto' => $p,
                 'propio' => $p->margen_minimo !== null,
-                'costo' => $costo,
+                'costo' => $e->costo,
                 'ultimo' => $p->ultimo_costo_compra !== null ? (float) $p->ultimo_costo_compra : null,
-                'precio' => $precio,
-                'margen' => CostoService::margen($precio, $costo),
-                'minimo' => $minimo,
-                'estado' => CostoService::estado($costo, $precio, $minimo),
-                'sugerido' => $minimo !== null ? CostoService::precioSugerido($costo, $minimo) : null,
+                'precio' => $e->precio,
+                'margen' => $e->margen,
+                'minimo' => $e->minimo,
+                'estado' => $e->estado,
+                'sugerido' => $e->sugerido,
+                'variante' => $e->variante,
+                'con_precio' => $e->con_precio,
             ];
         });
 
@@ -76,13 +78,14 @@ class CostoController extends Controller
     public function show(Producto $producto)
     {
         $precios = $this->costos->precios([$producto->id]);
-        $costo = $producto->costo_promedio !== null ? (float) $producto->costo_promedio : null;
-        $precio = $this->costos->precioDe($precios, $producto->id);
         $general = CostoService::minimoGeneral();
-        $minimo = CostoService::minimoDe($producto, $general);
+        $todas = $producto->variantes()->where('estado', 'activo')->get();
+        $e = $this->costos->evaluar($producto, $precios, $todas, $general);
+        $costo = (float) $producto->costo_promedio > 0 ? (float) $producto->costo_promedio : null;
+        $minimo = $e->minimo;
 
-        $variantes = $producto->variantes()->where('estado', 'activo')->get()->map(function ($v) use ($precios, $producto) {
-            $c = $v->costo_promedio !== null ? (float) $v->costo_promedio : null;
+        $variantes = $todas->map(function ($v) use ($precios, $producto, $costo) {
+            $c = (float) $v->costo_promedio > 0 ? (float) $v->costo_promedio : $costo;
             $pr = $this->costos->precioDe($precios, $producto->id, $v->id);
 
             return (object) ['variante' => $v, 'costo' => $c, 'ultimo' => $v->ultimo_costo_compra !== null ? (float) $v->ultimo_costo_compra : null,
@@ -93,13 +96,15 @@ class CostoController extends Controller
             'producto' => $producto,
             'costo' => $costo,
             'ultimo' => $producto->ultimo_costo_compra !== null ? (float) $producto->ultimo_costo_compra : null,
-            'precio' => $precio,
-            'margen' => CostoService::margen($precio, $costo),
+            'precio' => $e->precio,
+            'margen' => $e->margen,
             'minimo' => $minimo,
             'general' => $general,
-            'estado' => CostoService::estado($costo, $precio, $minimo),
+            'estado' => $e->estado,
             'estados' => self::ESTADOS,
-            'sugerido' => $minimo !== null ? CostoService::precioSugerido($costo, $minimo) : null,
+            'sugerido' => $e->sugerido,
+            'variantePeor' => $e->variante,
+            'conPrecio' => $e->con_precio,
             'variantes' => $variantes,
             'historial' => $this->costos->historial($producto->id)->take(60),
             'proveedores' => $this->costos->proveedores($producto->id),

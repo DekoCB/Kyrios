@@ -101,8 +101,8 @@
                         </td>
                         <td class="px-4 py-3 text-right text-gray-700">{{ $soles($f->costo) }}</td>
                         <td class="px-4 py-3 text-right text-gray-500">{{ $soles($f->ultimo) }}</td>
-                        <td class="px-4 py-3 text-right text-gray-700">{{ $soles($f->precio) }}</td>
-                        <td class="px-4 py-3 text-right font-semibold {{ $f->estado === 'bajo' ? 'text-red-600' : 'text-gray-800' }}">{{ $pct($f->margen) }}</td>
+                        <td class="px-4 py-3 text-right text-gray-700">{{ $soles($f->precio) }}@if($f->con_precio > 1)<div class="text-[11px] text-gray-400">{{ $f->con_precio }} precios</div>@endif</td>
+                        <td class="px-4 py-3 text-right font-semibold {{ $f->estado === 'bajo' ? 'text-red-600' : 'text-gray-800' }}">{{ $pct($f->margen) }}@if($f->variante && $f->con_precio > 1)<div class="text-[11px] font-normal text-gray-400" title="Variante con el peor margen">peor: {{ $f->variante }}</div>@endif</td>
                         <td class="px-4 py-3 text-right">
                             <form method="POST" action="{{ route('precios.costos.margen-minimo', $f->producto->id) }}" class="inline-flex items-center gap-1 justify-end">
                                 @csrf

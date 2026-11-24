@@ -43,7 +43,7 @@
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><p class="text-xs text-gray-400 uppercase font-medium">Costo promedio</p><p class="text-xl font-bold text-gray-900">{{ $soles($costo) }}</p><p class="text-[11px] text-gray-400">ponderado por cantidad</p></div>
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><p class="text-xs text-gray-400 uppercase font-medium">Último costo</p><p class="text-xl font-bold text-gray-900">{{ $soles($ultimo) }}</p></div>
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><p class="text-xs text-gray-400 uppercase font-medium">Precio sin IGV</p><p class="text-xl font-bold text-gray-900">{{ $soles($precio) }}</p></div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><p class="text-xs text-gray-400 uppercase font-medium">Margen real</p><p class="text-xl font-bold {{ $estado === 'bajo' ? 'text-red-600' : 'text-gray-900' }}">{{ $pct($margen) }}</p></div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><p class="text-xs text-gray-400 uppercase font-medium">Margen real{{ $conPrecio > 1 ? ' (peor variante)' : '' }}</p><p class="text-xl font-bold {{ $estado === 'bajo' ? 'text-red-600' : 'text-gray-900' }}">{{ $pct($margen) }}</p></div>
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><p class="text-xs text-gray-400 uppercase font-medium">Estado</p>
             <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border mt-1 {{ $colores[$estado] }}">{{ $estados[$estado] }}</span></div>
     </div>

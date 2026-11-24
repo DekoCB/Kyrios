@@ -335,4 +335,57 @@ class CostosYMargenesTest extends TestCase
 
         $this->get(route('precios.costos.index'))->assertOk()->assertSee('Margen mínimo general')->assertSee('30 (general)');
     }
+
+    private function precioDeVariante(ProductoVariante $v, float $monto): ProductoPrecio
+    {
+        return ProductoPrecio::create(['producto_id' => $this->producto->id, 'variante_id' => $v->id, 'tipo_precio' => 'venta_regular', 'precio' => $monto,
+            'moneda' => 'PEN', 'incluye_igv' => false, 'activo' => true, 'prioridad' => 1]);
+    }
+
+    public function test_con_precios_por_variante_el_producto_se_evalua_por_su_peor_margen(): void
+    {
+        $this->precioDeVariante($this->v1, 200.0);   // costo 100 → margen 100 %
+        $this->precioDeVariante($this->v2, 110.0);   // costo 100 → margen 10 %  (peor)
+        $this->comprar([$this->linea($this->v1, 5, 100), $this->linea($this->v2, 5, 100)]);
+
+        $costos = app(CostoService::class);
+        $e = $costos->evaluar($this->producto->fresh(), $costos->precios([$this->producto->id]), $costos->variantesDe([$this->producto->id]), 30.0);
+
+        $this->assertSame('bajo', $e->estado);
+        $this->assertSame(10.0, $e->margen);
+        $this->assertSame(110.0, $e->precio);
+        $this->assertSame('KY-LU2501-0002', $e->variante);
+        $this->assertSame(2, $e->con_precio);
+    }
+
+    public function test_un_producto_con_precios_solo_por_variante_no_sale_como_sin_precio(): void
+    {
+        $this->precioDeVariante($this->v1, 200.0);
+        $this->comprar([$this->linea($this->v1, 5, 100)]);
+
+        $this->get(route('precios.costos.index', ['estado' => 'ok']))->assertOk()->assertSee('KY-LU2501-0001');
+        $this->get(route('precios.costos.index', ['estado' => 'sin_precio']))->assertOk()->assertDontSee('KY-LU2501-0001');
+    }
+
+    public function test_el_aviso_con_precios_por_variante_nombra_la_variante_de_peor_margen(): void
+    {
+        $this->precioDeVariante($this->v1, 200.0);
+        $this->precioDeVariante($this->v2, 110.0);
+        $this->comprar([$this->linea($this->v1, 5, 100), $this->linea($this->v2, 5, 100)]);
+
+        $mensaje = $this->admin->unreadNotifications->first()->data['mensaje'];
+        $this->assertStringContainsString('KY-LU2501-0002', $mensaje);
+        $this->assertStringContainsString('margen 10%', $mensaje);
+    }
+
+    public function test_una_variante_sin_compras_propias_usa_el_costo_del_producto(): void
+    {
+        $this->precioDeVariante($this->v2, 110.0);
+        $this->comprar([$this->linea($this->v1, 5, 100)]);   // solo v1 se compró; v2 hereda el costo del producto (100)
+
+        $costos = app(CostoService::class);
+        $e = $costos->evaluar($this->producto->fresh(), $costos->precios([$this->producto->id]), $costos->variantesDe([$this->producto->id]), 30.0);
+
+        $this->assertSame(10.0, $e->margen);
+    }
 }
