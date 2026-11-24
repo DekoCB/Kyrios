@@ -127,6 +127,8 @@ class CompraService
             // 5. Calcular prorrateo de gastos de importación
             $this->aplicarProrrateo($compra->fresh(['detalles.producto', 'detalles.variante']));
 
+            $this->refrescarCostos($compra->detalles->pluck('producto_id')->unique()->all());
+
             // Si esta compra viene de "Recibir mercadería" de un Pedido a Proveedor,
             // cerrar el ciclo marcándolo como recibido.
             if ($compra->pedido_id) {
@@ -289,30 +291,33 @@ class CompraService
      */
     private function actualizarPrecioProducto(Producto $producto, float $precio): void
     {
-        // Guardar historial de precios (opcional)
-        // PrecioHistorico::create([...]);
-        
-        $producto->update([
-            'ultimo_costo_compra' => $precio,
-            'costo_promedio'      => $precio,
-            'fecha_ultima_compra' => now(),
-        ]);
+        // Costo promedio ponderado (en soles, con prorrateo) y último costo, desde las compras vigentes
+        app(CostoService::class)->recalcular($producto->id);
     }
-    
+
     /**
-     * Actualizar Costo Promedio Ponderado de la variante
-     * CPP = SUM(qty * precio) / SUM(qty) sobre todo el historial de compras
+     * Actualizar costo promedio ponderado y último costo de la variante (ver CostoService).
      */
     private function actualizarCostoVariante(ProductoVariante $variante, float $ultimoPrecio): void
     {
-        $cpp = DetalleCompra::where('variante_id', $variante->id)
-            ->selectRaw('SUM(cantidad * precio_unitario) / NULLIF(SUM(cantidad), 0) AS cpp')
-            ->value('cpp');
+        app(CostoService::class)->recalcular($variante->producto_id, $variante->id);
+    }
 
-        $variante->update([
-            'ultimo_costo_compra' => $ultimoPrecio,
-            'costo_promedio'      => $cpp ? round((float) $cpp, 2) : $ultimoPrecio,
-        ]);
+    /**
+     * Recalcula el costo promedio ponderado de los productos tocados por una compra y revisa los márgenes mínimos.
+     * Nunca debe impedir que la compra se guarde.
+     */
+    private function refrescarCostos(array $productoIds): void
+    {
+        try {
+            $costos = app(CostoService::class);
+            foreach ($productoIds as $id) {
+                $costos->recalcularProducto((int) $id);
+            }
+            $costos->revisarMargenes();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -425,6 +430,7 @@ class CompraService
             }
 
             Log::info('Compra anulada', ['compra_id' => $compra->id, 'motivo' => $motivo]);
+            $this->refrescarCostos($compra->detalles->pluck('producto_id')->unique()->all());
         });
     }
 
@@ -595,6 +601,7 @@ class CompraService
             }
 
             Log::info('Compra actualizada (cabecera + detalles)', ['compra_id' => $compra->id]);
+            $this->refrescarCostos($compra->detalles()->pluck('producto_id')->unique()->all());
         });
     }
 
@@ -660,6 +667,7 @@ class CompraService
             }
 
             Log::info('Detalle de compra eliminado', ['compra_id' => $compra->id, 'detalle_id' => $detalle->id]);
+            $this->refrescarCostos([$detalle->producto_id]);
         });
     }
 
@@ -685,12 +693,14 @@ class CompraService
             }
 
             // Eliminar detalles
+            $productosAfectados = $compra->detalles()->pluck('producto_id')->unique()->all();
             $compra->detalles()->delete();
 
             // Eliminar la compra
             $compra->delete();
 
             Log::info('Compra eliminada', ['compra_id' => $compra->id]);
+            $this->refrescarCostos($productosAfectados);
         });
     }
     

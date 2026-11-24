@@ -152,7 +152,8 @@ class MenuLateral
                 self::enlace('Bitácora de ventas', 'fa-clipboard-list', 'ventas.auditoria'),
             ]),
             self::grupo('precios', 'Precios', 'fa-tags', [
-                self::enlace('Gestión de precios', 'fa-tags', 'precios.index', ['precios.*']),
+                self::enlace('Gestión de precios', 'fa-tags', 'precios.index', ['precios.index', 'precios.show', 'precios.edit', 'precios.historial']),
+                self::enlace('Costos y márgenes', 'fa-chart-line', 'precios.costos.index', ['precios.costos.*']),
                 self::enlace('Tipo de cambio', 'fa-dollar-sign', 'tipo-cambio.index', ['tipo-cambio.*']),
             ]),
             self::grupo('facturacion', 'Facturación', 'fa-file-invoice-dollar', [
@@ -312,6 +313,10 @@ class MenuLateral
                 self::enlace('Registrar compras', 'fa-file-invoice', 'compras.index', ['compras.*']),
                 self::enlace('Órdenes de compra', 'fa-clipboard-list', 'pedidos.index', ['pedidos.*']),
                 self::enlace('Cuentas por pagar', 'fa-credit-card', 'cuentas-por-pagar.index', ['cuentas-por-pagar.*']),
+            ]),
+            self::grupo('precios', 'Precios', 'fa-tags', [
+                self::enlace('Gestión de precios', 'fa-tags', 'precios.index', ['precios.index', 'precios.show', 'precios.edit', 'precios.historial']),
+                self::enlace('Costos y márgenes', 'fa-chart-line', 'precios.costos.index', ['precios.costos.*']),
             ]),
             self::grupo('catalogo', 'Consultar catálogo', 'fa-book', [
                 self::enlace('Catálogos de temporada', 'fa-book-open', 'catalogos.index', ['catalogos.*']),

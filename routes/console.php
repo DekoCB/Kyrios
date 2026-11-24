@@ -41,3 +41,9 @@ Schedule::command('alertas:fechas')
     ->dailyAt('07:05')
     ->timezone('America/Lima')
     ->withoutOverlapping();
+
+// Márgenes: productos cuyo margen real quedó bajo su margen mínimo; cada mañana a las 07:10 hora Lima
+Schedule::command('alertas:margenes')
+    ->dailyAt('07:10')
+    ->timezone('America/Lima')
+    ->withoutOverlapping();

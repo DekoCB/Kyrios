@@ -999,6 +999,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/producto/{producto}/precio/{precio}/edit', [PrecioController::class, 'edit'])->name('edit');
         Route::put('/producto/{producto}/precio/{precio}', [PrecioController::class, 'update'])->name('update');
         Route::get('/producto/{producto}/historial', [PrecioController::class, 'historial'])->name('historial');
+
+        // Costos de compra y márgenes de venta
+        Route::get('/costos', [App\Http\Controllers\CostoController::class, 'index'])->name('costos.index');
+        Route::get('/costos/{producto}', [App\Http\Controllers\CostoController::class, 'show'])->whereNumber('producto')->name('costos.show');
+        Route::post('/costos/margen-general', [App\Http\Controllers\CostoController::class, 'margenGeneral'])->name('costos.margen-general');
+        Route::post('/costos/{producto}/margen-minimo', [App\Http\Controllers\CostoController::class, 'margenMinimo'])->whereNumber('producto')->name('costos.margen-minimo');
     });
 
     /*

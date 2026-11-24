@@ -16,7 +16,10 @@
 
 <div class="md:ml-64 p-4 md:p-6">
     <x-header title="Gestión de Precios" subtitle="Administra los precios de venta y márgenes por producto" />
-    <div class="flex justify-end mb-3"><x-selector-moneda /></div>
+    <div class="flex flex-wrap justify-end items-center gap-3 mb-3">
+        <a href="{{ route('precios.costos.index') }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-sm font-medium hover:bg-blue-100"><i class="fas fa-chart-line text-xs"></i> Costos y márgenes</a>
+        <x-selector-moneda />
+    </div>
 
     {{-- Alerta --}}
     @if(session('success'))
