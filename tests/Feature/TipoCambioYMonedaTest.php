@@ -107,4 +107,19 @@ class TipoCambioYMonedaTest extends TestCase
         $this->get(route('ventas.index'))->assertOk()->assertSee('data-selector-moneda', false);
         $this->get(route('ventas.create'))->assertOk()->assertSee('$store.moneda.fmt', false)->assertSee('name="tipo-cambio" content="3.8', false);
     }
+
+    public function test_el_tipo_de_cambio_vigente_se_lee_una_sola_vez_por_peticion_y_se_actualiza_al_guardar(): void
+    {
+        TipoCambio::create(['fecha' => today()->subDay()->toDateString(), 'compra' => 3.40, 'venta' => 3.42]);
+
+        \DB::enableQueryLog();
+        $valores = collect(range(1, 50))->map(fn () => TipoCambio::actual())->unique();
+        $consultas = collect(\DB::getQueryLog())->filter(fn ($q) => str_contains($q['query'], 'tipos_cambio'))->count();
+
+        $this->assertSame([3.42], $valores->values()->all());
+        $this->assertSame(1, $consultas, 'mostrar 50 precios no debe hacer 50 consultas');
+
+        TipoCambio::create(['fecha' => today()->toDateString(), 'compra' => 3.50, 'venta' => 3.52]);
+        $this->assertSame(3.52, TipoCambio::actual(), 'al guardar uno nuevo se vuelve a leer');
+    }
 }

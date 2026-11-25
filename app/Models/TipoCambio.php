@@ -23,9 +23,30 @@ class TipoCambio extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /** Segundos que se reutiliza el tipo de cambio leído en procesos largos (colas); en una petición web dura lo que ella. */
+    private const VIGENCIA_EN_MEMORIA = 60;
+
+    protected static function booted(): void
+    {
+        $olvidar = fn () => app()->forgetInstance('tipo_cambio.vigente');
+        static::saved($olvidar);
+        static::deleted($olvidar);
+    }
+
+    /**
+     * El vigente se lee una sola vez por petición: cada precio que se muestra lo pide para convertir a soles y dólares,
+     * y pantallas como Nueva venta o Costos hacían cientos de consultas iguales.
+     */
     public static function vigente(): ?self
     {
-        return self::orderByDesc('fecha')->orderByDesc('id')->first();
+        $app = app();
+        $guardado = $app->bound('tipo_cambio.vigente') ? $app->make('tipo_cambio.vigente') : null;
+        if ($guardado === null || time() - $guardado[1] > self::VIGENCIA_EN_MEMORIA) {
+            $guardado = [self::orderByDesc('fecha')->orderByDesc('id')->first(), time()];
+            $app->instance('tipo_cambio.vigente', $guardado);
+        }
+
+        return $guardado[0];
     }
 
     /** Tipo de cambio de venta vigente en una fecha (el último registrado hasta ese día; si no hay, el actual). */

@@ -95,6 +95,14 @@ body { transition: background-color .2s ease, color .2s ease; }
 /* Cabeceras de tabla (bg-gray-50/70…) y acentos translúcidos: sin esto quedaban gris claro sobre fondo oscuro */
 .dark [class~="bg-gray-50/60"], .dark [class~="bg-gray-50/70"], .dark [class~="bg-gray-100/50"]{background-color:#27251f}
 .dark [class~="bg-indigo-50/30"]{background-color:rgba(250,208,0,.06)}
+/* Fondos de color translúcidos (filas resaltadas de kardex, ABC, cuentas por pagar, etc.): en oscuro son un tinte suave, no un pastel claro */
+.dark [class*="bg-blue-50/"], .dark [class*="bg-indigo-50/"]{background-color:rgba(250,208,0,.06)}
+.dark [class*="bg-green-50/"]{background-color:rgba(34,197,94,.08)}
+.dark [class*="bg-red-50/"]{background-color:rgba(239,68,68,.08)}
+.dark [class*="bg-yellow-50/"], .dark [class*="bg-amber-50/"]{background-color:rgba(245,158,11,.08)}
+.dark [class~="bg-white/70"]{background-color:rgba(30,28,23,.7)}
+/* Bordes claros de color (border-blue-100…) y gris casi blanco: en oscuro llevan el borde tenue del tema */
+.dark .border-gray-50, .dark .border-slate-200, .dark :is(.border-blue-100,.border-indigo-100,.border-green-100,.border-emerald-100,.border-teal-100,.border-red-100,.border-orange-100,.border-amber-100,.border-purple-100){border-color:#2a2822}
 /* Barras fijas con fondo translúcido (formularios largos): en oscuro llevan el color del fondo de la página, no gris claro */
 .dark [class~="bg-gray-50/95"]{background-color:rgba(20,19,15,.95)}
 .dark .bg-gray-800, .dark .bg-gray-900{background-color:#0d0c09}

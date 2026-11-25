@@ -21,8 +21,9 @@ use Illuminate\Support\Str;
  *
  *  - Cada fila se busca por código de fábrica (manda sobre el KLU, que en el sistema está repetido en algunos productos);
  *    solo si la fábrica no existe se prueba con el código KLU.
- *  - Existente: precio de venta regular (USD sin IGV) con su costo en almacén, precio de oferta (USD con IGV) y
- *    precio Oechsle (S/ sin IGV). El costo de fábrica solo se escribe donde la variante no lo tiene.
+ *  - Existente: precio de venta regular (USD con IGV, que es el «sin IGV» de la lista × 1.18: el sistema entero —punto de
+ *    venta, comisiones, reportes— da por hecho que el precio regular ya incluye IGV) con su costo en almacén, precio de oferta
+ *    (USD con IGV) y precio Oechsle (S/ sin IGV). El costo de fábrica solo se escribe donde la variante no lo tiene.
  *    El costo promedio NO se toca: sigue saliendo de las compras.
  *  - Inexistente: se crea producto + variante con su código KY-… y los mismos precios.
  *  - Por defecto solo simula; con --aplicar guarda y deja un respaldo con lo creado y desactivado (--revertir lo deshace).
@@ -37,6 +38,7 @@ class ImportarListaPrecios extends Command
     protected $description = 'Importa la lista de precios oficial: actualiza costos y precios y crea los productos que falten';
 
     public const NOTA = 'Lista de precios KYRIOS (nov-2026)';
+    public const IGV = 1.18;
 
     private const LUMINARIAS = [
         ['/\bCOLGANTE/', 'colgante'], ['/\b(APLIQUE|BRAQUETE)/', 'braquete'], ['/\bPROYECTOR/', 'proyector'], ['/\bBALIZA/', 'baliza'],
@@ -158,10 +160,11 @@ class ImportarListaPrecios extends Command
     private function aplicarPrecios(int $productoId, int $varianteId, array $f): void
     {
         $compra = !empty($f['c_alm']) ? round($f['c_alm'], 2) : null;
-        $venta = round($f['pv_usd'], 2);
+        $venta = round($f['pv_usd'] * self::IGV, 2);
+        // Margen sobre costo medido con el precio con IGV, igual que el formulario de Precios
         $margen = $compra ? min(999.99, round(($venta - $compra) / $compra * 100, 2)) : null;
 
-        $this->informe[$this->fijar($productoId, $varianteId, 'venta_regular', $venta, 'USD', false, $compra, $margen) ? 'regular_nuevo' : 'regular_igual']++;
+        $this->informe[$this->fijar($productoId, $varianteId, 'venta_regular', $venta, 'USD', true, $compra, $margen) ? 'regular_nuevo' : 'regular_igual']++;
         if (!empty($f['of_usd']) && $f['of_usd'] > 0 && $this->fijar($productoId, $varianteId, 'venta_oferta', round($f['of_usd'], 2), 'USD', true, null, null)) {
             $this->informe['oferta']++;
         }

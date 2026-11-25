@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Console\Commands\ImportarListaPrecios;
 use App\Models\Catalogo\Marca;
 use App\Models\Categoria;
 use App\Models\Producto;
@@ -62,19 +63,19 @@ class ImportarListaPreciosTest extends TestCase
         $this->assertNull($this->variante->fresh()->precio_fabrica);
     }
 
-    public function test_actualiza_el_precio_regular_en_dolares_sin_igv_con_su_costo_y_deja_el_anterior_inactivo(): void
+    public function test_actualiza_el_precio_regular_en_dolares_con_igv_con_su_costo_y_deja_el_anterior_inactivo(): void
     {
         $this->correr([$this->fila()])->assertSuccessful();
 
         $vigente = ProductoPrecio::where('variante_id', $this->variante->id)->where('tipo_precio', 'venta_regular')->where('activo', true)->sole();
-        $this->assertEquals(100.00, (float) $vigente->precio);
+        // 100 sin IGV en la lista → 118 con IGV guardado, como todos los precios regulares del sistema
+        $this->assertEquals(118.00, (float) $vigente->precio);
         $this->assertSame('USD', $vigente->moneda);
-        $this->assertFalse((bool) $vigente->incluye_igv);
+        $this->assertTrue((bool) $vigente->incluye_igv);
         $this->assertEquals(26.00, (float) $vigente->precio_compra);
-        $this->assertEquals(284.62, (float) $vigente->margen);
+        $this->assertEquals(353.85, (float) $vigente->margen);
         $this->assertSame(1, ProductoPrecio::where('variante_id', $this->variante->id)->where('tipo_precio', 'venta_regular')->where('activo', false)->count());
-        // El sistema suma el IGV encima: 100 sin IGV → 118 con IGV, como el Excel
-        $this->assertEquals(118.0, round($vigente->precio * 1.18, 2));
+        $this->assertEquals(100.0, $vigente->precio_con_igv / 1.18);
     }
 
     public function test_guarda_oferta_en_dolares_con_igv_y_oechsle_en_soles_sin_igv(): void
@@ -137,7 +138,7 @@ class ImportarListaPreciosTest extends TestCase
         $this->correr([$this->fila(['cod_fab' => 'NUEVO-1'])])->assertSuccessful();
 
         $this->assertSame(0, Producto::where('id', '!=', $this->producto->id)->count());
-        $this->assertEquals(100.0, (float) ProductoPrecio::where('variante_id', $this->variante->id)->where('tipo_precio', 'venta_regular')->where('activo', true)->value('precio'));
+        $this->assertEquals(118.0, (float) ProductoPrecio::where('variante_id', $this->variante->id)->where('tipo_precio', 'venta_regular')->where('activo', true)->value('precio'));
     }
 
     public function test_las_filas_sin_precio_de_venta_no_se_tocan_ni_se_crean(): void
@@ -210,5 +211,28 @@ class ImportarListaPreciosTest extends TestCase
         $vigente = ProductoPrecio::where('variante_id', $this->variante->id)->where('activo', true)->sole();
         $this->assertEquals(100.0, (float) $vigente->precio);
         $this->assertTrue((bool) $vigente->incluye_igv);
+    }
+
+    public function test_la_migracion_pasa_a_con_igv_los_precios_importados_sin_igv_y_se_puede_deshacer(): void
+    {
+        $migracion = require database_path('migrations/2026_11_25_120000_precios_de_lista_con_igv.php');
+        $sinIgv = ProductoPrecio::create(['producto_id' => $this->producto->id, 'variante_id' => $this->variante->id, 'tipo_precio' => 'venta_regular',
+            'precio' => 100, 'precio_compra' => 26, 'margen' => 284.62, 'moneda' => 'USD', 'incluye_igv' => false, 'prioridad' => 1, 'activo' => false,
+            'observaciones' => ImportarListaPrecios::NOTA]);
+        $ajeno = ProductoPrecio::create(['producto_id' => $this->producto->id, 'variante_id' => $this->variante->id, 'tipo_precio' => 'venta_regular',
+            'precio' => 50, 'precio_compra' => 20, 'moneda' => 'USD', 'incluye_igv' => false, 'prioridad' => 1, 'activo' => false, 'observaciones' => 'Carga manual']);
+
+        $migracion->up();
+
+        $this->assertEquals(118.0, (float) $sinIgv->fresh()->precio);
+        $this->assertTrue((bool) $sinIgv->fresh()->incluye_igv);
+        $this->assertEquals(353.85, (float) $sinIgv->fresh()->margen);
+        $this->assertEquals(50.0, (float) $ajeno->fresh()->precio, 'solo toca los precios de la lista');
+        $this->assertFalse((bool) $ajeno->fresh()->incluye_igv);
+
+        $migracion->down();
+
+        $this->assertEquals(100.0, (float) $sinIgv->fresh()->precio);
+        $this->assertFalse((bool) $sinIgv->fresh()->incluye_igv);
     }
 }
