@@ -558,6 +558,7 @@ public function restoreSingle(Producto $producto, ProductoPrecio $precio)
         return response()->json([
             'found'           => true,
             'precio_unitario' => (float) $detalle->precio_unitario,
+            'moneda'          => $detalle->compra->tipo_moneda === 'USD' ? 'USD' : 'PEN',
             'fecha_compra'    => $detalle->compra->fecha->format('d/m/Y'),
             'compra_codigo'   => $detalle->compra->codigo,
             'proveedor'       => [

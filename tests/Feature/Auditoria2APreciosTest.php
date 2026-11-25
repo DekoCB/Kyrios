@@ -105,4 +105,28 @@ class Auditoria2APreciosTest extends TestCase
 
         $this->assertTrue(ProductoPrecio::where('producto_id', $this->producto->id)->whereNull('variante_id')->where('activo', true)->exists());
     }
+
+    public function test_el_formulario_de_registrar_precio_cambia_etiquetas_y_montos_con_la_moneda(): void
+    {
+        $html = $this->get(route('precios.show', $this->producto))->assertOk()->getContent();
+
+        $this->assertStringContainsString('@change="cambiarMoneda($event.target.value)"', $html);
+        $this->assertStringContainsString("x-text=\"'(' + simbolo + ')'\"", $html);
+        $this->assertStringNotContainsString('Precio Compra (S/)', $html);
+        $this->assertStringNotContainsString('Precio de Venta (S/)', $html);
+    }
+
+    public function test_la_ultima_compra_informa_su_moneda_para_convertir_el_precio_de_compra(): void
+    {
+        $prov = \App\Models\Proveedor::create(['ruc' => '20555666771', 'razon_social' => 'Proveedor SAC', 'estado' => 'activo']);
+        $alm = Almacen::first();
+        $compra = \App\Models\Compra::create(['codigo' => 'C-1', 'numero_factura' => 'F-1', 'proveedor_id' => $prov->id, 'almacen_id' => $alm->id, 'user_id' => auth()->id(),
+            'fecha' => now()->toDateString(), 'tipo_moneda' => 'USD', 'tipo_cambio' => 3.5, 'subtotal' => 100, 'igv' => 0, 'total' => 100, 'total_pen' => 350,
+            'estado' => 'registrado', 'forma_pago' => 'contado']);
+        \App\Models\DetalleCompra::create(['compra_id' => $compra->id, 'producto_id' => $this->producto->id, 'variante_id' => $this->negro->id,
+            'cantidad' => 1, 'precio_unitario' => 100, 'subtotal' => 100]);
+
+        $this->getJson(route('precios.ultimo-precio-compra', $this->producto) . '?proveedor_id=' . $prov->id)
+            ->assertOk()->assertJson(['found' => true, 'precio_unitario' => 100, 'moneda' => 'USD']);
+    }
 }

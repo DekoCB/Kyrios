@@ -60,8 +60,10 @@
 
         {{-- ====== COLUMNA IZQUIERDA: info + calculadora + formulario ====== --}}
         <div class="space-y-5"
-             @precarga-precio.window="precargarPrecio($event.detail.varianteId, $event.detail.precioCompra, $event.detail.precioVenta, $event.detail.margen, $event.detail.precioMayorista, $event.detail.margenMayor)"
+             @precarga-precio.window="precargarPrecio($event.detail.varianteId, $event.detail.precioCompra, $event.detail.precioVenta, $event.detail.margen, $event.detail.precioMayorista, $event.detail.margenMayor, $event.detail.moneda)"
              x-data="{
+                 moneda: 'USD',
+                 tc: {{ (float) \App\Models\TipoCambio::actual() }},
                  proveedorId: '',
                  precioCompra: '',
                  margen: 30,
@@ -80,6 +82,26 @@
                  cargandoCompra: false,
                  varianteId: '{{ request('variante_id', '') }}',
                  replicar: true,
+
+                 get simbolo() { return this.moneda === 'USD' ? 'US$' : 'S/'; },
+
+                 convertir(monto, de, a) {
+                     const v = parseFloat(monto);
+                     if (isNaN(v) || de === a) return monto;
+                     return Math.round((de === 'USD' ? v * this.tc : v / this.tc) * 100) / 100;
+                 },
+
+                 // Al cambiar la moneda, los montos ya escritos se convierten con el tipo de cambio (el margen no cambia)
+                 cambiarMoneda(nueva) {
+                     const antes = this.moneda;
+                     if (nueva === antes) return;
+                     this.precioCompra = this.convertir(this.precioCompra, antes, nueva);
+                     this.precioVenta = this.convertir(this.precioVenta, antes, nueva);
+                     this.precioMayorista = this.convertir(this.precioMayorista, antes, nueva);
+                     if (this.resultado) this.resultado = { precio_final: this.convertir(this.resultado.precio_final, antes, nueva) };
+                     if (this.resultadoMayor) this.resultadoMayor = { precio_final: this.convertir(this.resultadoMayor.precio_final, antes, nueva) };
+                     this.moneda = nueva;
+                 },
 
                  async buscarProveedor() {
                      if (this.busquedaProv.length < 2) {
@@ -111,7 +133,7 @@
                      const res = await fetch(url);
                      const data = await res.json();
                      this.ultimaCompra = data.found ? data : null;
-                     if (data.found) this.precioCompra = data.precio_unitario;
+                     if (data.found) this.precioCompra = this.convertir(data.precio_unitario, data.moneda || 'PEN', this.moneda);
                      else this.precioCompra = '';
                      this.cargandoCompra = false;
                  },
@@ -121,7 +143,8 @@
                      await this.fetchUltimaCompra();
                  },
 
-                 precargarPrecio(varianteId, precioCompra, precioVenta, margen, precioMayorista, margenMayor) {
+                 precargarPrecio(varianteId, precioCompra, precioVenta, margen, precioMayorista, margenMayor, moneda) {
+                     this.moneda       = moneda === 'PEN' ? 'PEN' : 'USD';
                      this.varianteId   = varianteId ? String(varianteId) : '';
                      this.precioCompra = precioCompra;
                      this.precioVenta  = precioVenta;
@@ -254,7 +277,7 @@
                 <form method="POST" action="{{ route('precios.store', $producto) }}" class="p-5 space-y-4">
                     <div class="flex items-center justify-between gap-3 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
                         <label for="moneda-precio" class="text-xs font-semibold text-blue-900">Moneda de los precios que ingresas</label>
-                        <select id="moneda-precio" name="moneda" class="rounded-lg border border-blue-200 bg-white px-2 py-1 text-sm">
+                        <select id="moneda-precio" name="moneda" :value="moneda" @change="cambiarMoneda($event.target.value)" class="rounded-lg border border-blue-200 bg-white px-2 py-1 text-sm">
                             <option value="USD" selected>Dólares (US$)</option>
                             <option value="PEN">Soles (S/)</option>
                         </select>
@@ -328,7 +351,7 @@
 
                     {{-- Precio compra --}}
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Precio Compra (S/)</label>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Precio Compra <span x-text="'(' + simbolo + ')'"></span></label>
                         <input type="number" name="precio_compra" x-model="precioCompra"
                                step="0.01" min="0.01" placeholder="0.00" required
                                class="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 {{ $errors->has('precio_compra') ? 'border-2 border-red-400' : 'border border-gray-200' }}">
@@ -336,7 +359,7 @@
 
                         <div x-show="ultimaCompra" class="mt-1.5 flex items-start gap-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-lg">
                             <i class="fas fa-shopping-cart mt-0.5 shrink-0"></i>
-                            <span>Última compra: <strong x-text="'S/ ' + Number(ultimaCompra?.precio_unitario).toFixed(2)"></strong>
+                            <span>Última compra: <strong x-text="(ultimaCompra?.moneda === 'USD' ? 'US$ ' : 'S/ ') + Number(ultimaCompra?.precio_unitario).toFixed(2)"></strong>
                             · <span x-text="ultimaCompra?.fecha_compra"></span></span>
                         </div>
                     </div>
@@ -375,7 +398,7 @@
                     {{-- Precio de venta (editable en modo 'precio') --}}
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                            Precio de Venta (S/)
+                            Precio de Venta <span x-text="'(' + simbolo + ')'"></span>
                             <span x-show="modoCalculo==='precio'" class="text-red-500">*</span>
                         </label>
                         <input type="number" x-model="precioVenta"
@@ -404,7 +427,7 @@
                                 <span class="font-semibold text-emerald-800 flex items-center gap-1.5">
                                     <i class="fas fa-tag text-emerald-500 text-xs"></i> Precio de Venta
                                 </span>
-                                <span class="font-bold text-emerald-800 text-lg" x-text="'S/ ' + resultado.precio_final.toFixed(2)"></span>
+                                <span class="font-bold text-emerald-800 text-lg" x-text="simbolo + ' ' + resultado.precio_final.toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between text-xs text-gray-500 border-t border-emerald-200 pt-2">
                                 <span>Margen</span>
@@ -412,11 +435,11 @@
                             </div>
                             <div class="flex justify-between text-xs text-gray-500">
                                 <span>Base sin IGV</span>
-                                <span x-text="'S/ ' + (resultado.precio_final / 1.18).toFixed(2)"></span>
+                                <span x-text="simbolo + ' ' + (resultado.precio_final / 1.18).toFixed(2)"></span>
                             </div>
                             <div class="flex justify-between text-xs text-gray-500">
                                 <span>IGV (18%)</span>
-                                <span x-text="'S/ ' + (resultado.precio_final - resultado.precio_final / 1.18).toFixed(2)"></span>
+                                <span x-text="simbolo + ' ' + (resultado.precio_final - resultado.precio_final / 1.18).toFixed(2)"></span>
                             </div>
                         </div>
                     </template>
@@ -465,7 +488,7 @@
                         {{-- Precio mayorista --}}
                         <div>
                             <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                Precio Mayorista (S/)
+                                Precio Mayorista <span x-text="'(' + simbolo + ')'"></span>
                                 <span x-show="modoCalculoMayor==='precio'" class="text-red-500">*</span>
                             </label>
                             <input type="number" x-model="precioMayorista"
@@ -493,11 +516,11 @@
                                 </div>
                                 <div class="flex justify-between text-sm border-t border-amber-200 pt-2">
                                     <span class="font-semibold text-gray-700">Precio mayorista</span>
-                                    <span class="font-bold text-amber-700 text-lg" x-text="'S/ ' + resultadoMayor.precio_final.toFixed(2)"></span>
+                                    <span class="font-bold text-amber-700 text-lg" x-text="simbolo + ' ' + resultadoMayor.precio_final.toFixed(2)"></span>
                                 </div>
                                 <div class="flex justify-between text-xs text-gray-400 pt-1" x-show="resultado">
                                     <span>vs. precio regular</span>
-                                    <span x-text="resultado ? 'S/ ' + resultado.precio_final.toFixed(2) : ''"></span>
+                                    <span x-text="resultado ? simbolo + ' ' + resultado.precio_final.toFixed(2) : ''"></span>
                                 </div>
                             </div>
                         </template>
@@ -572,7 +595,7 @@
                             $pmMrg   = $pMay?->margen ?? 10;
                         @endphp
                         <div class="bg-white rounded-xl border {{ $esActual ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-100' }} shadow-sm p-4 cursor-pointer hover:border-blue-300 transition-all"
-                             onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, precioCompra: {{ $pCap?->precio_compra ?? 0 }}, precioVenta: {{ $pCap?->precio ?? 0 }}, margen: {{ $pCap?->margen ?? 0 }}, precioMayorista: {{ $pmVal }}, margenMayor: {{ $pmMrg }} } }))">
+                             onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, moneda: '{{ $pCap?->moneda ?? 'USD' }}', precioCompra: {{ $pCap?->precio_compra ?? 0 }}, precioVenta: {{ $pCap?->precio ?? 0 }}, margen: {{ $pCap?->margen ?? 0 }}, precioMayorista: {{ $pmVal }}, margenMayor: {{ $pmMrg }} } }))">
                             <div class="flex items-center justify-between mb-3">
                                 <span class="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
                                     <i class="fas fa-microchip text-blue-500 text-xs"></i>
@@ -750,7 +773,7 @@
                                             <div class="flex items-center justify-center gap-1.5 flex-wrap">
                                                 @if($precio)
                                                     <button type="button"
-                                                            onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, precioCompra: {{ $precio->precio_compra ?? 0 }}, precioVenta: {{ $precio->precio }}, margen: {{ $precio->margen ?? 0 }}, precioMayorista: {{ $pmHVal }}, margenMayor: {{ $pmHMrg }} } }))"
+                                                            onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, moneda: '{{ $precio->moneda ?? 'USD' }}', precioCompra: {{ $precio->precio_compra ?? 0 }}, precioVenta: {{ $precio->precio }}, margen: {{ $precio->margen ?? 0 }}, precioMayorista: {{ $pmHVal }}, margenMayor: {{ $pmHMrg }} } }))"
                                                             class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-colors">
                                                         <i class="fas fa-sync-alt"></i> Actualizar
                                                     </button>
@@ -792,7 +815,7 @@
                                         <td class="px-4 py-3 text-center">
                                             <div class="flex items-center justify-center gap-1.5">
                                                 <button type="button"
-                                                        onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: null, precioCompra: {{ $precioBase->precio_compra ?? 0 }}, precioVenta: {{ $precioBase->precio }}, margen: {{ $precioBase->margen ?? 0 }}, precioMayorista: {{ $precioMayoristaGlobal?->precio ?? 'null' }}, margenMayor: {{ $precioMayoristaGlobal?->margen ?? 10 }} } }))"
+                                                        onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: null, moneda: '{{ $precioBase->moneda ?? 'USD' }}', precioCompra: {{ $precioBase->precio_compra ?? 0 }}, precioVenta: {{ $precioBase->precio }}, margen: {{ $precioBase->margen ?? 0 }}, precioMayorista: {{ $precioMayoristaGlobal?->precio ?? 'null' }}, margenMayor: {{ $precioMayoristaGlobal?->margen ?? 10 }} } }))"
                                                         class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-colors">
                                                     <i class="fas fa-sync-alt"></i> Actualizar
                                                 </button>
