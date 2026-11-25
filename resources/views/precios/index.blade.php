@@ -232,8 +232,8 @@
 
                         @if($tieneVariantes)
                             @php
-                                $pvMin = $preciosActivos->map(fn ($x) => \App\Support\Moneda::aDolares((float) $x->precio, $x->moneda))->min();
-                                $pvMax = $preciosActivos->map(fn ($x) => \App\Support\Moneda::aDolares((float) $x->precio, $x->moneda))->max();
+                                $pvMin = $preciosActivos->map(fn ($x) => \App\Support\Moneda::aDolares($x->precio_con_igv / 1.18, $x->moneda))->min();
+                                $pvMax = $preciosActivos->map(fn ($x) => \App\Support\Moneda::aDolares($x->precio_con_igv / 1.18, $x->moneda))->max();
                                 $conPrecioCount = $porCapacidad->count();
                             @endphp
                             {{-- P. Compra --}}
@@ -282,7 +282,7 @@
                             </td>
                             <td class="px-5 py-3.5 text-right">
                                 @if($tienePrecio)
-                                    <span class="text-sm font-bold text-blue-700">{{ precio_dual($precio->precio, $precio->moneda) }}</span>
+                                    <span class="text-sm font-bold text-blue-700">{{ precio_dual($precio->precio_con_igv / 1.18, $precio->moneda) }}</span>
                                 @else
                                     <span class="text-gray-300 text-sm">—</span>
                                 @endif
@@ -364,7 +364,7 @@
                                 </td>
                                 <td class="px-5 py-2.5 text-right">
                                     @if($hayPrecio)
-                                        <span class="text-sm font-bold text-blue-700">{{ precio_dual($pCap->precio, $pCap->moneda) }}</span>
+                                        <span class="text-sm font-bold text-blue-700">{{ precio_dual($pCap->precio_con_igv / 1.18, $pCap->moneda) }}</span>
                                     @else
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                             <i class="fas fa-exclamation-circle text-[9px]"></i> Sin precio
@@ -374,7 +374,7 @@
                                 <td class="px-5 py-2.5 text-right">
                                     @if($hayPrecio)
                                         <span class="text-xs font-medium text-emerald-700">
-                                            {{ precio_dual($pCap->precio * 1.18, $pCap->moneda) }}
+                                            {{ precio_dual($pCap->precio_con_igv, $pCap->moneda) }}
                                         </span>
                                     @else
                                         <span class="text-gray-300">—</span>

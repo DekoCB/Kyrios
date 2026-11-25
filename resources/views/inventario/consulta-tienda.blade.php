@@ -127,7 +127,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right">
                                 @if($regular)
-                                    <p class="text-base font-bold text-gray-900">{{ $regulares->count() > 1 ? 'desde ' : '' }}{{ precio_dual($regular->precio, $regular->moneda) }}</p>
+                                    <p class="text-base font-bold text-gray-900">{{ $regulares->count() > 1 ? 'desde ' : '' }}{{ precio_dual($regular->precio_con_igv, $regular->moneda) }}</p>
                                     @if($mayorista)
                                         <p class="text-xs text-gray-500">Mayor: {{ precio_dual($mayorista->precio, $mayorista->moneda) }}</p>
                                     @endif

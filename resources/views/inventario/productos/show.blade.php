@@ -406,8 +406,8 @@
                                 <span class="text-sm font-medium text-gray-700">{{ $nombrePrecio }}</span>
                                 <div class="flex gap-6 text-right">
                                     <div>
-                                        <p class="text-xs text-gray-400">Regular{{ $regular?->incluye_igv ? ' (incl. IGV)' : '' }}</p>
-                                        <p class="text-sm font-semibold">{{ $regular ? precio_dual($regular->precio, $regular->moneda) : '—' }}</p>
+                                        <p class="text-xs text-gray-400">Regular{{ $regular ? ' (incl. IGV)' : '' }}</p>
+                                        <p class="text-sm font-semibold">{{ $regular ? precio_dual($regular->precio_con_igv, $regular->moneda) : '—' }}</p>
                                     </div>
                                     @if($mayorista)
                                         <div>

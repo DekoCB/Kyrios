@@ -129,4 +129,55 @@ class Auditoria2APreciosTest extends TestCase
         $this->getJson(route('precios.ultimo-precio-compra', $this->producto) . '?proveedor_id=' . $prov->id)
             ->assertOk()->assertJson(['found' => true, 'precio_unitario' => 100, 'moneda' => 'USD']);
     }
+
+    private function precioImportado(): ProductoPrecio
+    {
+        return ProductoPrecio::create(['producto_id' => $this->producto->id, 'variante_id' => $this->negro->id, 'tipo_precio' => 'venta_regular',
+            'precio' => 100, 'precio_compra' => 45, 'margen' => 122.22, 'moneda' => 'USD', 'incluye_igv' => false, 'prioridad' => 1, 'activo' => true]);
+    }
+
+    public function test_editar_un_precio_en_dolares_sin_igv_muestra_dolares_y_conserva_la_marca_de_igv(): void
+    {
+        $precio = $this->precioImportado();
+
+        $html = $this->get(route('precios.edit', [$this->producto, $precio]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('@change="cambiarMoneda($event.target.value)"', $html);
+        $this->assertStringContainsString('name="incluye_igv" :value="incluyeIgv ? 1 : 0"', $html);
+        $this->assertStringContainsString('incluyeIgv: false', $html);
+        $this->assertStringContainsString("moneda: 'USD'", $html);
+        $this->assertStringContainsString('US$ 100.00', $html);   // precio guardado, en su moneda
+        $this->assertStringContainsString('US$ 118.00', $html);   // con IGV
+        $this->assertStringNotContainsString('Precio Compra (S/)', $html);
+        $this->assertStringNotContainsString('Precio de Venta (S/)', $html);
+    }
+
+    public function test_guardar_la_edicion_de_un_precio_sin_igv_no_le_cambia_la_marca(): void
+    {
+        $precio = $this->precioImportado();
+
+        $this->put(route('precios.update', [$this->producto, $precio]), ['precio_compra' => 45, 'precio_venta' => 100, 'margen' => 122.22, 'moneda' => 'USD', 'incluye_igv' => 0])
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse((bool) $precio->fresh()->incluye_igv);
+        $this->assertEquals(100.0, (float) $precio->fresh()->precio);
+    }
+
+    public function test_el_precio_con_igv_se_calcula_segun_la_marca_del_precio(): void
+    {
+        $this->assertEquals(118.0, $this->precioImportado()->precio_con_igv);
+        $conIgv = ProductoPrecio::create(['producto_id' => $this->producto->id, 'variante_id' => $this->blanco->id, 'tipo_precio' => 'venta_regular',
+            'precio' => 118, 'precio_compra' => 45, 'margen' => 162.2, 'moneda' => 'USD', 'incluye_igv' => true, 'prioridad' => 1, 'activo' => true]);
+        $this->assertEquals(118.0, $conIgv->precio_con_igv);
+        $this->assertEquals(162.2, $conIgv->margen_con_igv);
+        $this->assertEquals(162.22, round($this->precioImportado()->margen_con_igv, 2));
+    }
+
+    public function test_las_pantallas_de_precios_muestran_el_precio_con_igv_de_un_precio_importado(): void
+    {
+        $this->precioImportado();
+
+        $this->get(route('precios.show', $this->producto))->assertOk()->assertSee('US$ 118.00', false);
+        $this->get(route('precios.index'))->assertOk();
+    }
 }

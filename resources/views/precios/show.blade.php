@@ -595,7 +595,7 @@
                             $pmMrg   = $pMay?->margen ?? 10;
                         @endphp
                         <div class="bg-white rounded-xl border {{ $esActual ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-100' }} shadow-sm p-4 cursor-pointer hover:border-blue-300 transition-all"
-                             onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, moneda: '{{ $pCap?->moneda ?? 'USD' }}', precioCompra: {{ $pCap?->precio_compra ?? 0 }}, precioVenta: {{ $pCap?->precio ?? 0 }}, margen: {{ $pCap?->margen ?? 0 }}, precioMayorista: {{ $pmVal }}, margenMayor: {{ $pmMrg }} } }))">
+                             onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, moneda: '{{ $pCap?->moneda ?? 'USD' }}', precioCompra: {{ $pCap?->precio_compra ?? 0 }}, precioVenta: {{ $pCap?->precio_con_igv ?? 0 }}, margen: {{ $pCap?->margen_con_igv ?? 0 }}, precioMayorista: {{ $pmVal }}, margenMayor: {{ $pmMrg }} } }))">
                             <div class="flex items-center justify-between mb-3">
                                 <span class="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
                                     <i class="fas fa-microchip text-blue-500 text-xs"></i>
@@ -611,7 +611,7 @@
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-xs text-gray-500">P. Venta</span>
-                                        <span class="text-base font-bold text-blue-700">{{ precio_dual($pCap->precio, $pCap->moneda) }}</span>
+                                        <span class="text-base font-bold text-blue-700">{{ precio_dual($pCap->precio_con_igv, $pCap->moneda) }}</span>
                                     </div>
                                     <div class="flex justify-between text-xs border-t border-gray-100 pt-1.5 mt-1.5">
                                         <span class="text-gray-500">Margen</span>
@@ -650,7 +650,7 @@
                     <div class="bg-white rounded-xl border border-blue-200 shadow-sm p-4 text-center">
                         <p class="text-xs text-blue-600 uppercase tracking-wide mb-1 font-semibold">Precio de Venta</p>
                         <p class="text-xl font-bold text-blue-700">
-                            {{ $precioGlobal ? precio_dual($precioGlobal->precio, $precioGlobal->moneda) : '—' }}
+                            {{ $precioGlobal ? precio_dual($precioGlobal->precio_con_igv, $precioGlobal->moneda) : '—' }}
                         </p>
                         @if($precioGlobal)
                             <p class="text-[10px] text-gray-400 mt-0.5">Base: S/ {{ number_format($precioGlobal->precio / 1.18, 2) }} + IGV</p>
@@ -738,7 +738,7 @@
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             @if($precio)
-                                                <span class="text-sm font-bold text-blue-700">{{ precio_dual($precio->precio, $precio->moneda) }}</span>
+                                                <span class="text-sm font-bold text-blue-700">{{ precio_dual($precio->precio_con_igv, $precio->moneda) }}</span>
                                             @else
                                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                                     <i class="fas fa-exclamation-circle text-[9px]"></i> Sin precio
@@ -773,7 +773,7 @@
                                             <div class="flex items-center justify-center gap-1.5 flex-wrap">
                                                 @if($precio)
                                                     <button type="button"
-                                                            onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, moneda: '{{ $precio->moneda ?? 'USD' }}', precioCompra: {{ $precio->precio_compra ?? 0 }}, precioVenta: {{ $precio->precio }}, margen: {{ $precio->margen ?? 0 }}, precioMayorista: {{ $pmHVal }}, margenMayor: {{ $pmHMrg }} } }))"
+                                                            onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: {{ $varRep->id }}, moneda: '{{ $precio->moneda ?? 'USD' }}', precioCompra: {{ $precio->precio_compra ?? 0 }}, precioVenta: {{ $precio->precio_con_igv }}, margen: {{ $precio->margen_con_igv }}, precioMayorista: {{ $pmHVal }}, margenMayor: {{ $pmHMrg }} } }))"
                                                             class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-colors">
                                                         <i class="fas fa-sync-alt"></i> Actualizar
                                                     </button>
@@ -800,7 +800,7 @@
                                             {{ $precioBase->precio_compra ? precio_dual($precioBase->precio_compra, $precioBase->moneda) : '—' }}
                                         </td>
                                         <td class="px-4 py-3 text-right">
-                                            <span class="text-sm font-bold text-blue-700">{{ precio_dual($precioBase->precio, $precioBase->moneda) }}</span>
+                                            <span class="text-sm font-bold text-blue-700">{{ precio_dual($precioBase->precio_con_igv, $precioBase->moneda) }}</span>
                                         </td>
                                         <td class="px-4 py-3 text-right">
                                             <span class="text-sm font-semibold {{ ($precioBase->margen ?? 0) >= 20 ? 'text-green-700' : 'text-yellow-700' }}">
@@ -815,7 +815,7 @@
                                         <td class="px-4 py-3 text-center">
                                             <div class="flex items-center justify-center gap-1.5">
                                                 <button type="button"
-                                                        onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: null, moneda: '{{ $precioBase->moneda ?? 'USD' }}', precioCompra: {{ $precioBase->precio_compra ?? 0 }}, precioVenta: {{ $precioBase->precio }}, margen: {{ $precioBase->margen ?? 0 }}, precioMayorista: {{ $precioMayoristaGlobal?->precio ?? 'null' }}, margenMayor: {{ $precioMayoristaGlobal?->margen ?? 10 }} } }))"
+                                                        onclick="window.dispatchEvent(new CustomEvent('precarga-precio', { detail: { varianteId: null, moneda: '{{ $precioBase->moneda ?? 'USD' }}', precioCompra: {{ $precioBase->precio_compra ?? 0 }}, precioVenta: {{ $precioBase->precio_con_igv }}, margen: {{ $precioBase->margen_con_igv }}, precioMayorista: {{ $precioMayoristaGlobal?->precio ?? 'null' }}, margenMayor: {{ $precioMayoristaGlobal?->margen ?? 10 }} } }))"
                                                         class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-colors">
                                                     <i class="fas fa-sync-alt"></i> Actualizar
                                                 </button>
@@ -1126,7 +1126,7 @@
                                                         {{ $pRep->precio_compra ? precio_dual($pRep->precio_compra, $pRep->moneda) : '—' }}
                                                     </td>
                                                     <td class="px-4 py-2.5 text-right">
-                                                        <span class="text-sm font-bold text-indigo-700">{{ precio_dual($pRep->precio, $pRep->moneda) }}</span>
+                                                        <span class="text-sm font-bold text-indigo-700">{{ precio_dual($pRep->precio_con_igv, $pRep->moneda) }}</span>
                                                     </td>
                                                     <td class="px-4 py-2.5 text-right">
                                                         @if($pRep->margen !== null)
@@ -1162,7 +1162,7 @@
                                                                 <button type="button"
                                                                         @click="openConfirm(
                                                                             'Restaurar precio global',
-                                                                            'Se aplicará {{ precio_dual($globalCap->precio, $globalCap->moneda) }} ({{ $cap ?: 'base' }}) en {{ $nombreTienda }}. ¿Continuar?',
+                                                                            'Se aplicará {{ precio_dual($globalCap->precio_con_igv, $globalCap->moneda) }} ({{ $cap ?: 'base' }}) en {{ $nombreTienda }}. ¿Continuar?',
                                                                             'fa-undo-alt', 'text-purple-500',
                                                                             'Sí, restaurar', 'bg-purple-600 hover:bg-purple-700',
                                                                             () => applyToSelected('restore_global', null, {{ json_encode($capIds) }})

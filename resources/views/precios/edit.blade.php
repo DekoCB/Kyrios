@@ -133,22 +133,34 @@
                         <span class="font-medium text-gray-800">{{ $tiendaEditando->nombre }}</span>
                     </div>
                     @endif
+                    @php
+                        $sim = $precio->moneda === 'USD' ? 'US$' : 'S/';
+                        // Los precios importados de la lista oficial se guardan SIN IGV; los del formulario, con IGV
+                        $baseIgv = $precio->incluye_igv ? $precio->precio / 1.18 : $precio->precio;
+                        $totalIgv = $precio->incluye_igv ? $precio->precio : $precio->precio * 1.18;
+                    @endphp
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-500">Precio compra</span>
-                        <span class="font-semibold text-gray-800">S/ {{ number_format($precio->precio_compra, 2) }}</span>
+                        <span class="font-semibold text-gray-800">{{ $sim }} {{ number_format($precio->precio_compra, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-500 font-semibold">Precio de Venta</span>
-                        <span class="font-bold text-blue-700">S/ {{ number_format($precio->precio, 2) }}</span>
+                        <span class="text-gray-500 font-semibold">Precio de Venta{{ $precio->incluye_igv ? '' : ' (sin IGV)' }}</span>
+                        <span class="font-bold text-blue-700">{{ $sim }} {{ number_format($precio->precio, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-2 mt-1">
                         <span>Base sin IGV</span>
-                        <span>S/ {{ number_format($precio->precio / 1.18, 2) }}</span>
+                        <span>{{ $sim }} {{ number_format($baseIgv, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between text-xs text-gray-400">
                         <span>IGV (18%)</span>
-                        <span>S/ {{ number_format($precio->precio - ($precio->precio / 1.18), 2) }}</span>
+                        <span>{{ $sim }} {{ number_format($totalIgv - $baseIgv, 2) }}</span>
                     </div>
+                    @unless($precio->incluye_igv)
+                    <div class="flex items-center justify-between text-xs text-gray-400">
+                        <span>Precio con IGV</span>
+                        <span>{{ $sim }} {{ number_format($totalIgv, 2) }}</span>
+                    </div>
+                    @endunless
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-500">Margen</span>
                         <span class="font-semibold {{ $precio->margen >= 20 ? 'text-green-700' : 'text-yellow-700' }}">
@@ -185,6 +197,9 @@
                  data-prov-id="{{ old('proveedor_id', $precio->proveedor_id) }}"
                  data-prov-nombre="{{ old('_prov_nombre', $precio->proveedor?->razon_social ?? '') }}"
                  x-data="{
+                     moneda: '{{ ($precio->moneda ?? 'PEN') === 'USD' ? 'USD' : 'PEN' }}',
+                     tc: {{ (float) \App\Models\TipoCambio::actual() }},
+                     incluyeIgv: {{ $precio->incluye_igv ? 'true' : 'false' }},
                      precioCompra: {{ $precio->precio_compra ?? 0 }},
                      margen: {{ $precio->margen ?? 0 }},
                      precioVenta: {{ $precio->precio ?? 0 }},
@@ -208,6 +223,29 @@
                          if (this.proveedorId) {
                              this.fetchUltimaCompra();
                          }
+                     },
+
+                     get simbolo() { return this.moneda === 'USD' ? 'US$' : 'S/'; },
+
+                     // Base sin IGV, IGV y total con IGV del precio de venta ingresado (según el precio lo incluya o no)
+                     get baseSinIgv() { const v = parseFloat(this.precioVenta) || 0; return Math.round((this.incluyeIgv ? v / 1.18 : v) * 100) / 100; },
+                     get totalConIgv() { const v = parseFloat(this.precioVenta) || 0; return Math.round((this.incluyeIgv ? v : v * 1.18) * 100) / 100; },
+
+                     convertir(monto, de, a) {
+                         const v = parseFloat(monto);
+                         if (isNaN(v) || de === a) return monto;
+                         return Math.round((de === 'USD' ? v * this.tc : v / this.tc) * 100) / 100;
+                     },
+
+                     // Al cambiar la moneda los montos escritos se convierten con el tipo de cambio (el margen no cambia)
+                     cambiarMoneda(nueva) {
+                         const antes = this.moneda;
+                         if (nueva === antes) return;
+                         this.precioCompra = this.convertir(this.precioCompra, antes, nueva);
+                         this.precioVenta = this.convertir(this.precioVenta, antes, nueva);
+                         const mayorista = this.$refs.mayorista;
+                         if (mayorista && mayorista.value !== '') mayorista.value = this.convertir(mayorista.value, antes, nueva);
+                         this.moneda = nueva;
                      },
 
                      calcularPrecioVenta() {
@@ -269,7 +307,7 @@
 
                      usarPrecioCompra() {
                          if (this.ultimaCompra) {
-                             this.precioCompra = this.ultimaCompra.precio_unitario;
+                             this.precioCompra = this.convertir(this.ultimaCompra.precio_unitario, this.ultimaCompra.moneda || 'PEN', this.moneda);
                              this.calcularPrecioVenta();
                          }
                      }
@@ -309,7 +347,7 @@
                         @method('PUT')
                         <div class="mb-4 flex items-center justify-between gap-3 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
                             <label for="moneda-precio" class="text-xs font-semibold text-blue-900">Moneda de los precios</label>
-                            <select id="moneda-precio" name="moneda" class="rounded-lg border border-blue-200 bg-white px-2 py-1 text-sm">
+                            <select id="moneda-precio" name="moneda" :value="moneda" @change="cambiarMoneda($event.target.value)" class="rounded-lg border border-blue-200 bg-white px-2 py-1 text-sm">
                                 <option value="USD" @selected(($precio->moneda ?? 'PEN') === 'USD')>Dólares (US$)</option>
                                 <option value="PEN" @selected(($precio->moneda ?? 'PEN') !== 'USD')>Soles (S/)</option>
                             </select>
@@ -370,7 +408,7 @@
                             {{-- Precio de compra --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                    Precio Compra (S/) <span class="text-red-500">*</span>
+                                    Precio Compra <span x-text="'(' + simbolo + ')'"></span> <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number"
                                        name="precio_compra"
@@ -390,7 +428,7 @@
                                         <i class="fas fa-shopping-cart mt-0.5 shrink-0"></i>
                                         <div>
                                             <span class="font-semibold">Última compra:</span>
-                                            <span x-text="'S/ ' + Number(ultimaCompra?.precio_unitario).toFixed(2)"></span>
+                                            <span x-text="(ultimaCompra?.moneda === 'USD' ? 'US$ ' : 'S/ ') + Number(ultimaCompra?.precio_unitario).toFixed(2)"></span>
                                             <span class="text-blue-400 mx-1">·</span>
                                             <span x-text="ultimaCompra?.compra_codigo"></span>
                                             <span class="text-blue-400 mx-1">·</span>
@@ -455,7 +493,7 @@
                             {{-- Precio venta --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                    Precio de Venta (S/) <span class="text-red-500">*</span>
+                                    Precio de Venta <span x-text="'(' + simbolo + ')'"></span><span x-show="!incluyeIgv" class="normal-case font-normal text-gray-400"> sin IGV</span> <span class="text-red-500">*</span>
                                 </label>
                                 <input type="number"
                                        name="precio_venta"
@@ -471,7 +509,7 @@
                             </div>
 
                             {{-- Resumen deducción IGV --}}
-                            <input type="hidden" name="incluye_igv" value="1">
+                            <input type="hidden" name="incluye_igv" :value="incluyeIgv ? 1 : 0">
                             <div class="md:col-span-2">
                                 <div class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1.5">
                                     <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -479,24 +517,24 @@
                                     </p>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-500">Base sin IGV</span>
-                                        <span class="font-medium text-gray-700" x-text="'S/ ' + (Math.round(parseFloat(precioVenta || 0) / 1.18 * 100) / 100).toFixed(2)"></span>
+                                        <span class="font-medium text-gray-700" x-text="simbolo + ' ' + baseSinIgv.toFixed(2)"></span>
                                     </div>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-gray-500">IGV (18%)</span>
-                                        <span class="font-medium text-gray-700" x-text="'S/ ' + (Math.round((parseFloat(precioVenta || 0) - parseFloat(precioVenta || 0) / 1.18) * 100) / 100).toFixed(2)"></span>
+                                        <span class="font-medium text-gray-700" x-text="simbolo + ' ' + (Math.round((totalConIgv - baseSinIgv) * 100) / 100).toFixed(2)"></span>
                                     </div>
                                     <div class="flex justify-between text-sm border-t border-gray-200 pt-1.5">
-                                        <span class="font-semibold text-blue-800">Precio de Venta</span>
-                                        <span class="font-bold text-blue-800 text-lg" x-text="'S/ ' + (parseFloat(precioVenta || 0)).toFixed(2)"></span>
+                                        <span class="font-semibold text-blue-800">Precio de Venta con IGV</span>
+                                        <span class="font-bold text-blue-800 text-lg" x-text="simbolo + ' ' + totalConIgv.toFixed(2)"></span>
                                     </div>
                                 </div>
-                                <p class="text-xs text-gray-400 mt-1">Este es el precio que se muestra en el POS y que paga el cliente.</p>
+                                <p class="text-xs text-gray-400 mt-1">Este es el precio que se muestra en el POS y que paga el cliente.<span x-show="!incluyeIgv"> El precio de venta se guarda sin IGV; el sistema le suma el 18%.</span></p>
                             </div>
 
                             {{-- Precio mayorista --}}
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                    Precio Mayorista (S/)
+                                    Precio Mayorista <span x-text="'(' + simbolo + ')'"></span>
                                 </label>
                                 @if($tiendaEditando)
                                     <input type="text"
@@ -514,7 +552,7 @@
                                     </p>
                                 @else
                                     <input type="number"
-                                           name="precio_mayorista"
+                                           name="precio_mayorista" x-ref="mayorista"
                                            step="0.01" min="0.01"
                                            value="{{ old('precio_mayorista', $precioMayoristaActual) }}"
                                            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"

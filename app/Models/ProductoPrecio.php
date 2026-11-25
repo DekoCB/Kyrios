@@ -88,6 +88,20 @@ class ProductoPrecio extends Model
     }
 
     /** Precio de venta en soles: lo expresado en dólares se convierte con el tipo de cambio vigente. */
+    /** Precio de venta con IGV: los de la lista oficial se guardan sin IGV, los del formulario de precios ya lo incluyen. */
+    public function getPrecioConIgvAttribute(): float
+    {
+        return round((float) $this->precio * ($this->incluye_igv ? 1 : 1.18), 2);
+    }
+
+    /** Margen sobre costo medido con el precio con IGV, como lo calcula el formulario de precios. */
+    public function getMargenConIgvAttribute(): float
+    {
+        $compra = (float) $this->precio_compra;
+
+        return $this->incluye_igv || $compra <= 0 ? (float) $this->margen : round(($this->precio_con_igv - $compra) / $compra * 100, 2);
+    }
+
     public function getPrecioSolesAttribute(): float
     {
         return \App\Support\Moneda::aSoles((float) $this->precio, $this->moneda);
