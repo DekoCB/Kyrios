@@ -104,9 +104,9 @@ class RolVentasTest extends TestCase
         return $filas;
     }
 
-    public function test_la_ficha_del_producto_con_costos_no_esta_para_ventas(): void
+    public function test_ventas_puede_abrir_la_ficha_del_producto(): void
     {
-        $this->actingAs($this->vendedor)->get(route('inventario.productos.show', $this->producto))->assertForbidden();
+        $this->actingAs($this->vendedor)->get(route('inventario.productos.show', $this->producto))->assertOk();
     }
 
     public function test_ventas_no_cobra_su_venta_queda_pendiente_de_cobro_aunque_envie_contado(): void

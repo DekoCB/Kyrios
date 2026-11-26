@@ -320,12 +320,12 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/productos/sugerencias', [ProductoController::class, 'sugerencias'])->middleware('role:Administración,Logística,Operaciones,Contador,Marketing,Ventas')->name('productos.sugerencias');
 
-            // Ventas consulta el listado y el stock por tienda, pero no la ficha (trae costos de compra)
+            // Ventas consulta el listado, el stock por tienda y la ficha del producto
             Route::middleware('role:Administración,Logística,Operaciones,Marketing,Ventas')->group(function () {
                 Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
                 Route::get('/productos/buscar', [ProductoController::class, 'buscarAjax'])->name('productos.buscar-ajax');
                 Route::get('/productos/consulta-tienda', [ProductoController::class, 'consultaTienda'])->middleware('role:Administración,Logística,Ventas')->name('productos.consulta-tienda');
-                Route::get('/productos/{producto}', [ProductoController::class, 'show'])->middleware('role:Administración,Logística,Operaciones,Marketing')->name('productos.show');
+                Route::get('/productos/{producto}', [ProductoController::class, 'show'])->name('productos.show');
             });
         // MOVIMIENTOS DE INVENTARIO
         Route::middleware('role:Administración,Logística')->group(function () {
