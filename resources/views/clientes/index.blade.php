@@ -108,7 +108,7 @@
                 <a href="{{ route('clientes.index') }}" class="text-sm text-gray-500 hover:text-gray-800"><i class="fas fa-redo mr-1"></i>Limpiar</a>
                 <div class="flex flex-wrap gap-2">
                     <button class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-lg"><i class="fas fa-search mr-1"></i>Buscar</button>
-                    @if(auth()->user()->role->nombre !== 'Marketing')
+                    @if(!in_array(auth()->user()->role->nombre, ['Marketing', 'Ventas']))
                     <a href="{{ route('clientes.exportar', request()->query()) }}" class="border border-gray-300 text-gray-700 hover:bg-gray-100 text-sm font-semibold px-4 py-2 rounded-lg" title="Excel con la misma estructura de la base comercial: datos, seguimiento y proyectos">
                         <i class="fas fa-file-excel mr-1"></i>Exportar Excel
                     </a>
@@ -220,7 +220,7 @@
 
         <div class="mt-4">{{ $clientes->links() }}</div>
 
-        @if(auth()->user()->role->nombre !== 'Marketing')
+        @if(!in_array(auth()->user()->role->nombre, ['Marketing', 'Ventas']))
         {{-- Exportar una lista de difusión para WhatsApp: muestra cuántos entran antes de descargar --}}
         <div x-data="difusion()" @abrir-difusion.window="abrir()" x-show="visible" style="display:none" @keydown.escape.window="visible = false"
              class="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="difusionTitulo">

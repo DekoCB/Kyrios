@@ -24,10 +24,10 @@ class CumpleanosService
 
     /** Quién recibe el aviso del cumpleaños de un cliente. */
     public const ROLES_AVISO_CLIENTES = [Role::ADMINISTRACION, Role::MARKETING];
-    public const ROLES_AVISO_EQUIPO = [Role::ADMINISTRACION, Role::CONTADOR, Role::LOGISTICA, Role::OPERACIONES, Role::MARKETING];
+    public const ROLES_AVISO_EQUIPO = [Role::ADMINISTRACION, Role::CONTADOR, Role::LOGISTICA, Role::OPERACIONES, Role::MARKETING, Role::VENTAS];
 
     /** Roles que pueden ver los cumpleaños de clientes (los mismos que ven la lista de clientes). */
-    public const ROLES_VEN_CLIENTES = [Role::ADMINISTRACION, Role::CONTADOR, Role::MARKETING];
+    public const ROLES_VEN_CLIENTES = [Role::ADMINISTRACION, Role::CONTADOR, Role::MARKETING, Role::VENTAS];
 
     /**
      * Personas con cumpleaños, ya normalizadas: [tipo, id, nombre, nacimiento (Carbon), user_id].

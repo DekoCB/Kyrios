@@ -34,6 +34,7 @@
                         @elseif($user->role->nombre == 'Contador') bg-green-200 text-green-900
                         @elseif($user->role->nombre == 'Operaciones') bg-yellow-200 text-yellow-900
                         @elseif($user->role->nombre == 'Marketing') bg-pink-200 text-pink-900
+                        @elseif($user->role->nombre == 'Ventas') bg-amber-200 text-amber-900
                         @else bg-gray-200 text-gray-900
                         @endif">
                         {{ $user->role->nombre }}

@@ -74,6 +74,7 @@ Route::get('/dashboard', function () {
         \App\Models\Role::LOGISTICA      => redirect()->route('logistica.dashboard'),
         \App\Models\Role::OPERACIONES    => redirect()->route('operaciones.dashboard'),
         \App\Models\Role::MARKETING      => redirect()->route('marketing.dashboard'),
+        \App\Models\Role::VENTAS         => redirect()->route('ventas.create'),
         \App\Models\Role::CLIENTE        => redirect()->route('cliente.dashboard'),
         default                            => redirect()->route('login'),
     };
@@ -135,7 +136,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{aprobacion}/rechazar', [\App\Http\Controllers\AprobacionController::class, 'rechazar'])->name('rechazar');
     });
 
-    Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () {
+    Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing,Ventas')->group(function () {
         Route::get('/aprobaciones/mias', [\App\Http\Controllers\AprobacionController::class, 'mias'])->name('aprobaciones.mias');
         Route::get('/notificaciones', [\App\Http\Controllers\NotificacionController::class, 'index'])->name('notificaciones.index');
         Route::post('/notificaciones/leer-todas', [\App\Http\Controllers\NotificacionController::class, 'leerTodas'])->name('notificaciones.leer-todas');
@@ -317,13 +318,14 @@ Route::middleware('auth')->group(function () {
                 Route::post('/productos/{producto}/proveedores', [ProductoController::class, 'asociarProveedor'])->name('productos.proveedores.asociar');
             });
 
-            Route::get('/productos/sugerencias', [ProductoController::class, 'sugerencias'])->middleware('role:Administración,Logística,Operaciones,Contador,Marketing')->name('productos.sugerencias');
+            Route::get('/productos/sugerencias', [ProductoController::class, 'sugerencias'])->middleware('role:Administración,Logística,Operaciones,Contador,Marketing,Ventas')->name('productos.sugerencias');
 
-            Route::middleware('role:Administración,Logística,Operaciones,Marketing')->group(function () {
+            // Ventas consulta el listado y el stock por tienda, pero no la ficha (trae costos de compra)
+            Route::middleware('role:Administración,Logística,Operaciones,Marketing,Ventas')->group(function () {
                 Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
                 Route::get('/productos/buscar', [ProductoController::class, 'buscarAjax'])->name('productos.buscar-ajax');
-                Route::get('/productos/consulta-tienda', [ProductoController::class, 'consultaTienda'])->middleware('role:Administración,Logística')->name('productos.consulta-tienda');
-                Route::get('/productos/{producto}', [ProductoController::class, 'show'])->name('productos.show');
+                Route::get('/productos/consulta-tienda', [ProductoController::class, 'consultaTienda'])->middleware('role:Administración,Logística,Ventas')->name('productos.consulta-tienda');
+                Route::get('/productos/{producto}', [ProductoController::class, 'show'])->middleware('role:Administración,Logística,Operaciones,Marketing')->name('productos.show');
             });
         // MOVIMIENTOS DE INVENTARIO
         Route::middleware('role:Administración,Logística')->group(function () {
@@ -384,29 +386,31 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // MÓDULO DE CLIENTES
     // ========================================
-    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración')->group(function () {
+    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Ventas')->group(function () {
         Route::get('/create', [ClienteController::class, 'create'])->name('create');
-        Route::get('/opciones', [App\Http\Controllers\OpcionClienteController::class, 'index'])->name('opciones.index');
-        Route::post('/opciones', [App\Http\Controllers\OpcionClienteController::class, 'store'])->name('opciones.store');
-        Route::put('/opciones/{opcion}', [App\Http\Controllers\OpcionClienteController::class, 'update'])->name('opciones.update');
-        Route::delete('/opciones/{opcion}', [App\Http\Controllers\OpcionClienteController::class, 'destroy'])->name('opciones.destroy');
-        Route::get('/difusion/resumen', [ClienteController::class, 'resumenDifusion'])->name('difusion.resumen');
-        Route::get('/difusion/exportar', [ClienteController::class, 'exportarDifusion'])->name('difusion.exportar');
         Route::post('/', [ClienteController::class, 'store'])->name('store');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update');
         // Proyectos y seguimiento comercial cargados a mano desde la ficha
         Route::post('/{cliente}/proyectos', [App\Http\Controllers\ClienteComercialController::class, 'proyectoStore'])->whereNumber('cliente')->name('proyectos.store');
         Route::put('/{cliente}/proyectos/{proyecto}', [App\Http\Controllers\ClienteComercialController::class, 'proyectoUpdate'])->whereNumber('cliente')->name('proyectos.update');
-        Route::delete('/{cliente}/proyectos/{proyecto}', [App\Http\Controllers\ClienteComercialController::class, 'proyectoDestroy'])->whereNumber('cliente')->name('proyectos.destroy');
         Route::post('/{cliente}/seguimientos', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoStore'])->whereNumber('cliente')->name('seguimientos.store');
         Route::put('/{cliente}/seguimientos/{seguimiento}', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoUpdate'])->whereNumber('cliente')->name('seguimientos.update');
-        Route::delete('/{cliente}/seguimientos/{seguimiento}', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoDestroy'])->whereNumber('cliente')->name('seguimientos.destroy');
         Route::post('/consultar-documento', [ClienteController::class, 'consultarDocumento'])->name('consultar-documento');
+    });
+    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración')->group(function () {
+        Route::get('/opciones', [App\Http\Controllers\OpcionClienteController::class, 'index'])->name('opciones.index');
+        Route::post('/opciones', [App\Http\Controllers\OpcionClienteController::class, 'store'])->name('opciones.store');
+        Route::put('/opciones/{opcion}', [App\Http\Controllers\OpcionClienteController::class, 'update'])->name('opciones.update');
+        Route::delete('/opciones/{opcion}', [App\Http\Controllers\OpcionClienteController::class, 'destroy'])->name('opciones.destroy');
+        Route::get('/difusion/resumen', [ClienteController::class, 'resumenDifusion'])->name('difusion.resumen');
+        Route::get('/difusion/exportar', [ClienteController::class, 'exportarDifusion'])->name('difusion.exportar');
+        Route::delete('/{cliente}/proyectos/{proyecto}', [App\Http\Controllers\ClienteComercialController::class, 'proyectoDestroy'])->whereNumber('cliente')->name('proyectos.destroy');
+        Route::delete('/{cliente}/seguimientos/{seguimiento}', [App\Http\Controllers\ClienteComercialController::class, 'seguimientoDestroy'])->whereNumber('cliente')->name('seguimientos.destroy');
         Route::get('/duplicados', [ClienteController::class, 'duplicados'])->name('duplicados');
     });
-    // Lectura: Administración, Contador y Marketing (el listado y la ficha)
-    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Contador,Marketing')->group(function () {
+    // Lectura: Administración, Contador, Marketing y Ventas (el listado y la ficha)
+    Route::prefix('clientes')->name('clientes.')->middleware('role:Administración,Contador,Marketing,Ventas')->group(function () {
         Route::get('/', [ClienteController::class, 'index'])->name('index');
         Route::get('/{cliente}', [ClienteController::class, 'show'])->whereNumber('cliente')->name('show');
     });
@@ -562,7 +566,7 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // MÓDULO DE COTIZACIONES (propio; se convierten a nota de venta, boleta o factura)
     // ========================================
-    Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administración')->group(function () {
+    Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administración,Ventas')->group(function () {
         $c = \App\Http\Controllers\CotizacionController::class;
         // Opciones de piso y ambiente (antes del comodín /{cotizacion})
         $u = \App\Http\Controllers\OpcionUbicacionController::class;
@@ -591,8 +595,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/{cotizacion}/convertir', [$c, 'convertir'])->name('convertir');
         Route::post('/{cotizacion}/nota-pedido', [\App\Http\Controllers\NotaPedidoController::class, 'store'])->name('nota-pedido');
     });
-    // Lectura: Administración y Contador
-    Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administración,Contador')->group(function () {
+    // Lectura: Administración, Contador y Ventas (esta, solo las propias)
+    Route::prefix('cotizaciones')->name('cotizaciones.')->middleware('role:Administración,Contador,Ventas')->group(function () {
         $c = \App\Http\Controllers\CotizacionController::class;
         Route::get('/', [$c, 'index'])->name('index');
         Route::get('/{cotizacion}', [$c, 'show'])->name('show');
@@ -603,7 +607,7 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // TABLERO DE TAREAS DIARIAS DEL EQUIPO
     // ========================================
-    Route::prefix('tareas')->name('tareas.')->middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () {
+    Route::prefix('tareas')->name('tareas.')->middleware('role:Administración,Contador,Logística,Operaciones,Marketing,Ventas')->group(function () {
         $c = \App\Http\Controllers\TareaController::class;
         Route::get('/', [$c, 'index'])->name('index');
         Route::post('/', [$c, 'store'])->name('store');
@@ -625,7 +629,7 @@ Route::middleware('auth')->group(function () {
         $doc = \App\Http\Controllers\Rrhh\EmpleadoDocumentoController::class;
 
         // Cada persona del equipo: marcar su asistencia y pedir permisos o vacaciones
-        Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing')->group(function () use ($asi, $sol) {
+        Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing,Ventas')->group(function () use ($asi, $sol) {
             Route::get('/mi-asistencia', [$asi, 'mi'])->name('mi-asistencia');
             Route::post('/mi-asistencia/marcar', [$asi, 'marcar'])->name('marcar');
             Route::get('/mis-solicitudes', [$sol, 'mias'])->name('mis-solicitudes');
@@ -682,12 +686,15 @@ Route::middleware('auth')->group(function () {
     // ========================================
     // MÓDULO DE VENTAS
     // ========================================
-    Route::prefix('ventas')->name('ventas.')->middleware('role:Administración')->group(function () {
+    // Registrar: Administración y Ventas (esta deja la venta pendiente de cobro y ve solo las suyas)
+    Route::prefix('ventas')->name('ventas.')->middleware('role:Administración,Ventas')->group(function () {
         Route::get('/create', [VentaController::class, 'create'])->name('create');
         Route::post('/', [VentaController::class, 'store'])->name('store');
         Route::get('/api/mis-pendientes', [VentaController::class, 'misPendientes'])->name('mis-pendientes');
         Route::get('/api/dni/{dni}', [DniLookupController::class, 'buscar'])->name('dni.buscar');
         Route::get('/api/ruc/{ruc}', [TrasladoController::class, 'buscarRuc'])->name('ruc.buscar');
+    });
+    Route::prefix('ventas')->name('ventas.')->middleware('role:Administración')->group(function () {
         Route::post('/{venta}/confirmar-pago', [VentaController::class, 'confirmarPago'])->name('confirmar-pago');
         // Verificación de clave antes de editar, anular o eliminar
         Route::post('/{venta}/verificar-clave', [VentaController::class, 'verificarClave'])->name('verificar-clave');
@@ -697,15 +704,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/{venta}/anular', [VentaController::class, 'anularVenta'])->name('anular');
         Route::delete('/{venta}', [VentaController::class, 'eliminarVenta'])->name('destroy');
     });
-    // Lectura (Contador incluido) y registro de pagos de crédito
-    Route::prefix('ventas')->name('ventas.')->middleware('role:Administración,Contador')->group(function () {
+    // Bitácora de auditoría: antes del comodín /{venta}
+    Route::get('/ventas/auditoria', [VentaController::class, 'bitacora'])->middleware('role:Administración,Contador')->name('ventas.auditoria');
+    // Lectura: Administración, Contador y Ventas (esta, solo sus ventas)
+    Route::prefix('ventas')->name('ventas.')->middleware('role:Administración,Contador,Ventas')->group(function () {
         Route::get('/', [VentaController::class, 'index'])->name('index');
-        // Bitácora de auditoría: debe ir antes del comodín /{venta}
-        Route::get('/auditoria', [VentaController::class, 'bitacora'])->name('auditoria');
         Route::get('/{venta}', [VentaController::class, 'show'])->name('show');
         Route::get('/{venta}/pdf', [VentaController::class, 'pdf'])->name('pdf');
         Route::get('/{venta}/resumen-pdf', [VentaController::class, 'resumenPdf'])->name('resumen-pdf');
         Route::get('/{venta}/guia-pdf', [VentaController::class, 'guiaPdf'])->name('guia-pdf');
+    });
+    // Crédito: registro de pagos (Administración y Contador)
+    Route::prefix('ventas')->name('ventas.')->middleware('role:Administración,Contador')->group(function () {
         Route::get('/{venta}/credito', [VentaController::class, 'showCredito'])->name('credito.show');
         Route::post('/{venta}/credito/pago', [VentaController::class, 'registrarPagoCredito'])->name('credito.pago');
     });
@@ -888,7 +898,7 @@ Route::middleware('auth')->group(function () {
     // CATÁLOGOS DE TEMPORADA (libro 3D)
     // ========================================
     // Ver, imprimir y compartir: Administración, Marketing y Logística. Crear y editar: Administración y Marketing.
-    Route::prefix('catalogos')->name('catalogos.')->middleware('role:Administración,Marketing,Logística')->group(function () {
+    Route::prefix('catalogos')->name('catalogos.')->middleware('role:Administración,Marketing,Logística,Ventas')->group(function () {
         Route::get('/', [\App\Http\Controllers\CatalogoLibroController::class, 'index'])->name('index');
         Route::get('/{catalogo}/pdf', [\App\Http\Controllers\CatalogoLibroController::class, 'pdf'])->whereNumber('catalogo')->name('pdf');
     });

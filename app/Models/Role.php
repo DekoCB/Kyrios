@@ -15,13 +15,14 @@ class Role extends Model
     public const LOGISTICA      = 'Logística';
     public const OPERACIONES    = 'Operaciones';
     public const MARKETING      = 'Marketing';
+    public const VENTAS         = 'Ventas';
     public const CLIENTE        = 'Cliente';
 
     /** Roles internos: todos menos Cliente (que solo tiene su propio panel). */
-    public const INTERNOS = [self::ADMINISTRACION, self::CONTADOR, self::LOGISTICA, self::OPERACIONES, self::MARKETING];
+    public const INTERNOS = [self::ADMINISTRACION, self::CONTADOR, self::LOGISTICA, self::OPERACIONES, self::MARKETING, self::VENTAS];
 
     /** Todos los roles, en el orden en que se ofrecen en los formularios. */
-    public const TODOS = [self::ADMINISTRACION, self::CONTADOR, self::LOGISTICA, self::OPERACIONES, self::MARKETING, self::CLIENTE];
+    public const TODOS = [self::ADMINISTRACION, self::CONTADOR, self::LOGISTICA, self::OPERACIONES, self::MARKETING, self::VENTAS, self::CLIENTE];
 
     /** Descripción de cada rol (la usa el seeder y la pantalla de usuarios). */
     public const DESCRIPCIONES = [
@@ -30,6 +31,7 @@ class Role extends Model
         self::LOGISTICA      => 'Manejo de fábricas y proveedores: compras, pedidos, inventario, traslados, guías de remisión y catálogo.',
         self::OPERACIONES    => 'Programación de tareas internas y externas (instalaciones). Consulta de stock, traslados y guías, y su caja chica.',
         self::MARKETING      => 'Redes sociales y medios: calendario y publicaciones, biblioteca multimedia, interacciones, estadísticas, competencia, campañas y reportes. Consulta clientes y catálogo (solo lectura).',
+        self::VENTAS         => 'Fuerza de ventas: registra cotizaciones y ventas pendientes de cobro (las confirma Administración), atiende a sus clientes y consulta stock y catálogos. Solo ve lo que registra.',
         self::CLIENTE        => 'Portal del cliente: sus pedidos y el seguimiento de cada uno (próximamente).',
     ];
 

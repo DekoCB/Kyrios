@@ -71,6 +71,7 @@ class MenuLateral
             Role::LOGISTICA      => self::logistica($userId),
             Role::OPERACIONES    => self::operaciones($userId),
             Role::MARKETING      => self::marketing($userId),
+            Role::VENTAS         => self::ventas($userId),
             default              => [
                 self::enlace('Mis pedidos', 'fa-box-open', 'cliente.dashboard'),
                 self::enlace('Mi perfil', 'fa-user', 'profile.edit', ['profile.*']),
@@ -373,6 +374,27 @@ class MenuLateral
             self::enlace('Tareas del día', 'fa-list-check', 'tareas.index', ['tareas.*']),
             self::asistencias(false),
             ...self::cajaChicaPropia($userId),
+        ];
+    }
+
+    // ── Ventas ───────────────────────────────────────────────────────────────
+
+    private static function ventas(?int $userId): array
+    {
+        return [
+            self::titulo('Comercial'),
+            self::enlace('Nueva venta', 'fa-cash-register', 'ventas.create'),
+            self::enlace('Mis ventas', 'fa-receipt', 'ventas.index', ['ventas.index', 'ventas.show']),
+            self::enlace('Mis cotizaciones', 'fa-file-contract', 'cotizaciones.index', ['cotizaciones.*']),
+            self::enlace('Clientes', 'fa-users', 'clientes.index', ['clientes.*']),
+
+            self::titulo('Consulta'),
+            self::enlace('Productos y stock', 'fa-boxes', 'inventario.productos.index', ['inventario.productos.index', 'inventario.productos.consulta-tienda']),
+            self::enlace('Catálogos de temporada', 'fa-book-open', 'catalogos.index', ['catalogos.*']),
+
+            self::titulo('Equipo'),
+            self::enlace('Tareas del día', 'fa-list-check', 'tareas.index', ['tareas.*']),
+            self::asistencias(false),
         ];
     }
 

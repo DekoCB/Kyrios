@@ -24,12 +24,24 @@ use Illuminate\Support\Facades\Hash;
 
 class VentaController extends Controller
 {
+    /** Ventas es el vendedor: registra ventas «pendientes de cobro» (las confirma Administración) y ve solo las suyas. */
+    private function esVentas(): bool
+    {
+        return auth()->user()?->role?->nombre === \App\Models\Role::VENTAS;
+    }
+
+    private function autorizarVenta(Venta $venta): void
+    {
+        abort_if($this->esVentas() && (int) $venta->user_id !== (int) auth()->id(), 403, 'Solo puedes ver las ventas que registraste.');
+    }
+
     public function index(Request $request)
     {
         $user = auth()->user();
 
-        // Base con restricciones de rol
+        // Base con restricciones de rol: Ventas solo ve lo que registró; con tienda asignada, solo la suya
         $base = Venta::query()
+            ->when($this->esVentas(), fn($q) => $q->where('user_id', $user->id))
             ->when($user->almacen_id, fn($q) => $q->where('almacen_id', $user->almacen_id));
 
         // Aplicar filtros de búsqueda
@@ -96,8 +108,8 @@ class VentaController extends Controller
             $almacenes = Almacen::where('estado', 'activo')->where('tipo', 'tienda')->orderBy('nombre')->get();
         }
 
-        // El modo «vendedor» (pedido que cobra otro) ya no tiene un rol propio: la venta la registra Administración
-        $esVendedor = false;
+        // Modo «vendedor» (pedido que cobra otro): lo usa el rol Ventas; Administración registra y cobra directo
+        $esVendedor = $this->esVentas();
 
         // Preseleccionar si solo hay un almacén disponible
         $almacenPredeterminado = $almacenes->count() === 1
@@ -243,7 +255,7 @@ class VentaController extends Controller
         $cajaAbierta    = (bool) $cajaActual;
         $cajaDiaAnterior = $cajaActual && $cajaActual->fecha->lt(today());
 
-        // Ventas pendientes de cobro del modo vendedor (hoy inactivo)
+        // Ventas pendientes de cobro del modo vendedor
         $misPendientes = $esVendedor
             ? Venta::with(['cliente', 'detalles.producto', 'detalles.variante.color'])
                 ->where('user_id', $user->id)
@@ -266,6 +278,14 @@ class VentaController extends Controller
         $subtotal        = collect($validated['detalles'])->sum(fn($d) => $d['cantidad'] * $d['precio_unitario']);
         $tipoComprobante = $validated['tipo_comprobante'] ?? 'boleta';
         $condicionPago   = $validated['condicion_pago'] ?? 'contado';
+
+        // Ventas no cobra: su venta siempre queda pendiente de cobro, sin importar lo que envíe el formulario
+        if ($this->esVentas()) {
+            $condicionPago = 'pendiente_cobro';
+            $validated['metodo_pago'] = null;
+            $validated['pagos_detalle'] = null;
+            $validated['credito'] = null;
+        }
 
         $esPendienteCobro = $condicionPago === 'pendiente_cobro';
         $esCredito        = $condicionPago === 'credito';
@@ -324,6 +344,7 @@ class VentaController extends Controller
 
     public function show(Venta $venta)
     {
+        $this->autorizarVenta($venta);
         $venta->load('vendedor', 'confirmador', 'cliente', 'almacen', 'sucursal', 'serieComprobante',
             'detalles.producto.categoria', 'detalles.producto.unidadMedida', 'detalles.variante.color',
             'guiaRemision', 'cuentaPorCobrar.cuotas');
@@ -333,6 +354,7 @@ class VentaController extends Controller
 
     public function guiaPdf(Venta $venta)
     {
+        $this->autorizarVenta($venta);
         $venta->load('cliente', 'almacen', 'detalles.producto.unidadMedida', 'detalles.variante', 'guiaRemision');
 
         $guia = $venta->guiaRemision;
@@ -359,6 +381,7 @@ class VentaController extends Controller
     /** PDF sencillo con las proformas (cotizaciones) y el presupuesto de la venta. */
     public function resumenPdf(Request $request, Venta $venta)
     {
+        $this->autorizarVenta($venta);
         // Como la proforma oficial, sale en dólares; con ?moneda=PEN sale en soles
         $venta->asignarNumeroProforma();
         $enDolares = $request->query('moneda') !== 'PEN';
@@ -380,6 +403,7 @@ class VentaController extends Controller
 
     public function pdf(Request $request, Venta $venta)
     {
+        $this->autorizarVenta($venta);
         $formato = $request->get('formato', 'a4'); // a4 | ticket
 
         $venta->load('vendedor', 'cliente', 'almacen', 'sucursal', 'serieComprobante', 'guiaRemision',

@@ -24,12 +24,12 @@ class RolesNuevosTest extends TestCase
         return $u;
     }
 
-    public function test_el_sembrado_deja_solo_los_seis_roles(): void
+    public function test_el_sembrado_deja_solo_los_siete_roles(): void
     {
         $this->seed(\Database\Seeders\RoleSeeder::class);
         $this->seed(\Database\Seeders\RoleSeeder::class);
 
-        $this->assertEqualsCanonicalizing(['Administración', 'Contador', 'Logística', 'Operaciones', 'Marketing', 'Cliente'], Role::pluck('nombre')->all());
+        $this->assertEqualsCanonicalizing(['Administración', 'Contador', 'Logística', 'Operaciones', 'Marketing', 'Ventas', 'Cliente'], Role::pluck('nombre')->all());
     }
 
     /** @dataProvider matriz */

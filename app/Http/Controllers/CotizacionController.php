@@ -26,8 +26,15 @@ class CotizacionController extends Controller
     }
 
     /** Todas las cotizaciones son visibles para los roles con acceso (Administración y, en lectura, Contador). */
+    /** Ventas es el vendedor: solo ve y trabaja las cotizaciones que registró. */
+    private function esVentas(): bool
+    {
+        return auth()->user()?->role?->nombre === \App\Models\Role::VENTAS;
+    }
+
     private function autorizar(Cotizacion $cotizacion): void
     {
+        abort_if($this->esVentas() && (int) $cotizacion->user_id !== (int) auth()->id(), 403, 'Solo puedes ver las cotizaciones que registraste.');
     }
 
     private function reglas(): array
@@ -55,7 +62,7 @@ class CotizacionController extends Controller
 
     public function index(Request $request)
     {
-        $base = Cotizacion::query();
+        $base = Cotizacion::query()->when($this->esVentas(), fn ($q) => $q->where('user_id', auth()->id()));
 
         $query = (clone $base)->with(['cliente', 'vendedor', 'almacen'])->latest('fecha')->latest('id');
 
@@ -202,7 +209,7 @@ class CotizacionController extends Controller
                 : StockAlmacen::disponibleTotalEn($d->producto_id, $cotizacion->almacen_id, $cotizacion->id),
         ]);
 
-        $esVendedor = false;
+        $esVendedor = $this->esVentas();
 
         return view('cotizaciones.show', compact('cotizacion', 'stock', 'esVendedor'));
     }
@@ -302,6 +309,11 @@ class CotizacionController extends Controller
             'condicion'        => 'nullable|in:contado,pendiente_cobro',
             'metodo_pago'      => 'nullable|in:efectivo,transferencia,yape,plin,mixto',
         ]);
+        // Ventas no cobra: la venta queda pendiente de cobro para que la confirme Administración
+        if ($this->esVentas()) {
+            $datos['condicion'] = 'pendiente_cobro';
+            $datos['metodo_pago'] = null;
+        }
 
         try {
             $venta = $this->service->convertir($cotizacion, $datos['tipo_comprobante'], $datos, auth()->user());
