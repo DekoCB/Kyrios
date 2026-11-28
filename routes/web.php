@@ -538,6 +538,18 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard financiero
     Route::get('/finanzas', [App\Http\Controllers\CuentaPorPagarController::class, 'dashboard'])->middleware('role:Administración,Contador,Logística')->name('finanzas.dashboard');
+
+    // Centro de costos: importaciones (Administración, Contador y Logística) y ventas con su utilidad (Administración y Contador)
+    Route::prefix('finanzas/centro-costos')->name('centro-costos.')->middleware('role:Administración,Contador,Logística')->group(function () {
+        $c = \App\Http\Controllers\CentroCostosController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('/importaciones', [$c, 'importaciones'])->name('importaciones');
+        Route::get('/importaciones/exportar', [$c, 'exportarImportaciones'])->name('importaciones.exportar');
+        Route::middleware('role:Administración,Contador')->group(function () use ($c) {
+            Route::get('/ventas', [$c, 'ventas'])->name('ventas');
+            Route::get('/ventas/exportar', [$c, 'exportarVentas'])->name('ventas.exportar');
+        });
+    });
     // ========================================
     // CAJA CHICA (general y asignadas al personal, con foto o escaneo de comprobantes)
     // ========================================

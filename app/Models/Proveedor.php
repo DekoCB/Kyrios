@@ -20,6 +20,8 @@ class Proveedor extends Model
         'email',
         'contacto_nombre',
         'observaciones',
+        'pais',
+        'ciudad_origen',
         'estado',
     ];
 

@@ -81,6 +81,10 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Observaciones</label>
                                     <p class="text-sm text-gray-900 whitespace-pre-line">{{ $proveedor->observaciones ?: '-' }}</p>
                                 </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 mb-1">Origen</label>
+                                    <p class="text-sm text-gray-900">{{ collect([$proveedor->ciudad_origen, $proveedor->pais])->filter()->implode(', ') ?: '-' }}</p>
+                                </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-xs font-medium text-gray-500 mb-1">Dirección</label>
                                     <p class="text-sm text-gray-900">

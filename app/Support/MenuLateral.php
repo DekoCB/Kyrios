@@ -202,6 +202,7 @@ class MenuLateral
             self::grupo('reportes', 'Reportes', 'fa-chart-line', [
                 self::enlace('Ventas y márgenes', 'fa-chart-line', 'reportes.ventas'),
                 self::enlace('Compras e importaciones', 'fa-shopping-cart', 'reportes.compras'),
+                self::enlace('Centro de costos', 'fa-scale-balanced', 'centro-costos.importaciones', ['centro-costos.*']),
                 self::enlace('Stock valorizado', 'fa-coins', 'inventario.reportes.stock-valorizado'),
                 self::enlace('Kardex', 'fa-book-open', 'inventario.reportes.kardex'),
                 self::enlace('Análisis ABC', 'fa-chart-bar', 'inventario.reportes.abc'),
@@ -272,6 +273,7 @@ class MenuLateral
             self::grupo('reportes', 'Reportes', 'fa-chart-line', [
                 self::enlace('Ventas y márgenes', 'fa-chart-line', 'reportes.ventas'),
                 self::enlace('Compras e importaciones', 'fa-shopping-cart', 'reportes.compras'),
+                self::enlace('Centro de costos', 'fa-scale-balanced', 'centro-costos.importaciones', ['centro-costos.*']),
                 self::enlace('Inventario', 'fa-coins', 'inventario.reportes.stock-valorizado'),
                 self::enlace('Comisiones', 'fa-percentage', 'comisiones.reporte'),
             ]),
@@ -317,6 +319,7 @@ class MenuLateral
                 self::enlace('Registrar compras', 'fa-file-invoice', 'compras.index', ['compras.*']),
                 self::enlace('Órdenes de compra', 'fa-clipboard-list', 'pedidos.index', ['pedidos.*']),
                 self::enlace('Cuentas por pagar', 'fa-credit-card', 'cuentas-por-pagar.index', ['cuentas-por-pagar.*']),
+                self::enlace('Costos de importación', 'fa-scale-balanced', 'centro-costos.importaciones', ['centro-costos.*']),
             ]),
             self::grupo('precios', 'Precios', 'fa-tags', [
                 self::enlace('Gestión de precios', 'fa-tags', 'precios.index', ['precios.index', 'precios.show', 'precios.edit', 'precios.historial']),

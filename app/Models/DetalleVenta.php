@@ -18,6 +18,7 @@ class DetalleVenta extends Model
         'precio_con_igv',
         'subtotal',
         'subtotal_con_igv',
+        'costo_unitario',
     ];
 
     protected $casts = [
@@ -26,6 +27,7 @@ class DetalleVenta extends Model
         'precio_con_igv'  => 'decimal:2',
         'subtotal'        => 'decimal:2',
         'subtotal_con_igv'=> 'decimal:2',
+        'costo_unitario'  => 'decimal:4',
     ];
 
     public function venta()

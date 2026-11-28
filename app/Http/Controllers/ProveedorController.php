@@ -37,6 +37,8 @@ class ProveedorController extends Controller
             'email' => 'nullable|email|max:255',
             'contacto_nombre' => 'nullable|string|max:255',
             'observaciones' => 'nullable|string|max:2000',
+            'pais' => 'nullable|string|max:60',
+            'ciudad_origen' => 'nullable|string|max:80',
             'estado' => 'required|in:activo,inactivo',
         ], [
             'ruc.required' => 'El RUC es obligatorio',
@@ -79,6 +81,8 @@ class ProveedorController extends Controller
             'email' => 'nullable|email|max:255',
             'contacto_nombre' => 'nullable|string|max:255',
             'observaciones' => 'nullable|string|max:2000',
+            'pais' => 'nullable|string|max:60',
+            'ciudad_origen' => 'nullable|string|max:80',
             'estado' => 'required|in:activo,inactivo',
         ]);
 

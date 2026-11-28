@@ -93,9 +93,13 @@
 
             <div class="flex flex-wrap items-center gap-3">
                 <button class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-5 py-2 rounded-lg">Guardar diseño</button>
-                <button type="submit" name="restablecer" value="1" formnovalidate class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold px-4 py-2 rounded-lg" onclick="return confirm('¿Volver al diseño de partida? Se pierden los colores, la tipografía y la portada personalizados.')">Restablecer diseño</button>
                 <span class="text-xs text-gray-500">El libro de arriba se actualiza al guardar.</span>
             </div>
+        </form>
+        <form method="POST" action="{{ route('catalogos.diseno', $sel) }}" class="mt-3" data-confirm="¿Volver al diseño de partida? Se pierden los colores, la tipografía y la portada personalizados.">
+            @csrf @method('PUT')
+            <input type="hidden" name="restablecer" value="1">
+            <button class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold px-4 py-2 rounded-lg">Restablecer diseño</button>
         </form>
     </div>
 

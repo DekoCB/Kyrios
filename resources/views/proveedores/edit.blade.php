@@ -98,6 +98,21 @@
                                    value="{{ old('contacto_nombre', $proveedor->contacto_nombre) }}">
                         </div>
 
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">País de origen</label>
+                            <input type="text" name="pais" maxlength="60" list="paises-origen" placeholder="Ej. China, España, Italia, Perú"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   value="{{ old('pais', $proveedor->pais) }}">
+                            <datalist id="paises-origen"><option value="Perú"><option value="China"><option value="España"><option value="Italia"><option value="Portugal"><option value="Brasil"><option value="Turquía"><option value="Estados Unidos"><option value="Alemania"><option value="India"></datalist>
+                            <p class="text-xs text-gray-400 mt-1">Sirve para el centro de costos: de dónde viene lo que compra.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Ciudad o puerto de origen</label>
+                            <input type="text" name="ciudad_origen" maxlength="80" placeholder="Ej. Shenzhen, Barcelona"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   value="{{ old('ciudad_origen', $proveedor->ciudad_origen) }}">
+                        </div>
+
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Observaciones</label>
                             <textarea name="observaciones" rows="3" maxlength="2000"

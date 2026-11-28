@@ -216,6 +216,8 @@ class VentaService
                     'precio_con_igv'  => $precioConIgv,
                     'subtotal'        => $subtotalDetalle,
                     'subtotal_con_igv'=> round($precioConIgv * $qty, 4),
+                    // El costo del momento: la utilidad de esta venta no cambia cuando después cambia el costo promedio
+                    'costo_unitario'  => $this->costoActual($detalle['producto_id'], $detalle['variante_id'] ?? null),
                 ]);
 
                 // Descontar del stock
@@ -740,6 +742,7 @@ class VentaService
                     'precio_con_igv'  => $det->precio_con_igv,
                     'subtotal'        => $det->subtotal,
                     'subtotal_con_igv'=> $det->subtotal_con_igv,
+                    'costo_unitario'  => $det->costo_unitario,
                 ]);
             }
 
@@ -1163,6 +1166,17 @@ class VentaService
         }
 
         return true;
+    }
+
+    /** Costo promedio vigente de la variante (o, si no tiene, del producto) en soles; null si todavía no hay compras. */
+    private function costoActual(int $productoId, ?int $varianteId): ?float
+    {
+        $costo = $varianteId ? (float) \App\Models\ProductoVariante::whereKey($varianteId)->value('costo_promedio') : 0.0;
+        if ($costo <= 0) {
+            $costo = (float) \App\Models\Producto::whereKey($productoId)->value('costo_promedio');
+        }
+
+        return $costo > 0 ? round($costo, 4) : null;
     }
 
     /**
