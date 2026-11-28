@@ -43,6 +43,9 @@
                 <form x-show="nuevo" x-cloak method="POST" action="{{ route('catalogos.store') }}" class="grid gap-3 mb-4 pb-4 border-b border-gray-200">
                     @csrf
                     <div><label class="block text-xs font-semibold text-gray-600 mb-1" for="n-nombre">Nombre</label><input id="n-nombre" name="nombre" value="{{ old('nombre') }}" maxlength="120" required placeholder="Ej. Verano 2028" class="{{ $inp }}"></div>
+                    <div><label class="block text-xs font-semibold text-gray-600 mb-1" for="n-tipo">Tipo de catálogo</label>
+                        <select id="n-tipo" name="tipo" class="{{ $inp }}">@foreach(\App\Models\CatalogoLibro::TIPOS as $k => $t)<option value="{{ $k }}" @selected(old('tipo') === $k)>{{ $t }}</option>@endforeach</select>
+                        <p class="text-xs text-gray-500 mt-1">Técnico: fichas con características y precios. Brochure: solo imágenes y código, más vistoso.</p></div>
                     <div class="grid grid-cols-2 gap-2">
                         <div><label class="block text-xs font-semibold text-gray-600 mb-1" for="n-temp">Temporada</label><select id="n-temp" name="temporada" class="{{ $inp }}">@foreach(\App\Models\CatalogoLibro::TEMPORADAS as $t)<option>{{ $t }}</option>@endforeach</select></div>
                         <div><label class="block text-xs font-semibold text-gray-600 mb-1" for="n-anio">Año</label><input id="n-anio" type="number" name="anio" min="2020" max="2100" value="{{ old('anio', now()->year + 1) }}" class="{{ $inp }}"></div>
@@ -64,7 +67,7 @@
                     <a href="{{ route('catalogos.index', ['c' => $c->id]) }}" @if($sel && $sel->id === $c->id) aria-current="true" @endif
                        class="flex items-center gap-3 border rounded-lg p-2 mb-1.5 {{ $sel && $sel->id === $c->id ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 hover:border-gray-400' }}">
                         <span class="w-9 h-12 rounded-sm bg-[#3f3d37] relative shrink-0 overflow-hidden"><span class="absolute left-2 right-1.5 bottom-2 h-0.5 bg-yellow-400"></span></span>
-                        <span class="min-w-0"><b class="block text-sm leading-tight text-gray-900 truncate">{{ $c->nombre }}</b><span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-bold {{ $pill[$c->estado] }}">{{ $c->estado }}</span></span>
+                        <span class="min-w-0"><b class="block text-sm leading-tight text-gray-900 truncate">{{ $c->nombre }}</b><span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-bold {{ $pill[$c->estado] }}">{{ $c->estado }}</span> <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $c->esBrochure() ? 'bg-fuchsia-100 text-fuchsia-800' : 'bg-sky-100 text-sky-800' }}">{{ $c->esBrochure() ? 'Brochure' : 'Técnico' }}</span></span>
                     </a>
                 @empty
                     <p class="text-sm text-gray-500">Todavía no hay catálogos.@if($puedeEditar) Cree el primero con «Nuevo».@endif</p>
@@ -85,6 +88,7 @@
                     <section class="bg-white rounded-xl shadow-sm p-5" id="visor">
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                             <div class="flex items-center gap-3 min-w-0"><h2 class="text-lg font-bold text-gray-900 truncate">{{ $sel->nombre }}</h2><span class="px-2 py-0.5 rounded-full text-xs font-bold {{ $pill[$sel->estado] }}">{{ $sel->estado }}</span></div>
+                            @unless($sel->esBrochure())
                             <div class="flex items-center gap-2"><span class="text-xs text-gray-500">Precios en pantalla</span>
                                 <div class="cl-seg" role="group" aria-label="Precios en pantalla">
                                     <button type="button" data-precios-set="none" aria-pressed="false">Sin precio</button>
@@ -92,9 +96,10 @@
                                     <button type="button" data-precios-set="usd" aria-pressed="true">Dólares (US$)</button>
                                 </div>
                             </div>
+                            @endunless
                         </div>
                         @include('catalogos.partials.libro', ['catalogo' => $sel, 'libro' => $libro, 'modo' => 'usd', 'qr' => $qr])
-                        <p class="text-xs text-gray-500 mt-3">Los precios son de venta, sin IGV. Los dólares se calculan con el tipo de cambio del día.</p>
+                        @unless($sel->esBrochure())<p class="text-xs text-gray-500 mt-3">Los precios son de venta, sin IGV. Los dólares se calculan con el tipo de cambio del día.</p>@endunless
                     </section>
 
                     <section class="bg-white rounded-xl shadow-sm p-5" id="acciones" x-data="{ tab: '{{ $tab }}' }">

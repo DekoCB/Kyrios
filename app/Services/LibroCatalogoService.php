@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CatalogoLibro;
+use App\Models\CatalogoLibroItem;
 use App\Models\CatalogoLibroPagina;
 use App\Models\ProductoPrecio;
 use App\Models\ProductoVariante;
@@ -23,12 +24,13 @@ class LibroCatalogoService
     public const MAX_AUTO = 300;
 
     /**
-     * @return array{paginas: array<int, array>, secciones: array<int, array{titulo: string, idx: int}>, contenido: int}
+     * @return array{paginas: array<int, array>, secciones: array<int, array{titulo: string, idx: int}>, contenido: int, diseno: array, tipo: string}
      *   paginas[0] es el índice (interior de la portada) y la última, la contraportada. El total siempre es impar,
      *   porque cada hoja lleva dos páginas y la portada va aparte.
      */
     public function construir(CatalogoLibro $c, bool $paraPdf = false): array
     {
+        $diseno = $c->disenoFinal();
         $paginas = $c->paginas()->with(['items.variante.producto.tipoLuminaria', 'items.variante.producto.marca', 'items.variante.imagenes'])->get();
         $variantes = $paginas->flatMap(fn ($p) => $p->items->pluck('variante'))->filter()->unique('id');
         $precios = $this->precios($variantes);
@@ -36,7 +38,7 @@ class LibroCatalogoService
         $q = [['t' => 'indice']];
         $secciones = [];
         foreach ($paginas as $i => $p) {
-            $items = $p->items->map(fn ($it) => $it->variante ? $this->item($it->variante, $precios, $paraPdf) : null)->filter()->values()->all();
+            $items = $p->items->map(fn ($it) => $it->variante ? $this->item($it->variante, $precios, $paraPdf, $it, $diseno) : null)->filter()->values()->all();
             if ($p->tipo === 'seccion') {
                 $secciones[] = ['titulo' => (string) $p->titulo, 'idx' => $i + 1];
             }
@@ -47,10 +49,14 @@ class LibroCatalogoService
         }
         $q[] = ['t' => 'contra'];
 
-        return ['paginas' => $q, 'secciones' => $secciones, 'contenido' => count($q) - 2];
+        return ['paginas' => $q, 'secciones' => $secciones, 'contenido' => count($q) - 2, 'diseno' => $diseno, 'tipo' => $c->tipo ?: 'tecnico'];
     }
 
-    private function item(ProductoVariante $v, Collection $precios, bool $paraPdf): array
+    /**
+     * @param CatalogoLibroItem|null $it  lo elegido para este producto en la página: fotos, tamaño y características
+     * @param array $diseno               el diseño del catálogo (`disenoFinal()`)
+     */
+    private function item(ProductoVariante $v, Collection $precios, bool $paraPdf, ?CatalogoLibroItem $it = null, array $diseno = []): array
     {
         $p = $v->producto;
         $datos = $p ? (FichaProducto::producto($p) + FichaProducto::variante($v)) : [];
@@ -59,7 +65,12 @@ class LibroCatalogoService
             'Acabado' => ['Acabado', 'Color'], 'Material' => ['Material principal'], 'Potencia' => ['Potencia'],
             'Temperatura de color' => ['Temperatura de color'], 'IP' => ['IP'], 'Alto' => ['Alto'], 'Diámetro' => ['Diámetro'], 'Largo' => ['Largo'],
         ];
+        // Características que se muestran: las elegidas para este producto o, si no, las del diseño del catálogo
+        $mostrar = $it?->caracteristicas ?? ($diseno['caracteristicas'] ?? CatalogoLibro::CARACTERISTICAS);
         foreach ($campos as $etiqueta => $claves) {
+            if (!in_array($etiqueta, $mostrar, true)) {
+                continue;
+            }
             foreach ($claves as $k) {
                 if (filled($datos[$k] ?? null)) {
                     $specs[$etiqueta] = $datos[$k];
@@ -71,7 +82,12 @@ class LibroCatalogoService
         if (isset($specs['Potencia']) && (float) $specs['Potencia'] > 500) {
             unset($specs['Potencia']);
         }
-        $img = $v->imagenes->sortByDesc('es_principal')->first();
+        // Fotos: las elegidas para este producto, en ese orden; si no eligieron, la principal
+        $todas = $v->imagenes->sortBy(fn ($i) => [$i->es_principal ? 0 : 1, $i->orden])->values();
+        $elegidas = collect($it?->imagenes ?? [])->map(fn ($id) => $todas->firstWhere('id', (int) $id))->filter()->values();
+        $fotos = ($elegidas->isNotEmpty() ? $elegidas : $todas->take(1))->take(4)->map(fn ($f) => $this->foto($f, $paraPdf))->all();
+        $img = $fotos[0] ?? null;
+        $tam = isset(CatalogoLibroItem::TAMANOS[$it?->tamano ?? '']) ? $it->tamano : 'grande';
         $sinIgv = $this->precioSinIgv($v, $precios);
 
         return [
@@ -80,12 +96,23 @@ class LibroCatalogoService
             'nombre' => $p ? EtiquetaProducto::nombre($p) : 'Producto',
             'sub' => trim(($p?->tipoLuminaria?->nombre ?? '') . ($p?->marca ? ' · ' . $p->marca->nombre : ''), ' ·'),
             'specs' => $specs,
-            'img' => $img && !$paraPdf ? $img->url : null,
-            'img_data' => $img && $paraPdf ? FichaProducto::imagenDataUri($img) : null,
-            'img_ratio' => $img && $paraPdf ? $this->proporcion($img) : null,
+            'img' => $img['url'] ?? null,
+            'img_data' => $img['data'] ?? null,
+            'img_ratio' => $img['ratio'] ?? null,
+            'fotos' => $fotos,
+            'tam' => $tam,
+            'esc' => CatalogoLibroItem::TAMANOS[$tam],
             'pen' => $sinIgv,
             'usd' => $sinIgv !== null ? round($sinIgv / TipoCambio::actual(), 2) : null,
         ];
+    }
+
+    /** Una foto lista para mostrar: dirección en pantalla; en el PDF, la imagen incrustada y su proporción. */
+    private function foto(\App\Models\ProductoImagen $img, bool $paraPdf): array
+    {
+        return $paraPdf
+            ? ['url' => null, 'data' => FichaProducto::imagenDataUri($img), 'ratio' => $this->proporcion($img)]
+            : ['url' => $img->url, 'data' => null, 'ratio' => null];
     }
 
     /** Ancho / alto de la foto; dompdf no ajusta solo una imagen a su caja, así que el PDF necesita la proporción. */
@@ -166,7 +193,7 @@ class LibroCatalogoService
             $orden = 0;
             foreach ($grupos as $titulo => $vs) {
                 $this->crearPagina($c, ++$orden, 'seccion', $titulo, [$vs->first()->id]);
-                foreach ($this->partir($vs->pluck('id')->all()) as [$tipo, $ids]) {
+                foreach ($this->partir($vs->pluck('id')->all(), $c->tipo ?: 'tecnico') as [$tipo, $ids]) {
                     $this->crearPagina($c, ++$orden, $tipo, null, $ids);
                 }
             }
@@ -175,12 +202,26 @@ class LibroCatalogoService
         return $variantes->count();
     }
 
-    /** Parte una lista en páginas de 4; el resto (1 a 3) va en una de 2 + una de 1, o en una sola. */
-    public function partir(array $ids): array
+    /**
+     * Parte una lista en páginas. Técnico: de 4; el resto (1 a 3) va en una de 2 + una de 1, o en una sola.
+     * Brochure: alterna 4, 3, 4 y 2 productos para que las páginas no se vean iguales.
+     */
+    public function partir(array $ids, string $tipo = 'tecnico'): array
     {
         $paginas = [];
         $i = 0;
         $n = count($ids);
+        if ($tipo === 'brochure') {
+            $ciclo = [4, 3, 4, 2];
+            $nombres = [1 => 'uno', 2 => 'dos', 3 => 'tres', 4 => 'cuatro'];
+            for ($k = 0; $i < $n; $k++) {
+                $cuantos = min($ciclo[$k % 4], $n - $i);
+                $paginas[] = [$nombres[$cuantos], array_slice($ids, $i, $cuantos)];
+                $i += $cuantos;
+            }
+
+            return $paginas;
+        }
         while ($i < $n) {
             $resto = $n - $i;
             $cuantos = $resto >= 4 ? 4 : ($resto === 3 ? 2 : $resto);
@@ -213,11 +254,14 @@ class LibroCatalogoService
     {
         return DB::transaction(function () use ($c, $usuarioId) {
             $n = CatalogoLibro::create([
-                'nombre' => mb_substr($c->nombre, 0, 105) . ' (copia)', 'temporada' => $c->temporada, 'anio' => $c->anio, 'estado' => 'borrador',
-                'vigencia' => $c->vigencia, 'precio_enlace' => $c->precio_enlace, 'creado_por' => $usuarioId,
+                'nombre' => mb_substr($c->nombre, 0, 105) . ' (copia)', 'tipo' => $c->tipo ?: 'tecnico', 'temporada' => $c->temporada, 'anio' => $c->anio, 'estado' => 'borrador',
+                'vigencia' => $c->vigencia, 'precio_enlace' => $c->precio_enlace ?? 'none', 'diseno' => $c->diseno, 'creado_por' => $usuarioId,
             ]);
             foreach ($c->paginas()->with('items')->get() as $p) {
-                $this->crearPagina($n, $p->orden, $p->tipo, $p->titulo, $p->items->pluck('variante_id')->all());
+                $copia = $n->paginas()->create(['orden' => $p->orden, 'tipo' => $p->tipo, 'titulo' => $p->titulo]);
+                foreach ($p->items as $it) {
+                    $copia->items()->create(['variante_id' => $it->variante_id, 'orden' => $it->orden, 'imagenes' => $it->imagenes, 'tamano' => $it->tamano, 'caracteristicas' => $it->caracteristicas]);
+                }
             }
 
             return $n;

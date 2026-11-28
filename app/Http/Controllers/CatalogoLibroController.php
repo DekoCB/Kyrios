@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Catalogo\Marca;
 use App\Models\Catalogo\TipoLuminaria;
 use App\Models\CatalogoLibro;
+use App\Models\CatalogoLibroItem;
 use App\Models\CatalogoLibroPagina;
 use App\Models\Role;
 use App\Services\LibroCatalogoService;
 use App\Support\EtiquetaProducto;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -45,7 +47,8 @@ class CatalogoLibroController extends Controller
             'catalogos' => $catalogos,
             'sel' => $sel,
             'libro' => $libro,
-            'paginas' => $sel ? $sel->paginas()->with('items.variante.producto')->get() : collect(),
+            'paginas' => $sel ? $sel->paginas()->with(['items.variante.producto', 'items.variante.imagenes'])->get() : collect(),
+            'diseno' => $sel?->disenoFinal(),
             'stats' => $sel ? $this->servicio->estadisticas($sel) : null,
             'qr' => $sel ? $this->qr($sel->url_publica) : null,
             'tab' => $tab,
@@ -72,8 +75,9 @@ class CatalogoLibroController extends Controller
     public function store(Request $request)
     {
         $datos = $this->datos($request);
-        $filtros = $request->validate(['armar' => 'nullable|boolean', 'tipo_luminaria_id' => 'nullable|integer', 'marca_id' => 'nullable|integer']);
-        $c = CatalogoLibro::create($datos + ['estado' => 'borrador', 'creado_por' => auth()->id()]);
+        $filtros = $request->validate(['armar' => 'nullable|boolean', 'tipo_luminaria_id' => 'nullable|integer', 'marca_id' => 'nullable|integer',
+            'tipo' => ['nullable', Rule::in(array_keys(CatalogoLibro::TIPOS))]]);
+        $c = CatalogoLibro::create($datos + ['tipo' => $filtros['tipo'] ?? 'tecnico', 'estado' => 'borrador', 'creado_por' => auth()->id()]);
         $n = 0;
         if ($request->boolean('armar')) {
             $n = $this->servicio->armarAuto($c, ['tipo_luminaria_id' => $filtros['tipo_luminaria_id'] ?? null, 'marca_id' => $filtros['marca_id'] ?? null]);
@@ -87,8 +91,9 @@ class CatalogoLibroController extends Controller
         $datos = $this->datos($request) + $request->validate([
             'estado' => ['required', Rule::in(CatalogoLibro::ESTADOS)],
             'vigencia' => 'nullable|date',
+            'tipo' => ['nullable', Rule::in(array_keys(CatalogoLibro::TIPOS))],
         ]);
-        $catalogo->update($datos);
+        $catalogo->update(array_filter($datos, fn ($v, $k) => $k !== 'tipo' || $v !== null, ARRAY_FILTER_USE_BOTH));
 
         return $this->volver($catalogo, 'editar', 'Catálogo actualizado.');
     }
@@ -114,12 +119,102 @@ class CatalogoLibroController extends Controller
         return redirect()->route('catalogos.index')->with('success', 'Catálogo eliminado.');
     }
 
+    // ── Diseño ───────────────────────────────────────────────────────────
+
+    /** Tipografía, colores, portada y características que se muestran en todo el catálogo. */
+    public function disenoUpdate(Request $request, CatalogoLibro $catalogo)
+    {
+        if ($request->boolean('restablecer')) {
+            $this->quitarFotoPortada($catalogo);
+            $catalogo->update(['diseno' => null]);
+
+            return $this->volver($catalogo, 'editar', 'Diseño restablecido al de partida.');
+        }
+
+        $d = $request->validate([
+            'fuente' => ['required', Rule::in(array_keys(CatalogoLibro::FUENTES))],
+            'colores' => 'required|array',
+            'colores.*' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'portada.titulo' => 'nullable|string|max:80',
+            'portada.subtitulo' => 'nullable|string|max:120',
+            'portada.lema' => 'nullable|string|max:60',
+            'portada.estilo' => ['required', Rule::in(array_keys(CatalogoLibro::PORTADAS))],
+            'portada.logo' => 'nullable|boolean',
+            'portada_imagen' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'quitar_imagen' => 'nullable|boolean',
+            'caracteristicas' => 'nullable|array',
+            'caracteristicas.*' => ['nullable', Rule::in(CatalogoLibro::CARACTERISTICAS)],
+        ], ['colores.*.regex' => 'Los colores deben ser del tipo #RRGGBB.', 'portada_imagen.image' => 'La foto de la portada debe ser una imagen (JPG, PNG o WebP).',
+            'portada_imagen.max' => 'La foto de la portada pesa más de 4 MB.']);
+
+        $imagen = $catalogo->disenoFinal()['portada']['imagen'];
+        if ($request->boolean('quitar_imagen')) {
+            $this->quitarFotoPortada($catalogo);
+            $imagen = null;
+        }
+        if ($request->hasFile('portada_imagen')) {
+            $this->quitarFotoPortada($catalogo);
+            $imagen = $request->file('portada_imagen')->store('catalogos/portadas', 'public');
+        }
+        if ($d['portada']['estilo'] === 'foto' && !$imagen) {
+            return back()->withErrors(['portada_imagen' => 'Suba la foto de la portada para usar ese estilo.'])->withInput();
+        }
+
+        $catalogo->update(['diseno' => [
+            'fuente' => $d['fuente'],
+            'colores' => array_filter($d['colores']),
+            'portada' => [
+                'titulo' => $d['portada']['titulo'] ?? null, 'subtitulo' => $d['portada']['subtitulo'] ?? null, 'lema' => $d['portada']['lema'] ?? null,
+                'estilo' => $d['portada']['estilo'], 'logo' => (bool) ($d['portada']['logo'] ?? false), 'imagen' => $imagen,
+            ],
+            'caracteristicas' => array_values(array_intersect(CatalogoLibro::CARACTERISTICAS, array_filter($d['caracteristicas'] ?? []))),
+        ]]);
+
+        return $this->volver($catalogo, 'editar', 'Diseño guardado.');
+    }
+
+    /** Borra la foto de portada del disco si ningún otro catálogo la usa. */
+    private function quitarFotoPortada(CatalogoLibro $catalogo): void
+    {
+        $ruta = $catalogo->disenoFinal()['portada']['imagen'];
+        if ($ruta && !CatalogoLibro::where('id', '!=', $catalogo->id)->where('diseno->portada->imagen', $ruta)->exists()) {
+            Storage::disk('public')->delete($ruta);
+        }
+    }
+
+    // ── Cada producto del catálogo ───────────────────────────────────────
+
+    /** Qué fotos del producto van en el catálogo (y en qué orden), qué tan grande se ve y qué características muestra. */
+    public function itemUpdate(Request $request, CatalogoLibro $catalogo, CatalogoLibroItem $item)
+    {
+        abort_unless($item->pagina?->catalogo_id === $catalogo->id, 404);
+        $d = $request->validate([
+            'imagenes' => 'nullable|array|max:4',
+            'imagenes.*' => 'integer',
+            'tamano' => ['nullable', Rule::in(array_keys(CatalogoLibroItem::TAMANOS))],
+            'caracteristicas' => 'nullable|array',
+            'caracteristicas.*' => ['nullable', Rule::in(CatalogoLibro::CARACTERISTICAS)],
+            'usar_diseno' => 'nullable|boolean',
+        ]);
+        // Solo valen las fotos de esa misma variante, en el orden en que se eligieron
+        $propias = $item->variante?->imagenes()->pluck('id')->all() ?? [];
+        $imagenes = collect($d['imagenes'] ?? [])->map(fn ($i) => (int) $i)->filter(fn ($i) => in_array($i, $propias, true))->unique()->values()->all();
+
+        $item->update([
+            'imagenes' => $imagenes ?: null,
+            'tamano' => ($d['tamano'] ?? 'grande') === 'grande' ? null : $d['tamano'],
+            'caracteristicas' => $request->boolean('usar_diseno') ? null : array_values(array_intersect(CatalogoLibro::CARACTERISTICAS, array_filter($d['caracteristicas'] ?? []))),
+        ]);
+
+        return $this->volver($catalogo, 'editar', 'Producto actualizado.');
+    }
+
     // ── Páginas ──────────────────────────────────────────────────────────
 
     public function paginaStore(Request $request, CatalogoLibro $catalogo)
     {
         $datos = $request->validate([
-            'tipo' => ['required', Rule::in(array_keys(CatalogoLibroPagina::CAPACIDAD))],
+            'tipo' => ['required', Rule::in(CatalogoLibroPagina::DISENOS[$catalogo->tipo ?: 'tecnico'])],
             'titulo' => 'nullable|string|max:60',
             'variantes' => 'required|array|min:1',
             'variantes.*' => 'integer|exists:producto_variantes,id',
@@ -213,6 +308,19 @@ class CatalogoLibroController extends Controller
 
     // ── PDF ──────────────────────────────────────────────────────────────
 
+    /** La foto de la portada lista para el PDF (incrustada, porque dompdf no lee fuera de `public`) y su proporción. */
+    private function fotoPortadaPdf(?string $ruta): ?array
+    {
+        if (!$ruta || !Storage::disk('public')->exists($ruta)) {
+            return null;
+        }
+        $archivo = Storage::disk('public')->path($ruta);
+        $t = @getimagesize($archivo);
+        $mime = $t['mime'] ?? 'image/jpeg';
+
+        return ['data' => 'data:' . $mime . ';base64,' . base64_encode(Storage::disk('public')->get($ruta)), 'ratio' => $t && $t[1] > 0 ? $t[0] / $t[1] : null];
+    }
+
     public function pdf(Request $request, CatalogoLibro $catalogo)
     {
         $d = $request->validate([
@@ -251,7 +359,9 @@ class CatalogoLibroController extends Controller
 
         return Pdf::setOptions(['isHtml5ParserEnabled' => true, 'defaultFont' => 'sans-serif', 'chroot' => public_path()])
             ->loadView('catalogos.pdf', [
-                'catalogo' => $catalogo, 'secuencia' => $secuencia, 'secciones' => $libro['secciones'], 'hojas' => $hojas, 'modo' => $d['precios'] ?? 'none',
+                'catalogo' => $catalogo, 'secuencia' => $secuencia, 'secciones' => $libro['secciones'], 'hojas' => $hojas, 'modo' => $catalogo->esBrochure() ? 'none' : ($d['precios'] ?? 'none'),
+                'diseno' => $libro['diseno'], 'brochure' => $catalogo->esBrochure(), 'logoClaro' => public_path('img/logo-kyrios-fondo-claro.png'),
+                'fotoPortada' => $this->fotoPortadaPdf($libro['diseno']['portada']['imagen']),
                 'ancho' => $ancho, 'alto' => $alto, 'doble' => $formato === 'libro', 'qr' => $qr, 'logoOscuro' => public_path('img/logo-kyrios-fondo-oscuro.png'), 'url' => $url,
             ])
             ->setPaper($formato === 'libro' ? [0, 0, $ancho * 2 * 2.8346, $alto * 2.8346] : [0, 0, $ancho * 2.8346, $alto * 2.8346])

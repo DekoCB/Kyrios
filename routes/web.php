@@ -907,6 +907,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/productos', [$c, 'productos'])->name('productos');
         Route::post('/', [$c, 'store'])->name('store');
         Route::put('/{catalogo}', [$c, 'update'])->whereNumber('catalogo')->name('update');
+        Route::put('/{catalogo}/diseno', [$c, 'disenoUpdate'])->whereNumber('catalogo')->name('diseno');
+        Route::put('/{catalogo}/items/{item}', [$c, 'itemUpdate'])->whereNumber(['catalogo', 'item'])->name('items.update');
         Route::post('/{catalogo}/estado', [$c, 'estado'])->whereNumber('catalogo')->name('estado');
         Route::post('/{catalogo}/duplicar', [$c, 'duplicar'])->whereNumber('catalogo')->name('duplicar');
         Route::delete('/{catalogo}', [$c, 'destroy'])->whereNumber('catalogo')->name('destroy');
