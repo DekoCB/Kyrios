@@ -188,6 +188,7 @@ class HuelleroService
             $tarde = $this->asistencia->minutosTarde($d->empleado, $entrada);
             $datos = [
                 'hora_entrada' => $entrada, 'hora_salida' => $salida, 'estado' => $tarde > 0 ? 'tardanza' : 'puntual', 'minutos_tarde' => $tarde,
+                'minutos_extra' => $this->asistencia->minutosExtra($d->empleado, $salida),
             ];
 
             if (!$actual) {

@@ -24,6 +24,7 @@ class RecursosHumanosTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
+        config(['kyrios.rrhh.exigir_foto_ubicacion' => false]);   // la selfie y la ubicación se prueban en RrhhPlanillaNotasYUbicacionTest
         $this->admin = $this->usuario('Administración');
     }
 
@@ -52,6 +53,7 @@ class RecursosHumanosTest extends TestCase
             'nombres' => 'Mafer', 'apellidos' => 'Quispe', 'dni' => '87654321', 'cargo' => 'Diseñadora', 'area' => 'Diseño', 'tipo_contrato' => 'plazo_fijo',
             'fecha_ingreso' => '2026-01-05', 'fecha_fin_contrato' => today()->addDays(10)->toDateString(), 'hora_entrada' => '09:00', 'hora_salida' => '18:00',
             'estado' => 'activo', 'sueldo_basico' => 1800, 'fecha_nacimiento' => '1995-06-15',
+            'horas_jornada' => 8, 'tardanza_modo' => 'proporcional', 'falta_modo' => 'dia', 'extra_modo' => 'factor', 'extra_valor' => 1.25, 'extra_minimo_min' => 30,
         ];
     }
 

@@ -35,6 +35,8 @@
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entrada</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salida</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Extra</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ubicación y selfie</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registrar / corregir</th>
             </tr></thead>
             <tbody class="divide-y divide-gray-100">
@@ -48,6 +50,8 @@
                         </td>
                         <td class="px-4 py-3">{{ $a?->hora_entrada ? substr($a->hora_entrada, 0, 5) : '—' }}</td>
                         <td class="px-4 py-3">{{ $a?->hora_salida ? substr($a->hora_salida, 0, 5) : '—' }}</td>
+                        <td class="px-4 py-3 {{ $a?->minutos_extra ? 'text-emerald-700 font-semibold' : 'text-gray-400' }}">{{ $a?->minutos_extra ? intdiv($a->minutos_extra, 60) . ' h ' . ($a->minutos_extra % 60) . ' min' : '—' }}</td>
+                        <td class="px-4 py-3">@if($a)@include('rrhh.asistencia._marcaciones', ['a' => $a])@else<span class="text-xs text-gray-300">—</span>@endif</td>
                         <td class="px-4 py-3">
                             <form method="POST" action="{{ route('rrhh.asistencia.registrar', $e) }}" class="flex flex-wrap items-center gap-1" x-data="{ est: '{{ $a?->estado ?? 'puntual' }}' }">
                                 @csrf <input type="hidden" name="fecha" value="{{ $fecha->toDateString() }}">
@@ -64,7 +68,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-6 py-12 text-center text-gray-500">No hay empleados registrados para esta fecha.</td></tr>
+                    <tr><td colspan="7" class="px-6 py-12 text-center text-gray-500">No hay empleados registrados para esta fecha.</td></tr>
                 @endforelse
             </tbody>
         </table>

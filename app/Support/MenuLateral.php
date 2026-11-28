@@ -93,6 +93,9 @@ class MenuLateral
         if ($admin) {
             $hijos[] = self::enlace('Control del día', 'fa-user-clock', 'rrhh.asistencia.control');
             $hijos[] = self::enlace('Reporte mensual', 'fa-chart-column', 'rrhh.asistencia.reporte');
+            $hijos[] = self::enlace('Por trabajador', 'fa-user-check', 'rrhh.asistencia.trabajador');
+            $hijos[] = self::enlace('Lugares de trabajo', 'fa-location-dot', 'rrhh.lugares.index', ['rrhh.lugares.*']);
+            $hijos[] = self::enlace('Evaluaciones', 'fa-star-half-stroke', 'rrhh.evaluaciones.index', ['rrhh.evaluaciones.*']);
             $hijos[] = self::enlace('Huellero', 'fa-hand-pointer', 'rrhh.asistencia.huellero');
         } else {
             $hijos[] = self::enlace('Mis solicitudes', 'fa-umbrella-beach', 'rrhh.mis-solicitudes');

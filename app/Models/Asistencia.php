@@ -20,9 +20,14 @@ class Asistencia extends Model
         'licencia'        => ['Licencia', 'bg-gray-200 text-gray-700', false],
     ];
 
-    protected $fillable = ['empleado_id', 'fecha', 'hora_entrada', 'hora_salida', 'estado', 'minutos_tarde', 'origen', 'observaciones', 'registrado_por'];
+    protected $fillable = ['empleado_id', 'fecha', 'hora_entrada', 'hora_salida', 'estado', 'minutos_tarde', 'minutos_extra', 'origen', 'observaciones', 'registrado_por'];
 
-    protected $casts = ['fecha' => 'date', 'minutos_tarde' => 'integer'];
+    protected $casts = ['fecha' => 'date', 'minutos_tarde' => 'integer', 'minutos_extra' => 'integer'];
+
+    public function marcaciones()
+    {
+        return $this->hasMany(AsistenciaMarcacion::class);
+    }
 
     public function empleado(): BelongsTo
     {

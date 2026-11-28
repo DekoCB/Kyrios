@@ -119,13 +119,43 @@
                     <div><label class="{{ $etq }}">Fecha de ingreso *</label><input type="date" name="fecha_ingreso" value="{{ $v('fecha_ingreso') }}" required max="{{ today()->toDateString() }}" class="{{ $caja }}"></div>
                     <div><label class="{{ $etq }}">Fin de contrato (plazo fijo)</label><input type="date" name="fecha_fin_contrato" value="{{ $v('fecha_fin_contrato') }}" class="{{ $caja }}"></div>
                     <div><label class="{{ $etq }}">Periodo de prueba</label><input name="periodo_prueba" value="{{ $v('periodo_prueba') }}" maxlength="60" placeholder="Ej.: 3 meses" class="{{ $caja }}"></div>
-                    <div><label class="{{ $etq }}">Sueldo básico (S/)</label><input type="number" step="0.01" min="0" name="sueldo_basico" value="{{ $v('sueldo_basico') }}" class="{{ $caja }}"></div>
-                    <div><label class="{{ $etq }}">Hora de entrada *</label><input type="time" name="hora_entrada" value="{{ $hora('hora_entrada', '08:30') }}" required class="{{ $caja }}"></div>
-                    <div><label class="{{ $etq }}">Hora de salida *</label><input type="time" name="hora_salida" value="{{ $hora('hora_salida', '18:00') }}" required class="{{ $caja }}"></div>
                     @if($esNuevo || $e->estado !== 'cesado')
                         <div><label class="{{ $etq }}">Estado</label>
                             <select name="estado" class="{{ $caja }}"><option value="activo" @selected($v('estado', 'activo') === 'activo')>Activo</option><option value="licencia" @selected($v('estado') === 'licencia')>En licencia</option></select></div>
                     @endif
+                </div>
+            </div>
+
+            {{-- Salario, horario y lo que se descuenta o bonifica por tardanzas, faltas y horas extra --}}
+            <div class="bg-white rounded-xl shadow-sm p-5" x-data="{ tm: '{{ $v('tardanza_modo', 'proporcional') }}', fm: '{{ $v('falta_modo', 'dia') }}', em: '{{ $v('extra_modo', 'factor') }}' }">
+                <h2 class="font-semibold text-gray-900 mb-1"><i class="fas fa-money-bill-wave text-gray-400 mr-1"></i> Salario, horario y descuentos</h2>
+                <p class="text-xs text-gray-500 mb-4">Con esto el sistema calcula cada mes cuánto se descuenta por tardanzas y faltas y cuánto se bonifica por horas extra. El horario de partida es de 8:00 a 18:00.</p>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div><label class="{{ $etq }}">Sueldo básico (S/)</label><input type="number" step="0.01" min="0" name="sueldo_basico" value="{{ $v('sueldo_basico') }}" class="{{ $caja }}"></div>
+                    <div><label class="{{ $etq }}">Hora de entrada *</label><input type="time" name="hora_entrada" value="{{ $hora('hora_entrada', '08:00') }}" required class="{{ $caja }}"></div>
+                    <div><label class="{{ $etq }}">Hora de salida *</label><input type="time" name="hora_salida" value="{{ $hora('hora_salida', '18:00') }}" required class="{{ $caja }}"></div>
+                    <div><label class="{{ $etq }}">Horas de la jornada *</label><input type="number" step="0.25" min="1" max="24" name="horas_jornada" value="{{ $v('horas_jornada', 8) }}" required class="{{ $caja }}">
+                        <p class="text-[11px] text-gray-400 mt-1">Sirve para el valor de la hora: sueldo ÷ 30 días ÷ horas.</p></div>
+                    <div><label class="{{ $etq }}">Tolerancia de ingreso (minutos)</label><input type="number" min="0" max="120" name="tolerancia_min" value="{{ $v('tolerancia_min') }}" placeholder="General: {{ \App\Services\AsistenciaService::tolerancia() }}" class="{{ $caja }}">
+                        <p class="text-[11px] text-gray-400 mt-1">Vacío = la tolerancia general del sistema.</p></div>
+                    <div></div>
+
+                    <div class="md:col-span-3 border-t border-dashed border-gray-200 pt-3"><p class="text-xs font-semibold text-gray-500 uppercase">Tardanzas</p></div>
+                    <div class="md:col-span-2"><label class="{{ $etq }}">Cómo se descuenta</label>
+                        <select name="tardanza_modo" x-model="tm" class="{{ $caja }}">@foreach(\App\Models\Empleado::TARDANZA_MODOS as $k => $t)<option value="{{ $k }}">{{ $t }}</option>@endforeach</select></div>
+                    <div x-show="['por_minuto','por_tardanza'].includes(tm)" x-cloak><label class="{{ $etq }}" x-text="tm === 'por_minuto' ? 'Monto por minuto (S/)' : 'Monto por tardanza (S/)'"></label><input type="number" step="0.01" min="0" name="tardanza_valor" value="{{ $v('tardanza_valor', 0) }}" class="{{ $caja }}"></div>
+
+                    <div class="md:col-span-3 border-t border-dashed border-gray-200 pt-3"><p class="text-xs font-semibold text-gray-500 uppercase">Faltas</p></div>
+                    <div class="md:col-span-2"><label class="{{ $etq }}">Cómo se descuenta</label>
+                        <select name="falta_modo" x-model="fm" class="{{ $caja }}">@foreach(\App\Models\Empleado::FALTA_MODOS as $k => $t)<option value="{{ $k }}">{{ $t }}</option>@endforeach</select></div>
+                    <div x-show="fm === 'monto'" x-cloak><label class="{{ $etq }}">Monto por falta (S/)</label><input type="number" step="0.01" min="0" name="falta_valor" value="{{ $v('falta_valor', 0) }}" class="{{ $caja }}"></div>
+
+                    <div class="md:col-span-3 border-t border-dashed border-gray-200 pt-3"><p class="text-xs font-semibold text-gray-500 uppercase">Horas extra (después de la hora de salida)</p></div>
+                    <div class="md:col-span-2"><label class="{{ $etq }}">Cómo se bonifica</label>
+                        <select name="extra_modo" x-model="em" class="{{ $caja }}">@foreach(\App\Models\Empleado::EXTRA_MODOS as $k => $t)<option value="{{ $k }}">{{ $t }}</option>@endforeach</select></div>
+                    <div x-show="['factor','por_hora'].includes(em)" x-cloak><label class="{{ $etq }}" x-text="em === 'factor' ? 'Factor (1.25 = 25 % más)' : 'Monto por hora extra (S/)'"></label><input type="number" step="0.01" min="0" name="extra_valor" value="{{ $v('extra_valor', 1.25) }}" class="{{ $caja }}"></div>
+                    <div><label class="{{ $etq }}">Cuentan desde (minutos extra) *</label><input type="number" min="0" max="600" name="extra_minimo_min" value="{{ $v('extra_minimo_min', 30) }}" required class="{{ $caja }}">
+                        <p class="text-[11px] text-gray-400 mt-1">Quedarse menos que esto no se bonifica.</p></div>
                 </div>
             </div>
 

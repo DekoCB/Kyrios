@@ -9,6 +9,8 @@
 
     <div class="flex flex-wrap items-center gap-2 mb-6">
         <a href="{{ route('rrhh.empleados.index') }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-arrow-left"></i> Volver</a>
+        <a href="{{ route('rrhh.asistencia.trabajador', ['empleado' => $empleado->id]) }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-user-check"></i> Su asistencia</a>
+        <a href="{{ route('rrhh.evaluaciones.show', $empleado) }}" class="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-star-half-stroke"></i> Evaluaciones @if($empleado->evaluaciones->isNotEmpty())<span class="text-xs font-bold bg-gray-100 text-gray-700 px-1.5 rounded-full">{{ number_format($empleado->evaluaciones->first()->nota, 1) }}</span>@endif</a>
         <a href="{{ route('rrhh.empleados.edit', $empleado) }}" class="inline-flex items-center gap-2 border border-yellow-300 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 px-4 py-2 rounded-xl text-sm font-medium shadow-sm"><i class="fas fa-edit"></i> Editar</a>
         <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full {{ ['activo' => 'bg-green-100 text-green-800', 'licencia' => 'bg-sky-100 text-sky-800', 'cesado' => 'bg-gray-200 text-gray-600'][$empleado->estado] }}">{{ \App\Models\Empleado::ESTADOS[$empleado->estado] }}</span>
         @if($empleado->estado === 'cesado')

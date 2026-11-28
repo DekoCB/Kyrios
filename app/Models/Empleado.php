@@ -75,11 +75,23 @@ class Empleado extends Model
         'puesto_solicitado', 'fecha_disponibilidad', 'sueldo_minimo', 'viajaria_provincias', 'trabajo_antes_kyrios', 'conocidos_kyrios', 'familiares_kyrios',
         'educacion', 'profesion', 'profesion_condicion', 'idiomas', 'software', 'otros_estudios', 'experiencia', 'dependientes', 'familiares', 'referencias',
         'posee_cuenta_sueldo', 'moneda_pago', 'pension_situacion', 'pension_regimen', 'declaraciones', 'vida_ley_extrabajador', 'vida_ley', 'enfermedades', 'sin_enfermedades',
+        'tolerancia_min', 'horas_jornada', 'tardanza_modo', 'tardanza_valor', 'falta_modo', 'falta_valor', 'extra_modo', 'extra_valor', 'extra_minimo_min',
     ];
+
+    /** Cómo se descuenta una tardanza, una falta y cómo se bonifica una hora extra (reglas propias de cada trabajador). */
+    public const TARDANZA_MODOS = [
+        'proporcional' => 'Proporcional al sueldo (valor del minuto × minutos de atraso)',
+        'por_minuto' => 'Monto fijo por cada minuto de atraso',
+        'por_tardanza' => 'Monto fijo por cada tardanza',
+        'ninguno' => 'No se descuenta',
+    ];
+    public const FALTA_MODOS = ['dia' => 'Un día de sueldo por falta (sueldo ÷ 30)', 'monto' => 'Monto fijo por cada falta', 'ninguno' => 'No se descuenta'];
+    public const EXTRA_MODOS = ['factor' => 'Valor de la hora × factor (ej. 1.25)', 'por_hora' => 'Monto fijo por cada hora extra', 'ninguno' => 'No se bonifica'];
 
     protected $casts = [
         'fecha_nacimiento' => 'date', 'fecha_ingreso' => 'date', 'fecha_fin_contrato' => 'date', 'fecha_cese' => 'date',
         'sueldo_basico' => 'decimal:2', 'fecha_disponibilidad' => 'date', 'sueldo_minimo' => 'decimal:2',
+        'horas_jornada' => 'decimal:2', 'tardanza_valor' => 'decimal:2', 'falta_valor' => 'decimal:2', 'extra_valor' => 'decimal:2',
         'viajaria_provincias' => 'boolean', 'trabajo_antes_kyrios' => 'boolean', 'posee_cuenta_sueldo' => 'boolean',
         'vida_ley_extrabajador' => 'boolean', 'sin_enfermedades' => 'boolean',
         'educacion' => 'array', 'idiomas' => 'array', 'software' => 'array', 'otros_estudios' => 'array', 'experiencia' => 'array',
@@ -105,6 +117,16 @@ class Empleado extends Model
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function evaluaciones()
+    {
+        return $this->hasMany(EvaluacionEmpleado::class)->orderByDesc('id');
+    }
+
+    public function marcaciones()
+    {
+        return $this->hasMany(AsistenciaMarcacion::class);
     }
 
     public function asistencias(): HasMany

@@ -41,6 +41,8 @@ return [
     // Recursos humanos: control de asistencia
     'rrhh' => [
         'tolerancia_min'   => (int) env('RRHH_TOLERANCIA_MIN', 10),
+        // Marcar asistencia desde el sistema exige selfie y ubicación (apagar solo en pruebas o si un puesto no tiene cámara)
+        'exigir_foto_ubicacion' => (bool) env('RRHH_EXIGIR_FOTO_UBICACION', true),
         'dias_laborables'  => [1, 2, 3, 4, 5], // 1 = lunes … 7 = domingo
         // Huellero (reloj biométrico). Con token se activa la recepción de marcaciones desde un puente en la red del cliente.
         'huellero_token'          => env('HUELLERO_TOKEN'),

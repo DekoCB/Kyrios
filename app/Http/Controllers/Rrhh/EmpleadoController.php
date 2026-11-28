@@ -206,6 +206,16 @@ class EmpleadoController extends Controller
             'sueldo_basico'         => 'nullable|numeric|min:0|max:999999',
             'hora_entrada'          => 'required|date_format:H:i',
             'hora_salida'           => 'required|date_format:H:i|after:hora_entrada',
+            // Reglas de descuento y bonificación (tardanzas, faltas y horas extra)
+            'tolerancia_min'        => 'nullable|integer|min:0|max:120',
+            'horas_jornada'         => 'required|numeric|min:1|max:24',
+            'tardanza_modo'         => ['required', Rule::in(array_keys(Empleado::TARDANZA_MODOS))],
+            'tardanza_valor'        => 'nullable|numeric|min:0|max:99999',
+            'falta_modo'            => ['required', Rule::in(array_keys(Empleado::FALTA_MODOS))],
+            'falta_valor'           => 'nullable|numeric|min:0|max:99999',
+            'extra_modo'            => ['required', Rule::in(array_keys(Empleado::EXTRA_MODOS))],
+            'extra_valor'           => 'nullable|numeric|min:0|max:99999',
+            'extra_minimo_min'      => 'required|integer|min:0|max:600',
             'estado'                => ['required', Rule::in(['activo', 'licencia'])],
             'sistema_pension'       => 'nullable|in:AFP,ONP',
             'afp_nombre'            => 'nullable|string|max:40',
@@ -297,6 +307,9 @@ class EmpleadoController extends Controller
         }
         $datos['hora_entrada'] .= ':00';
         $datos['hora_salida'] .= ':00';
+        foreach (['tardanza_valor', 'falta_valor', 'extra_valor'] as $campo) {
+            $datos[$campo] = $datos[$campo] ?? ($campo === 'extra_valor' ? 1.25 : 0);
+        }
         $datos['user_id'] = $datos['user_id'] ?? null;
 
         return $datos;

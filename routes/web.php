@@ -632,6 +632,7 @@ Route::middleware('auth')->group(function () {
         Route::middleware('role:Administración,Contador,Logística,Operaciones,Marketing,Ventas')->group(function () use ($asi, $sol) {
             Route::get('/mi-asistencia', [$asi, 'mi'])->name('mi-asistencia');
             Route::post('/mi-asistencia/marcar', [$asi, 'marcar'])->name('marcar');
+            Route::get('/marcaciones/{marcacion}/foto', [$asi, 'foto'])->whereNumber('marcacion')->name('marcaciones.foto');
             Route::get('/mis-solicitudes', [$sol, 'mias'])->name('mis-solicitudes');
             Route::post('/solicitudes', [$sol, 'store'])->name('solicitudes.store');
         });
@@ -655,6 +656,20 @@ Route::middleware('auth')->group(function () {
             Route::get('/asistencia', [$asi, 'control'])->name('asistencia.control');
             Route::post('/asistencia/faltas', [$asi, 'faltas'])->name('asistencia.faltas');
             Route::get('/asistencia/reporte', [$asi, 'reporte'])->name('asistencia.reporte');
+            Route::get('/asistencia/trabajador', [$asi, 'trabajador'])->name('asistencia.trabajador');
+            Route::post('/marcaciones/{marcacion}/revisar', [$asi, 'revisar'])->whereNumber('marcacion')->name('marcaciones.revisar');
+
+            // Lugares de trabajo (donde se valida la ubicación de cada marcación) y notas de desempeño de 0 a 20
+            $lug = \App\Http\Controllers\Rrhh\LugarTrabajoController::class;
+            Route::get('/lugares', [$lug, 'index'])->name('lugares.index');
+            Route::post('/lugares', [$lug, 'store'])->name('lugares.store');
+            Route::put('/lugares/{lugar}', [$lug, 'update'])->whereNumber('lugar')->name('lugares.update');
+            Route::delete('/lugares/{lugar}', [$lug, 'destroy'])->whereNumber('lugar')->name('lugares.destroy');
+            $eva = \App\Http\Controllers\Rrhh\EvaluacionEmpleadoController::class;
+            Route::get('/evaluaciones', [$eva, 'index'])->name('evaluaciones.index');
+            Route::get('/evaluaciones/{empleado}', [$eva, 'show'])->whereNumber('empleado')->name('evaluaciones.show');
+            Route::post('/evaluaciones/{empleado}', [$eva, 'store'])->whereNumber('empleado')->name('evaluaciones.store');
+            Route::delete('/evaluaciones/{empleado}/{evaluacion}', [$eva, 'destroy'])->whereNumber(['empleado', 'evaluacion'])->name('evaluaciones.destroy');
             Route::get('/asistencia/huellero', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'index'])->name('asistencia.huellero');
             Route::post('/asistencia/huellero/revisar', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'previsualizar'])->name('asistencia.huellero.revisar');
             Route::post('/asistencia/huellero/importar', [\App\Http\Controllers\Rrhh\HuelleroController::class, 'confirmar'])->name('asistencia.huellero.importar');

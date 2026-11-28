@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Asistencia;
+use App\Models\AsistenciaMarcacion;
+use App\Models\LugarTrabajo;
 use App\Models\Empleado;
 use App\Models\SolicitudRrhh;
 use App\Models\User;
@@ -39,10 +41,52 @@ class AsistenciaService
         $real = Carbon::createFromFormat('H:i:s', substr($horaReal, 0, 5) . ':00');
         $tarde = max(0, $programada->diffInMinutes($real, false));
 
-        return $tarde > self::tolerancia() ? $tarde : 0;
+        return $tarde > ($e->tolerancia_min ?? self::tolerancia()) ? $tarde : 0;
     }
 
-    public function marcarEntrada(Empleado $e, ?Carbon $ahora = null, ?User $por = null): Asistencia
+    /** Minutos trabajados después de la hora de salida del empleado; solo cuentan desde el mínimo que tenga fijado. */
+    public function minutosExtra(Empleado $e, ?string $horaSalidaReal): int
+    {
+        if (!$horaSalidaReal) {
+            return 0;
+        }
+        $programada = Carbon::createFromFormat('H:i:s', substr($e->hora_salida, 0, 5) . ':00');
+        $real = Carbon::createFromFormat('H:i:s', substr($horaSalidaReal, 0, 5) . ':00');
+        $extra = max(0, (int) $programada->diffInMinutes($real, false));
+
+        return $extra >= max(1, (int) ($e->extra_minimo_min ?? 30)) ? $extra : 0;
+    }
+
+    /** El lugar de trabajo activo más cercano al punto y si queda dentro de su radio. @return array{lugar: ?LugarTrabajo, distancia: ?int, ubicacion: string} */
+    public function ubicar(?float $lat, ?float $lng): array
+    {
+        if ($lat === null || $lng === null) {
+            return ['lugar' => null, 'distancia' => null, 'ubicacion' => 'sin_dato'];
+        }
+        $cercano = LugarTrabajo::where('activo', true)->get()->sortBy(fn ($l) => $l->distanciaA($lat, $lng))->first();
+        if (!$cercano) {
+            return ['lugar' => null, 'distancia' => null, 'ubicacion' => 'fuera'];
+        }
+        $d = $cercano->distanciaA($lat, $lng);
+
+        return ['lugar' => $d <= $cercano->radio_m ? $cercano : null, 'distancia' => $d, 'ubicacion' => $d <= $cercano->radio_m ? 'valida' : 'fuera'];
+    }
+
+    /**
+     * Guarda la selfie y el punto desde donde se marcó. `$datos`: foto (ruta ya guardada), latitud, longitud, precision.
+     */
+    public function registrarMarcacion(Asistencia $a, string $tipo, array $datos): AsistenciaMarcacion
+    {
+        $u = $this->ubicar($datos['latitud'] ?? null, $datos['longitud'] ?? null);
+
+        return AsistenciaMarcacion::create([
+            'asistencia_id' => $a->id, 'empleado_id' => $a->empleado_id, 'tipo' => $tipo, 'foto' => $datos['foto'] ?? null,
+            'latitud' => $datos['latitud'] ?? null, 'longitud' => $datos['longitud'] ?? null, 'precision_m' => isset($datos['precision']) ? (int) round($datos['precision']) : null,
+            'lugar_trabajo_id' => $u['lugar']?->id, 'distancia_m' => $u['distancia'], 'ubicacion' => $u['ubicacion'],
+        ]);
+    }
+
+    public function marcarEntrada(Empleado $e, ?Carbon $ahora = null, ?User $por = null, array $marca = []): Asistencia
     {
         $ahora ??= now();
         $this->exigirActivo($e);
@@ -58,13 +102,18 @@ class AsistenciaService
         $hora = $ahora->format('H:i:s');
         $tarde = $this->minutosTarde($e, $hora);
 
-        return Asistencia::updateOrCreate(['empleado_id' => $e->id, 'fecha' => $ahora->toDateString()], [
+        $a = Asistencia::updateOrCreate(['empleado_id' => $e->id, 'fecha' => $ahora->toDateString()], [
             'hora_entrada' => $hora, 'estado' => $tarde > 0 ? 'tardanza' : 'puntual', 'minutos_tarde' => $tarde,
             'origen' => 'web', 'registrado_por' => $por?->id,
         ]);
+        if ($marca) {
+            $this->registrarMarcacion($a, 'entrada', $marca);
+        }
+
+        return $a;
     }
 
-    public function marcarSalida(Empleado $e, ?Carbon $ahora = null, ?User $por = null): Asistencia
+    public function marcarSalida(Empleado $e, ?Carbon $ahora = null, ?User $por = null, array $marca = []): Asistencia
     {
         $ahora ??= now();
         $this->exigirActivo($e);
@@ -77,7 +126,10 @@ class AsistenciaService
             throw new DomainException('Ya marcaste tu salida hoy a las ' . substr($a->hora_salida, 0, 5) . '.');
         }
 
-        $a->update(['hora_salida' => $ahora->format('H:i:s'), 'registrado_por' => $por?->id ?? $a->registrado_por]);
+        $a->update(['hora_salida' => $ahora->format('H:i:s'), 'minutos_extra' => $this->minutosExtra($e, $ahora->format('H:i:s')), 'registrado_por' => $por?->id ?? $a->registrado_por]);
+        if ($marca) {
+            $this->registrarMarcacion($a, 'salida', $marca);
+        }
 
         return $a;
     }
@@ -106,7 +158,7 @@ class AsistenciaService
 
         return Asistencia::updateOrCreate(['empleado_id' => $e->id, 'fecha' => $fecha], [
             'hora_entrada' => $entrada, 'hora_salida' => $salida ? substr($salida, 0, 5) . ':00' : null, 'estado' => $estado,
-            'minutos_tarde' => $tarde, 'origen' => 'manual', 'observaciones' => $d['observaciones'] ?? null, 'registrado_por' => $por->id,
+            'minutos_tarde' => $tarde, 'minutos_extra' => $this->minutosExtra($e, $salida), 'origen' => 'manual', 'observaciones' => $d['observaciones'] ?? null, 'registrado_por' => $por->id,
         ]);
     }
 
@@ -158,7 +210,9 @@ class AsistenciaService
 
         $registros = Asistencia::whereBetween('fecha', [$desde->toDateString(), $hasta->toDateString()])->get()->groupBy('empleado_id');
 
-        return Empleado::where('estado', '!=', 'cesado')->orderBy('apellidos')->orderBy('nombres')->get()->map(function (Empleado $e) use ($registros) {
+        $planilla = app(PlanillaService::class);
+
+        return Empleado::where('estado', '!=', 'cesado')->orderBy('apellidos')->orderBy('nombres')->get()->map(function (Empleado $e) use ($registros, $planilla, $anio, $mes) {
             $r = $registros->get($e->id, collect());
 
             return [
@@ -171,8 +225,22 @@ class AsistenciaService
                 'vacaciones' => $r->where('estado', 'vacaciones')->count(),
                 'descanso'   => $r->where('estado', 'descanso_medico')->count(),
                 'horas'      => round((float) $r->sum(fn ($a) => $a->horas ?? 0), 1),
+                'extra_min'  => (int) $r->sum('minutos_extra'),
+                'planilla'   => $planilla->ajuste($e, $anio, $mes, $r),
             ];
         });
+    }
+
+    /** Calendario del mes: por empleado, el estado de cada día (null = sin registro). @return array<int, array<int, ?string>> empleado_id => [día => estado] */
+    public function calendarioMes(int $anio, int $mes): array
+    {
+        $desde = Carbon::create($anio, $mes, 1)->startOfMonth();
+        $cal = [];
+        foreach (Asistencia::whereBetween('fecha', [$desde->toDateString(), $desde->copy()->endOfMonth()->toDateString()])->get() as $a) {
+            $cal[$a->empleado_id][$a->fecha->day] = $a->estado;
+        }
+
+        return $cal;
     }
 
     private function exigirActivo(Empleado $e): void
