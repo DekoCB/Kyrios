@@ -258,7 +258,7 @@
                             <select x-model="nuevo.tipo_documento" class="px-2 py-2 border border-gray-300 rounded-lg text-sm">
                                 <option value="DNI">DNI</option><option value="RUC">RUC</option><option value="CE">CE</option>
                             </select>
-                            <input type="text" x-model="nuevo.numero_documento" maxlength="11" placeholder="Documento" class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <input type="text" x-model="nuevo.numero_documento" maxlength="11" placeholder="Documento (opcional)" class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         </div>
                         <input type="text" x-model="nuevo.nombre" placeholder="Nombre o razón social" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         <input type="text" x-model="nuevo.direccion" placeholder="Dirección (opcional)" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
@@ -380,7 +380,7 @@ function cotizacionForm() {
                 const r = await fetch(URL_NUEVO_CLIENTE, {
                     method: 'POST',
                     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-                    body: JSON.stringify({ ...this.nuevo, estado: 'activo' }),
+                    body: JSON.stringify({ ...this.nuevo, tipo_documento: this.nuevo.numero_documento ? this.nuevo.tipo_documento : null, numero_documento: this.nuevo.numero_documento || null, estado: 'activo' }),
                 });
                 const d = await r.json();
                 if (!r.ok) { this.errorNuevo = d.errors ? Object.values(d.errors)[0][0] : (d.message || 'No se pudo guardar el cliente.'); return; }

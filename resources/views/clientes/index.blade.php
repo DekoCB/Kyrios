@@ -155,6 +155,7 @@
                         </th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contacto</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Registrado</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ventas</th>
                         <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total comprado</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
@@ -189,7 +190,20 @@
                             <td class="px-4 py-3 text-sm text-gray-500">
                                 @if($cliente->telefono)<div><i class="fas fa-phone text-xs mr-1"></i>{{ $cliente->telefono }}</div>@endif
                                 @if($cliente->email)<div class="text-xs">{{ $cliente->email }}</div>@endif
-                                @if(!$cliente->telefono && !$cliente->email)—@endif
+                                @if($cliente->whatsapp)<div><a href="{{ $cliente->whatsapp_enlace }}" target="_blank" rel="noopener" class="text-green-600 hover:text-green-700" title="Escribir por WhatsApp"><i class="fab fa-whatsapp mr-1"></i>{{ $cliente->whatsapp }}</a></div>@endif
+                                @if($cliente->redes_lista)
+                                    <div class="flex flex-wrap gap-2 mt-1">
+                                        @foreach($cliente->redes_lista as $red)
+                                            @if($red['enlace'])<a href="{{ $red['enlace'] }}" target="_blank" rel="noopener" title="{{ $red['etiqueta'] }}: {{ $red['usuario'] }}"><i class="{{ $red['icono'] }}" style="color: {{ $red['color'] }}"></i></a>
+                                            @else<span title="{{ $red['etiqueta'] }}: {{ $red['usuario'] }}"><i class="{{ $red['icono'] }}" style="color: {{ $red['color'] }}"></i></span>@endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if(!$cliente->telefono && !$cliente->email && !$cliente->whatsapp && !$cliente->redes_lista)—@endif
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap" title="{{ $cliente->created_at?->format('d/m/Y H:i') }}">
+                                {{ $cliente->created_at?->format('d/m/Y') ?? '—' }}
+                                @if($cliente->created_at?->isToday())<span class="ml-1 inline-flex px-1.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700">Hoy</span>@endif
                             </td>
                             <td class="px-4 py-3 text-sm text-center text-gray-600">{{ $cliente->ventas_count }}</td>
                             <td class="px-4 py-3 text-sm text-right font-medium text-gray-900">S/ {{ number_format((float) $cliente->total_comprado, 2) }}</td>
@@ -208,7 +222,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-14 text-center text-gray-500">
+                            <td colspan="8" class="px-6 py-14 text-center text-gray-500">
                                 <i class="fas fa-users text-4xl mb-3 text-gray-300"></i>
                                 <p class="font-medium">No hay clientes con esos filtros</p>
                             </td>

@@ -40,6 +40,9 @@ class Cliente extends Model
         'anexo',
         'email_empresa',
         'redes_sociales',
+        'whatsapp',
+        'edad',
+        'redes',
         'comision',
         'preferencias',
         'asesor',
@@ -55,6 +58,8 @@ class Cliente extends Model
         'fecha_cumpleanos' => 'date',
         'ultima_atencion_en' => 'date',
         'listas_difusion'  => 'array',
+        'redes'            => 'array',
+        'edad'             => 'integer',
         'verificado_at'    => 'datetime',
         'comision'         => 'decimal:2',
     ];
@@ -78,6 +83,45 @@ class Cliente extends Model
         'mujer'         => 'Mujer',
         'hombre'        => 'Hombre',
     ];
+
+    /** Redes sociales que se pueden registrar (varias por cliente): etiqueta, ícono de Font Awesome, color y base del enlace. */
+    public const REDES = [
+        'instagram' => ['etiqueta' => 'Instagram', 'icono' => 'fab fa-instagram', 'color' => '#E1306C', 'url' => 'https://instagram.com/'],
+        'facebook'  => ['etiqueta' => 'Facebook', 'icono' => 'fab fa-facebook', 'color' => '#1877F2', 'url' => 'https://facebook.com/'],
+        'tiktok'    => ['etiqueta' => 'TikTok', 'icono' => 'fab fa-tiktok', 'color' => '#111827', 'url' => 'https://tiktok.com/@'],
+        'linkedin'  => ['etiqueta' => 'LinkedIn', 'icono' => 'fab fa-linkedin', 'color' => '#0A66C2', 'url' => 'https://linkedin.com/in/'],
+        'x'         => ['etiqueta' => 'X (Twitter)', 'icono' => 'fab fa-x-twitter', 'color' => '#111827', 'url' => 'https://x.com/'],
+        'youtube'   => ['etiqueta' => 'YouTube', 'icono' => 'fab fa-youtube', 'color' => '#FF0000', 'url' => 'https://youtube.com/@'],
+        'pinterest' => ['etiqueta' => 'Pinterest', 'icono' => 'fab fa-pinterest', 'color' => '#E60023', 'url' => 'https://pinterest.com/'],
+        'behance'   => ['etiqueta' => 'Behance', 'icono' => 'fab fa-behance', 'color' => '#1769FF', 'url' => 'https://behance.net/'],
+        'web'       => ['etiqueta' => 'Página web', 'icono' => 'fas fa-globe', 'color' => '#0D9488', 'url' => 'https://'],
+        'otro'      => ['etiqueta' => 'Otra red', 'icono' => 'fas fa-share-nodes', 'color' => '#6B7280', 'url' => null],
+    ];
+
+    /** Las redes del cliente con su ícono, color y enlace (si se puede armar). */
+    public function getRedesListaAttribute(): array
+    {
+        return collect((array) $this->redes)->map(function ($r) {
+            $def = self::REDES[$r['red'] ?? ''] ?? self::REDES['otro'];
+            $usuario = trim((string) ($r['usuario'] ?? ''));
+            $enlace = preg_match('#^https?://#i', $usuario)
+                ? $usuario
+                : ($def['url'] && $usuario !== '' ? $def['url'] . ltrim($usuario, '@/') : null);
+
+            return ['red' => $r['red'] ?? 'otro', 'usuario' => $usuario, 'etiqueta' => $def['etiqueta'], 'icono' => $def['icono'], 'color' => $def['color'], 'enlace' => $enlace];
+        })->filter(fn ($r) => $r['usuario'] !== '')->values()->all();
+    }
+
+    /** Enlace de «wa.me» con el WhatsApp del cliente (un número de 9 dígitos se toma como peruano). */
+    public function getWhatsappEnlaceAttribute(): ?string
+    {
+        $digitos = preg_replace('/\D+/', '', (string) $this->whatsapp);
+        if ($digitos === '') {
+            return null;
+        }
+
+        return 'https://wa.me/' . (strlen($digitos) === 9 ? '51' . $digitos : $digitos);
+    }
 
     /** Notas de crédito/débito: ajustan una venta, no cuentan como compra. */
     public const TIPOS_NOTA = ['nc_factura', 'nc_boleta', 'nota_credito', 'nota_debito'];

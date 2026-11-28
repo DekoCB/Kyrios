@@ -149,6 +149,7 @@ class ClienteController extends Controller
             'departamento' => 'nullable|string|max:100',
             'ubigeo'       => 'nullable|string|max:6',
             'telefono'     => 'nullable|string|max:20',
+            'whatsapp'     => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\s-]{6,30}$/'],
             'email'        => 'nullable|email|max:255',
             'notas'        => 'nullable|string|max:2000',
             'estado'       => 'required|in:activo,inactivo',
@@ -163,10 +164,14 @@ class ClienteController extends Controller
             'cargo'            => 'nullable|string|max:120',
             'empresa'          => 'nullable|string|max:190',
             'fecha_cumpleanos' => 'nullable|date|before:today',
+            'edad'             => 'nullable|integer|min:0|max:120',
             'telefono_fijo'    => 'nullable|string|max:30',
             'anexo'            => 'nullable|string|max:15',
             'email_empresa'    => 'nullable|email|max:255',
             'redes_sociales'   => 'nullable|string|max:1000',
+            'redes'            => 'nullable|array|max:12',
+            'redes.*.red'      => ['nullable', Rule::in(array_keys(Cliente::REDES))],
+            'redes.*.usuario'  => 'nullable|string|max:190',
             'comision'         => 'nullable|numeric|between:0,100',
             'preferencias'     => 'nullable|string|max:1000',
             'asesor'           => 'nullable|string|max:80',
@@ -183,6 +188,7 @@ class ClienteController extends Controller
             'nombre.required'         => 'El nombre es obligatorio',
             'numero_documento.required_with' => 'Ingrese el número de documento o deje vacío el tipo para registrarlo como prospecto',
             'tipo_documento.required_with'   => 'Elija el tipo de documento',
+            'whatsapp.regex' => 'El WhatsApp solo puede llevar números, espacios, + y guiones.',
         ];
     }
 
@@ -197,6 +203,18 @@ class ClienteController extends Controller
             $validated['ruc_complementario'] = null;
         }
 
+        // Redes sociales: solo las filas con usuario o enlace, sin repetir la misma red y usuario
+        if (array_key_exists('redes', $validated)) {
+            $validated['redes'] = collect((array) $validated['redes'])
+                ->map(fn ($r) => ['red' => $r['red'] ?? 'otro', 'usuario' => trim((string) ($r['usuario'] ?? ''))])
+                ->filter(fn ($r) => $r['usuario'] !== '')->unique(fn ($r) => $r['red'] . '|' . mb_strtolower($r['usuario']))->values()->all() ?: null;
+        }
+
+        // Si dejó la edad vacía y puso la fecha de nacimiento, la edad se calcula sola
+        if (empty($validated['edad']) && !empty($validated['fecha_cumpleanos'])) {
+            $validated['edad'] = \Illuminate\Support\Carbon::parse($validated['fecha_cumpleanos'])->age;
+        }
+
         if (array_key_exists('listas_difusion', $validated)) {
             $validated['listas_difusion'] = array_values(array_unique(array_filter((array) $validated['listas_difusion']))) ?: null;
         }
@@ -208,7 +226,7 @@ class ClienteController extends Controller
     private const CAMPOS_AUTOCOMPLETAR = [
         'tipo_documento', 'numero_documento', 'dni_complementario', 'ruc_complementario', 'nombre', 'direccion', 'departamento',
         'provincia', 'distrito', 'ubigeo', 'contacto', 'telefono', 'email', 'estado', 'notas', 'segmento', 'especialidad', 'cargo',
-        'empresa', 'fecha_cumpleanos', 'telefono_fijo', 'anexo', 'email_empresa', 'redes_sociales', 'comision', 'preferencias',
+        'empresa', 'fecha_cumpleanos', 'edad', 'whatsapp', 'redes', 'telefono_fijo', 'anexo', 'email_empresa', 'redes_sociales', 'comision', 'preferencias',
         'asesor', 'origen', 'clasificacion', 'como_ingreso', 'preferencia_contacto', 'tipo_empresa',
     ];
 

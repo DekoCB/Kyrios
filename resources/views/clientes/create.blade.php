@@ -124,7 +124,7 @@
                         @csrf
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento <span class="text-gray-400 font-normal">(opcional)</span></label>
                                 <select name="tipo_documento" x-model="tipoDocumento"
                                         class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200">
                                     <option value="">Sin documento (prospecto)</option>
@@ -192,10 +192,17 @@
                                        placeholder="Con quién se coordina (útil para empresas)">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Celular / teléfono</label>
                                 <input type="text" name="telefono" maxlength="20"
                                        class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
                                        value="{{ old('telefono') }}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fab fa-whatsapp text-green-600 mr-1"></i>Usuario de WhatsApp</label>
+                                <input type="text" name="whatsapp" maxlength="30" inputmode="tel" placeholder="Si es distinto del celular"
+                                       class="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-blue-500 focus:ring focus:ring-blue-200 @error('whatsapp') border-red-500 @enderror"
+                                       value="{{ old('whatsapp') }}">
+                                @error('whatsapp') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -251,7 +258,7 @@
         return {
             tipoBuscar:      'DNI',
             numeroBuscar:    '',
-            tipoDocumento:   @json(old('tipo_documento', $errors->any() ? '' : 'DNI')),
+            tipoDocumento:   @json(old('tipo_documento', '')),
             numeroDocumento: @json(old('numero_documento', '') ?? ''),
             nombre:          @json(old('nombre', '') ?? ''),
             direccion:       @json(old('direccion', '') ?? ''),

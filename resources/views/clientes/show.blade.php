@@ -97,7 +97,20 @@
                     @if($cliente->telefono_fijo)<div><dt class="text-xs text-gray-400 uppercase">Teléfono fijo</dt><dd>{{ $cliente->telefono_fijo }}@if($cliente->anexo) <span class="text-gray-500">anexo {{ $cliente->anexo }}</span>@endif</dd></div>@endif
                     @if($cliente->email)<div><dt class="text-xs text-gray-400 uppercase">Correo</dt><dd class="break-all">{{ $cliente->email }}</dd></div>@endif
                     @if($cliente->email_empresa)<div><dt class="text-xs text-gray-400 uppercase">Correo de la empresa</dt><dd class="break-all">{{ $cliente->email_empresa }}</dd></div>@endif
-                    @if($cliente->redes_sociales)<div><dt class="text-xs text-gray-400 uppercase">Redes</dt><dd class="break-all">{{ $cliente->redes_sociales }}</dd></div>@endif
+                    @if($cliente->whatsapp)<div><dt class="text-xs text-gray-400 uppercase">WhatsApp</dt><dd><a href="{{ $cliente->whatsapp_enlace }}" target="_blank" rel="noopener" class="text-green-600 hover:text-green-700"><i class="fab fa-whatsapp mr-1"></i>{{ $cliente->whatsapp }}</a></dd></div>@endif
+                    @if($cliente->redes_lista)
+                        <div><dt class="text-xs text-gray-400 uppercase">Redes sociales</dt>
+                            <dd class="flex flex-wrap gap-x-4 gap-y-1">
+                                @foreach($cliente->redes_lista as $red)
+                                    @if($red['enlace'])<a href="{{ $red['enlace'] }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 hover:underline"><i class="{{ $red['icono'] }}" style="color: {{ $red['color'] }}"></i><span class="break-all">{{ $red['usuario'] }}</span></a>
+                                    @else<span class="inline-flex items-center gap-1.5"><i class="{{ $red['icono'] }}" style="color: {{ $red['color'] }}"></i><span class="break-all">{{ $red['usuario'] }}</span></span>@endif
+                                @endforeach
+                            </dd>
+                        </div>
+                    @endif
+                    @if($cliente->redes_sociales)<div><dt class="text-xs text-gray-400 uppercase">Otras redes (texto)</dt><dd class="break-all">{{ $cliente->redes_sociales }}</dd></div>@endif
+                    @if($cliente->edad !== null)<div><dt class="text-xs text-gray-400 uppercase">Edad</dt><dd>{{ $cliente->edad }} años</dd></div>@endif
+                    <div><dt class="text-xs text-gray-400 uppercase">Registrado</dt><dd>{{ $cliente->created_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                     @if($cliente->fecha_cumpleanos)<div><dt class="text-xs text-gray-400 uppercase">Cumpleaños</dt><dd><i class="fas fa-birthday-cake text-xs mr-1"></i>{{ $cliente->fecha_cumpleanos->format('d/m') }}</dd></div>@endif
                     @if($cliente->comision !== null)<div><dt class="text-xs text-gray-400 uppercase">Comisión pactada</dt><dd>{{ rtrim(rtrim(number_format((float) $cliente->comision, 2), '0'), '.') }}%</dd></div>@endif
                     @if($cliente->preferencias)<div><dt class="text-xs text-gray-400 uppercase">Preferencias</dt><dd>{{ $cliente->preferencias }}</dd></div>@endif

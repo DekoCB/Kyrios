@@ -80,9 +80,24 @@
     </select>
 </div>
 <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">Cumpleaños</label>
-    <input type="date" name="fecha_cumpleanos" max="{{ now()->subDay()->toDateString() }}" value="{{ $v('fecha_cumpleanos') instanceof \Carbon\CarbonInterface ? $v('fecha_cumpleanos')->toDateString() : $v('fecha_cumpleanos') }}" class="{{ $clase }}">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento</label>
+    <input type="date" name="fecha_cumpleanos" id="cli_nacimiento" max="{{ now()->subDay()->toDateString() }}" value="{{ $v('fecha_cumpleanos') instanceof \Carbon\CarbonInterface ? $v('fecha_cumpleanos')->toDateString() : $v('fecha_cumpleanos') }}" class="{{ $clase }}">
 </div>
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Edad <span class="text-gray-400 font-normal">(se calcula con la fecha)</span></label>
+    <input type="number" name="edad" id="cli_edad" min="0" max="120" value="{{ $v('edad') }}" class="{{ $clase }} @error('edad') border-red-500 @enderror" placeholder="Años">
+    @error('edad') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+</div>
+<script>
+    document.getElementById('cli_nacimiento')?.addEventListener('change', function () {
+        const edad = document.getElementById('cli_edad');
+        if (!this.value || !edad) return;
+        const n = new Date(this.value), h = new Date();
+        let a = h.getFullYear() - n.getFullYear();
+        if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) a--;
+        edad.value = a >= 0 ? a : '';
+    });
+</script>
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Comisión pactada (%)</label>
     <input type="number" name="comision" min="0" max="100" step="0.01" value="{{ $v('comision') }}" class="{{ $clase }}" placeholder="Solo aliados">
@@ -99,9 +114,28 @@
     <label class="block text-sm font-medium text-gray-700 mb-1">Correo de la empresa</label>
     <input type="email" name="email_empresa" maxlength="255" value="{{ $v('email_empresa') }}" class="{{ $clase }}">
 </div>
-<div class="md:col-span-2">
-    <label class="block text-sm font-medium text-gray-700 mb-1">Redes sociales</label>
-    <input type="text" name="redes_sociales" maxlength="1000" value="{{ $v('redes_sociales') }}" class="{{ $clase }}" placeholder="Instagram, LinkedIn, web…">
+@php
+    $redesIniciales = array_values((array) old('redes', $cliente?->redes ?? []));
+    $opcionesRedes = collect(\App\Models\Cliente::REDES)->map(fn ($r, $k) => ['clave' => $k, 'etiqueta' => $r['etiqueta']])->values();
+@endphp
+<div class="md:col-span-2" x-data="{ filas: @js($redesIniciales ?: [['red' => 'instagram', 'usuario' => '']]), opciones: @js($opcionesRedes) }">
+    <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fas fa-share-nodes mr-1 text-gray-400"></i>Redes sociales <span class="text-gray-400 font-normal">(puede agregar varias)</span></label>
+    <template x-for="(f, i) in filas" :key="i">
+        <div class="flex gap-2 mb-2">
+            <select :name="`redes[${i}][red]`" x-model="f.red" class="{{ $clase }} bg-white !w-44 shrink-0" aria-label="Red social">
+                <template x-for="o in opciones" :key="o.clave"><option :value="o.clave" x-text="o.etiqueta" :selected="o.clave === f.red"></option></template>
+            </select>
+            <input type="text" :name="`redes[${i}][usuario]`" x-model="f.usuario" maxlength="190" class="{{ $clase }}" placeholder="@usuario o enlace del perfil">
+            <button type="button" @click="filas.splice(i, 1)" class="px-3 text-gray-400 hover:text-red-600" title="Quitar esta red" aria-label="Quitar esta red"><i class="fas fa-xmark"></i></button>
+        </div>
+    </template>
+    <button type="button" @click="filas.push({ red: 'instagram', usuario: '' })" class="text-sm font-medium text-blue-600 hover:text-blue-800"><i class="fas fa-plus mr-1"></i>Agregar otra red</button>
+    @if($v('redes_sociales'))
+        <div class="mt-3">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Redes anotadas antes como texto libre</label>
+            <input type="text" name="redes_sociales" maxlength="1000" value="{{ $v('redes_sociales') }}" class="{{ $clase }}">
+        </div>
+    @endif
 </div>
 <div class="md:col-span-2">
     <label class="block text-sm font-medium text-gray-700 mb-1">Preferencias de producto</label>

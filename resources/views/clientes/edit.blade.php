@@ -28,7 +28,7 @@
                     @csrf @method('PUT')
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo Documento <span class="text-gray-400 font-normal">(opcional)</span></label>
                             <select name="tipo_documento" class="w-full rounded-lg border-gray-300 shadow-sm">
                                 <option value="" {{ old('tipo_documento', $cliente->tipo_documento) ? '' : 'selected' }}>Sin documento (prospecto)</option>
                                 <option value="DNI" {{ old('tipo_documento', $cliente->tipo_documento) === 'DNI' ? 'selected' : '' }}>DNI</option>
@@ -85,8 +85,14 @@
                             <input type="text" name="contacto" maxlength="120" class="w-full rounded-lg border-gray-300 shadow-sm" value="{{ old('contacto', $cliente->contacto) }}" placeholder="Con quién se coordina (útil para empresas)">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Celular / teléfono</label>
                             <input type="text" name="telefono" maxlength="20" class="w-full rounded-lg border-gray-300 shadow-sm" value="{{ old('telefono', $cliente->telefono) }}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1"><i class="fab fa-whatsapp text-green-600 mr-1"></i>Usuario de WhatsApp</label>
+                            <input type="text" name="whatsapp" maxlength="30" inputmode="tel" placeholder="Si es distinto del celular"
+                                   class="w-full rounded-lg border-gray-300 shadow-sm @error('whatsapp') border-red-500 @enderror" value="{{ old('whatsapp', $cliente->whatsapp) }}">
+                            @error('whatsapp') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>

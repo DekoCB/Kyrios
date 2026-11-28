@@ -1088,7 +1088,7 @@
                     </select>
                 </div>
                 <div class="col-span-3">
-                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">N° Documento</label>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">N° Documento <span class="font-normal text-gray-400">(opcional)</span></label>
                     <div class="flex gap-1.5">
                         <input type="text" x-model="nuevoCliente.numero_documento"
                                :maxlength="nuevoCliente.tipo_documento === 'RUC' ? 11 : 8"
@@ -1169,7 +1169,7 @@
                 Cancelar
             </button>
             <button @click="guardarCliente()"
-                    :disabled="!nuevoCliente.nombre || !nuevoCliente.numero_documento || guardandoCliente"
+                    :disabled="!nuevoCliente.nombre || guardandoCliente"
                     class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-bold text-xs transition flex items-center justify-center gap-1">
                 <i class="fas" :class="guardandoCliente ? 'fa-spinner fa-spin' : 'fa-save'"></i>
                 <span>Guardar</span>
@@ -1204,7 +1204,7 @@
                     </select>
                 </div>
                 <div class="col-span-3">
-                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">N° Documento</label>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">N° Documento <span class="font-normal text-gray-400">(opcional)</span></label>
                     <input type="text" x-model="editandoCliente.numero_documento"
                            :maxlength="editandoCliente.tipo_documento === 'RUC' ? 11 : 8"
                            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2.5 py-2.5 text-xs text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono">
@@ -1275,7 +1275,7 @@
                 Cancelar
             </button>
             <button @click="guardarClienteEditado()"
-                    :disabled="!editandoCliente.nombre || !editandoCliente.numero_documento || guardandoEdicion"
+                    :disabled="!editandoCliente.nombre || guardandoEdicion"
                     class="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-bold text-xs transition flex items-center justify-center gap-1">
                 <i class="fas" :class="guardandoEdicion ? 'fa-spinner fa-spin' : 'fa-save'"></i>
                 <span x-text="guardandoEdicion ? 'Guardando...' : 'Guardar cambios'"></span>
@@ -2447,7 +2447,7 @@ function posApp() {
         },
 
         async guardarClienteEditado() {
-            if (!this.editandoCliente.nombre || !this.editandoCliente.numero_documento) return;
+            if (!this.editandoCliente.nombre) return;
             this.guardandoEdicion = true;
             this.errorEdicion     = '';
             try {
@@ -2455,8 +2455,8 @@ function posApp() {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
                     body: JSON.stringify({
-                        tipo_documento:   this.editandoCliente.tipo_documento,
-                        numero_documento: this.editandoCliente.numero_documento,
+                        tipo_documento:   this.editandoCliente.numero_documento ? this.editandoCliente.tipo_documento : null,
+                        numero_documento: this.editandoCliente.numero_documento || null,
                         nombre:           this.editandoCliente.nombre,
                         telefono:         this.editandoCliente.telefono     || null,
                         direccion:        this.editandoCliente.direccion    || null,
@@ -2535,7 +2535,7 @@ function posApp() {
             }
         },
         async guardarCliente() {
-            if (!this.nuevoCliente.nombre || !this.nuevoCliente.numero_documento) return;
+            if (!this.nuevoCliente.nombre) return;
             this.guardandoCliente = true;
             this.errorCliente     = '';
             try {
@@ -2547,8 +2547,9 @@ function posApp() {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
-                        tipo_documento:   this.nuevoCliente.tipo_documento,
-                        numero_documento: this.nuevoCliente.numero_documento,
+                        // El documento es opcional: sin número se registra como prospecto
+                        tipo_documento:   this.nuevoCliente.numero_documento ? this.nuevoCliente.tipo_documento : null,
+                        numero_documento: this.nuevoCliente.numero_documento || null,
                         nombre:           this.nuevoCliente.nombre,
                         direccion:        this.nuevoCliente.direccion    || null,
                         telefono:         this.nuevoCliente.telefono     || null,
